@@ -1,0 +1,27 @@
+.categories-section {
+    margin-bottom: 3rem;
+    padding: 0 1rem;
+  }
+  
+.categories-grid {
+    list-style: none ;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 50px auto 80px;
+    max-width: 1200px;
+    min-width: 1024px;
+    width: 100%;
+}
+  
+/* @media (max-width: 768px) {
+    .categories-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+}
+  
+@media (max-width: 480px) {
+    .categories-grid {
+      grid-template-columns: 1fr;
+    }
+} */

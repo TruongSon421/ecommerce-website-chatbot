@@ -1,0 +1,182 @@
+[
+    {
+        "products": [
+            {
+                "productId": "67cff1cbb6dd012f66cbb955",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 32GB/1TB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "51.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 365,
+            "orderNumber": 365,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335380/macbook-air-15-inch-m4-32gb-1tb-060325-095531-759-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb954",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 32GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "46.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 364,
+            "orderNumber": 364,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335379/macbook-air-15-inch-m4-32gb-512gb-060325-095515-414-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb953",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 32GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": null
+            }
+        ],
+        "groupDto": {
+            "groupId": 363,
+            "orderNumber": 363,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335378/macbook-air-15-inch-m4-32gb-256gb-060325-095503-492-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb952",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 24GB/1TB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "46.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 362,
+            "orderNumber": 362,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335377/macbook-air-15-inch-m4-24gb-1tb-060325-095454-213-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb951",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 24GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "41.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 361,
+            "orderNumber": 361,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335376/macbook-air-15-inch-m4-24gb-512gb-060325-095445-173-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb950",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 24GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "36.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 360,
+            "orderNumber": 360,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335375/macbook-air-15-inch-m4-24gb-256gb-060325-095436-088-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1cab6dd012f66cbb94f",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 16GB/1TB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "41.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 359,
+            "orderNumber": 359,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335374/macbook-air-15-inch-m4-16gb-1tb-060325-095427-165-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1c9b6dd012f66cbb94e",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 16GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "36.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 358,
+            "orderNumber": 358,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335373/macbook-air-15-inch-m4-16gb-512gb-060325-095403-761-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1c9b6dd012f66cbb94d",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 15 inch M4 16GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "31.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 357,
+            "orderNumber": 357,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335372/macbook-air-15-inch-m4-16gb-256gb-060325-095352-333-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff1c9b6dd012f66cbb94c",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Laptop MacBook Air 13 inch M4 32GB/1TB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "46.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 356,
+            "orderNumber": 356,
+            "image": "https://cdnv2.tgdd.vn/mwg-static/tgdd/Products/Images/44/335371/macbook-air-13-inch-m4-32gb-1tb-060325-094455-938-600x600.jpg",
+            "type": "LAPTOP"
+        }
+    }
+]

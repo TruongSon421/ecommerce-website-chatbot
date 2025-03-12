@@ -1,0 +1,158 @@
+[
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Nokia 110 4G Pro",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "750.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 86,
+            "priorityNumber": 86,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/311034/nokia-110-4g-tim-thumb-600x600.jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Samsung Galaxy M35 5G 8GB/256GB",
+                "variant": null,
+                "originalPrice": "8.790.000₫",
+                "currentPrice": "7.990.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 85,
+            "priorityNumber": 85,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/323563/TimerThumb/samsung-galaxy-m35-5g-(14).jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Masstel IZI 10",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "410.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 84,
+            "priorityNumber": 84,
+            "image": null
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Nokia 220 4G",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "990.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 83,
+            "priorityNumber": 83,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/207956/nokia-220-4g-cam-thumb-600x600.jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Nokia HMD 105 4G",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "650.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 82,
+            "priorityNumber": 82,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/329676/nokia-hmd-105-4g-pink-thumb-600x600.jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Mobell M239 4G",
+                "variant": null,
+                "originalPrice": "500.000₫",
+                "currentPrice": "440.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 81,
+            "priorityNumber": 81,
+            "image": null
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Masstel IZI T6 4G",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "500.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 80,
+            "priorityNumber": 80,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/322877/masstel-izi-t6-green-thumb-600x600.jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Samsung Galaxy A55 5G 12GB/256GB",
+                "variant": "12GB - 256GB",
+                "originalPrice": "11.990.000₫",
+                "currentPrice": "10.890.000₫"
+            },
+            {
+                "productName": "Điện thoại Samsung Galaxy A55 5G 8GB/256GB",
+                "variant": "8GB - 256GB",
+                "originalPrice": "10.990.000₫",
+                "currentPrice": "9.890.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 79,
+            "priorityNumber": 79,
+            "image": null
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Benco 4G G3",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "380.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 78,
+            "priorityNumber": 78,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/330485/benco-4g-g3-xanh-thumb-600x600.jpg"
+        }
+    },
+    {
+        "products": [
+            {
+                "productName": "Điện thoại Nokia 105 4G Pro",
+                "variant": null,
+                "originalPrice": null,
+                "currentPrice": "680.000₫"
+            }
+        ],
+        "groupVariantsDto": {
+            "groupId": 77,
+            "priorityNumber": 77,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/311033/nokia-105-4g-den-thumb-600x600.jpg"
+        }
+    }
+]
