@@ -1,0 +1,14 @@
+.banner-section {
+    margin-bottom: 3rem;
+  }
+  
+  .banner-section img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    transition: transform 0.3s ease;
+  }
+  
+  .banner-section img:hover {
+    transform: scale(1.02);
+  }

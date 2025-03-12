@@ -1,0 +1,214 @@
+[
+    {
+        "products": [
+            {
+                "productId": "67cff272b6dd012f66cbba09",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại Itel it2600",
+                "defaultOriginalPrice": "600.000₫",
+                "defaultCurrentPrice": "490.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 471,
+            "orderNumber": 106,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/328399/itel-it2600-blue-thumb-1-600x600.jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff272b6dd012f66cbba08",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại OPPO A58 8GB/128GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "4.790.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 470,
+            "orderNumber": 105,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/311354/TimerThumb/oppo-a58-4g-(48).jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff272b6dd012f66cbba07",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại OPPO Find N3 5G 16GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "38.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 469,
+            "orderNumber": 104,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/302953/TimerThumb/oppo-find-n3-(8).jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff272b6dd012f66cbba06",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại HONOR Magic V3 5G 12GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "37.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 468,
+            "orderNumber": 103,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/332255/TimerThumb/honor-magic-v3-(4).jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff272b6dd012f66cbba04",
+                "variant": "128GB",
+                "orderNumber": 1,
+                "productName": "Điện thoại vivo Y100 8GB/128GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "5.790.000₫"
+            },
+            {
+                "productId": "67cff272b6dd012f66cbba05",
+                "variant": "256GB",
+                "orderNumber": 2,
+                "productName": "Điện thoại vivo Y100 8GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "6.190.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 467,
+            "orderNumber": 102,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/302197/TimerThumb/vivo-y100-thumbkm.jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff271b6dd012f66cbba02",
+                "variant": "256GB",
+                "orderNumber": 1,
+                "productName": "Điện thoại HONOR 200 5G 12GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "11.490.000₫"
+            },
+            {
+                "productId": "67cff272b6dd012f66cbba03",
+                "variant": "512GB",
+                "orderNumber": 2,
+                "productName": "Điện thoại HONOR 200 5G 12GB/512GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "12.690.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 466,
+            "orderNumber": 101,
+            "image": null,
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff271b6dd012f66cbba00",
+                "variant": "Hồng",
+                "orderNumber": 1,
+                "productName": "Điện thoại OPPO Find N3 Flip 5G 12GB/256GB Hồng",
+                "defaultOriginalPrice": "20.000.000₫",
+                "defaultCurrentPrice": "16.990.000₫"
+            },
+            {
+                "productId": "67cff271b6dd012f66cbba01",
+                "variant": "Đen + Vàng đồng",
+                "orderNumber": 2,
+                "productName": "Điện thoại OPPO Find N3 Flip 5G 12GB/256GB Đen/Vàng đồng",
+                "defaultOriginalPrice": "21.000.000₫",
+                "defaultCurrentPrice": "16.990.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 465,
+            "orderNumber": 100,
+            "image": null,
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff271b6dd012f66cbb9ff",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại Samsung Galaxy S23 FE 5G 8GB/128GB Xanh mint/Trắng",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "14.890.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 464,
+            "orderNumber": 99,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/306994/TimerThumb/samsung-galaxy-s23-fe-(46).jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff271b6dd012f66cbb9fe",
+                "variant": null,
+                "orderNumber": 1,
+                "productName": "Điện thoại OPPO A38 6GB/128GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "4.490.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 463,
+            "orderNumber": 98,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/320836/TimerThumb/oppo-a38-6gb-(24).jpg",
+            "type": "PHONE"
+        }
+    },
+    {
+        "products": [
+            {
+                "productId": "67cff271b6dd012f66cbb9fc",
+                "variant": "8GB",
+                "orderNumber": 1,
+                "productName": "Điện thoại OPPO Reno12 F 5G 8GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "8.690.000₫"
+            },
+            {
+                "productId": "67cff271b6dd012f66cbb9fd",
+                "variant": "12GB",
+                "orderNumber": 2,
+                "productName": "Điện thoại OPPO Reno12 F 5G 12GB/256GB",
+                "defaultOriginalPrice": null,
+                "defaultCurrentPrice": "8.790.000₫"
+            }
+        ],
+        "groupDto": {
+            "groupId": 462,
+            "orderNumber": 97,
+            "image": "https://cdn.tgdd.vn/Products/Images/42/327190/TimerThumb/oppo-reno12-f-5g-12gb-256gb-(7).jpg",
+            "type": "PHONE"
+        }
+    }
+]
