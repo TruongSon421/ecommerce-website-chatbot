@@ -10,9 +10,9 @@ function App() {
     <Router>
         <Navbar />
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/:type" element={<PageCategory/>} />
-      <Route path="/phone/:phone_name" element={<ProductGH />}/>
+          <Route path="/" element={<Home />} />
+          <Route path="/:type" element={<PageCategory/>} />
+          <Route path="/phone/:phone_id" element={<ProductGH />}/>
     </Routes>
         <ChatWidget />
         <Footer />

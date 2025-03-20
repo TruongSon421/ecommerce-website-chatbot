@@ -1,6 +1,6 @@
 import React from "react";
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect} from "react";
+
 
 interface Product {
     productId: string;
@@ -29,33 +29,14 @@ interface ProductListProps {
 
 
 const ProductList: React.FC<ProductListProps> = ({ grouplist }) => {
-    const [visibleCount, setVisibleCount] = useState<number>(20);
-    const [searchParams, setSearchParams] = useSearchParams();
-    const pi = Number(searchParams.get("pi")) || 1; 
-    const handleViewMore = () => {
-      setVisibleCount((prev) => prev + 20);
-      const currentParams = new URLSearchParams(searchParams);
-      currentParams.set("pi", String(pi + 1));
-      setSearchParams(currentParams);
-    };
-    const remaining:number = grouplist.length - visibleCount;
-    const visibleProducts = grouplist.slice(0, visibleCount);
+    
     return (
       <section className="mb-12 pl-0 pr-4">
         <div className="grid ml-52 mr-48 grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4">
-          {visibleProducts.map((products,index) => (
+          {grouplist.map((products,index) => (
             <ProductItem key={index} groupproduct={products} />
           ))}
         </div>
-        {visibleCount < grouplist.length && (
-          <div className='flex justify-center '>
-            <button className="text-white bg-slate-500 p-5 m-5 hover:bg-slate-300 py-2 px-4 rounded" onClick={handleViewMore}>
-            Xem thêm 
-            <span className='m-1'>{remaining}</span>
-            sản phẩm
-          </button>
-          </div>
-        )}
       </section>
     );
   };
@@ -67,7 +48,11 @@ const ProductItem: React.FC<{groupproduct: GroupProduct}> = ({ groupproduct }) =
     // State để theo dõi sản phẩm được chọn (mặc định là sản phẩm đầu tiên)
     
     const [selectedProduct, setSelectedProduct] = useState<Product>(groupproduct.products[0]);
+    const [href, setHref] = useState(`/${groupproduct.groupDto.type.toLocaleLowerCase()}/${selectedProduct.productId}`);
 
+    useEffect(() => {
+        setHref(`/${groupproduct.groupDto.type.toLocaleLowerCase()}/${selectedProduct.productId}`);
+    }, [selectedProduct]); 
     // Hàm hỗ trợ chuyển đổi giá từ chuỗi sang số
     const parsePrice = (price: string): number => {
         return Number(price.replace(/\./g, '').replace('₫', ''));
@@ -86,11 +71,10 @@ const ProductItem: React.FC<{groupproduct: GroupProduct}> = ({ groupproduct }) =
         }
     }
     } 
-    
-
     return (
         <div className="h-[500px] w-auto bg-white shadow-lg rounded-lg overflow-hidden">
-            {/* Bên trên : Hình ảnh sản phẩm */}
+            <a href={href} onClick={(e) => e.stopPropagation()}>
+                {/* Bên trên : Hình ảnh sản phẩm */}
             <div className="h-1/2 p-4 flex justify-center">
                 <img
                     src={groupproduct.groupDto.image || '/images/categories/phone.png'}
@@ -124,7 +108,12 @@ const ProductItem: React.FC<{groupproduct: GroupProduct}> = ({ groupproduct }) =
                                         ? 'bg-blue-500 text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
-                                onClick={() => setSelectedProduct(product)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setSelectedProduct(product)}
+                                } 
+                                    
                             >
                                 {product.variant}
                             </button>
@@ -151,6 +140,7 @@ const ProductItem: React.FC<{groupproduct: GroupProduct}> = ({ groupproduct }) =
                 )}
             </div>
             </div>
+            </a>
         </div>
     );
 };

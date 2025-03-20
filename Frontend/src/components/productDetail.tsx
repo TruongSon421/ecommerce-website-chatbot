@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import BannerSection from './bannerSection';
 import ProductReview from './productReview';
 import ProductSpecifications from './productSpecifications';
@@ -36,22 +36,54 @@ interface Product {
   specifications: Specification[];
   colors: string[];
   quantities: number[];
-  variants: string[];
   productNames: string[];
 }
+
+interface Variant {
+  productId : string;
+  varient: string,
+}
+
 
 
 // Component chính: ProductDetail
 const ProductDetail: React.FC<{product: Product}> = ({ product }) => {
-  const [selectedStorage, setSelectedStorage] = useState(product.variants[0]);
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
+  // const [selectedStorage, setSelectedStorage] = useState(product.variants[0]);
+  // const [variants, setVariants] = useState<Variant[]>([]);
+  // useEffect(() => {
+  //   const fetchVarients = async () => {
+  //     try {
+  //       // Sử dụng API endpoint dựa trên tham số type
+  //       const response = await fetch(`http://localhost:8070/api/inventory/related/${product.productId}`);
+  //       if (!response.ok) {
+  //         throw new Error("Error fetching products");
+  //       }
+  //       const data = await response.json();
+  //       if (data.length > 2) {
+  //         setVariants(data)
+  //       };
+  //     } catch (error) {
+  //       console.error("Error fetching products:", error);
+  //     }
+  //   };
+
+  //   fetchVarients();
+  // },[]);
+  const [selectedColor, setSelectedColor] = useState(
+     product.colors?.length > 0 ? product.colors[0] : "default"
+   );
+  // console.log("variant:",variants)
+  // const defaultStoreage = variants.find((variant) => variant.productId === product.productId) || null
+  // const [selectedStorage, setSelectedStorage] = useState(defaultStoreage?.varient)
+  const imageSrc = product.images[selectedColor] || product.images["default"];
+  // console.log("akjd: ",variants[0].varient)
   return (
     <>
     <div className="bg-[#333] text-white p-8 ml-24 mr-24">
       <div className="flex flex-col md:flex-row">
         {/* Bên trái: Bộ sưu tập hình ảnh */}
 
-        <ProductImageGallery thumbnails={product.images[selectedColor]} />
+        <ProductImageGallery thumbnails={imageSrc} />
         
         {/* Bên phải: Chi tiết sản phẩm */}
         <div className="md:ml-8 w-full md:w-1/2">
@@ -61,8 +93,8 @@ const ProductDetail: React.FC<{product: Product}> = ({ product }) => {
           />
           <ProductPrice current_prices={product.current_prices[0]} />
           {/* <ProductOptions
-            storageOptions={product.colors}
-            selectedStorage={selectedStorage}
+            storageOptions={variants}
+            selectedStorage={variants[0].varient}
             onStorageChange={setSelectedStorage}
             colorOptions={product.colors}
             selectedColor={selectedColor}
@@ -112,12 +144,12 @@ const ProductPrice: React.FC<ProductPriceProps> = ({ current_prices}) => (
 
 // Component hiển thị tùy chọn dung lượng và màu sắc
 interface ProductOptionsProps {
-  storageOptions: string[];
+  storageOptions: Variant[];
   selectedStorage: string;
-  onStorageChange: (storage: string) => void;
-  colorOptions: { name: string; color: string }[];
-  selectedColor: { name: string; color: string };
-  onColorChange: (color: { name: string; color: string }) => void;
+  onStorageChange: (storage:string) => void;
+  colorOptions: string[];
+  selectedColor: string;
+  onColorChange: (color: string )  => void;
 }
 
 const ProductOptions: React.FC<ProductOptionsProps> = ({
@@ -134,27 +166,26 @@ const ProductOptions: React.FC<ProductOptionsProps> = ({
       <div className="flex space-x-4 mt-2">
         {storageOptions.map((storage) => (
           <button
-            key={storage}
+            key={storage.productId}
             className={`px-4 py-2 rounded-full ${
-              selectedStorage === storage ? 'bg-black text-white' : 'bg-gray-200 text-black'
+              selectedStorage === storage.varient? 'bg-black text-white' : 'bg-gray-200 text-black'
             }`}
-            onClick={() => onStorageChange(storage)}
+            onClick={() => onStorageChange(storage.varient)}
           >
-            {storage}
+            {storage.varient}
           </button>
         ))}
       </div>
     </div>
     <div className="mt-4">
-      <h3 className="text-lg font-semibold">Màu: {selectedColor.name}</h3>
+      <h3 className="text-lg font-semibold">Màu: {selectedColor}</h3>
       <div className="flex space-x-2 mt-2">
         {colorOptions.map((color) => (
           <button
-            key={color.name}
+            key={color}
             className={`w-8 h-8 rounded-full border-2 ${
-              selectedColor.name === color.name ? 'border-blue-500' : 'border-transparent'
+              selectedColor === color ? 'border-blue-500' : 'border-transparent'
             }`}
-            style={{ backgroundColor: color.color }}
             onClick={() => onColorChange(color)}
           />
         ))}
