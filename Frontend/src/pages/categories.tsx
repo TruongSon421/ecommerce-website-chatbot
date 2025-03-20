@@ -1,38 +1,48 @@
 import Header from '../components/header';
-import ProductSection from '../components/productSection';
 import FilterMenu from '../components/fillter_sort';
 import ProductList from '../components/productList';
-import NewsSection from '../components/newSection';
-import BannerSection from '../components/bannerSection';
-import CategoriesSection from '../components/categoriesSection';
 import { useState, useEffect} from 'react';
 import { useParams} from 'react-router-dom';
-
+import { useSearchParams } from "react-router-dom";
 
 function PageCategory() {
-  const {type} = useParams();
+  const { type } = useParams();
   const [products, setProducts] = useState([]);
-  useEffect(() => {
-    const fetchProducts = async () => {
+  let [searchParams, setSearchParams] = useSearchParams();
+  const [totalProducts, setTotalProducts] = useState(0); 
+  const [loading, setLoading] = useState(false);
+  const page = Number(searchParams.get("pages")) || 1;
+  const remainingProducts = totalProducts - products.length;
+  const fetchProducts = async (currentPage: number) => {
       try {
-        if (type === `phone`) {
-          const response = await fetch("phone_list.json");
-          const data = await response.json();
-          setProducts(data); 
+        setLoading(true);
+        // Sử dụng API endpoint dựa trên tham số type
+        const response = await fetch(`http://localhost:8070/api/group-variants/groups?page=${currentPage}&size=20&type=${type?.toLocaleUpperCase()}`);            
+        if (!response.ok) {
+          throw new Error("Error fetching products");
         }
-        else {
-          const response = await fetch("laptop_list.json");
-          const data = await response.json();
-          setProducts(data); 
+        const data = await response.json();
+        setProducts((prevProducts) =>
+          currentPage === 1 ? data["content"] : [...prevProducts, ...data["content"]]
+        ); 
+        if (currentPage === 1) {
+          setTotalProducts(data["totalElements"]); 
         }
       } catch (error) {
-        console.error("Lỗi khi lấy dữ liệu:", error);
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
       }
     };
-  
-    fetchProducts();
-  }, []);
-  
+
+    useEffect ( () => {
+      fetchProducts(page);
+    }, [type,page]);
+
+    const handleLoadMore = () => {
+      const nextPage = page + 1;
+      setSearchParams({ pages: nextPage.toString() }); // Cập nhật URL
+    };
   return (
     <div className="pageCategory">
       <Header title={type} />
@@ -40,6 +50,15 @@ function PageCategory() {
       <ProductList 
           grouplist={products}
       />
+      {remainingProducts > 0 && (
+          <div className='flex justify-center '>
+            <button className="text-white bg-slate-500 p-5 m-5 hover:bg-slate-300 py-2 px-4 rounded" onClick={handleLoadMore} disabled={loading}>
+            Xem thêm 
+            <span className='m-1'>{remainingProducts}</span>
+            sản phẩm
+          </button>
+          </div>
+        )}
     </div>
   );
 }
