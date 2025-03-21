@@ -1,0 +1,24 @@
+server:
+ port: 8888
+
+spring:
+ application:
+  name: config-server
+ cloud:
+  config:
+   server:
+    git:
+     uri: https://github.com/TienDoan274/KLTN-config
+     default-label: main
+     search-paths: config
+     clone-on-start: true
+
+# Actuator endpoints configuration
+management:
+ endpoints:
+  web:
+   exposure:
+    include: "*"
+ endpoint:
+  health:
+   show-details: always

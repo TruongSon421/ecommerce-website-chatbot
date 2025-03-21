@@ -1,0 +1,67 @@
+# Server Configuration
+server:
+  port: 8083
+
+# Application Name (for Eureka and identification)
+spring:
+  application:
+    name: cart-service
+  config:
+    import: "optional:configserver:http://localhost:8888"
+
+  # MySQL Configuration (Primary Data Source)
+  datasource:
+    datasource:
+      url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+      username: tiendoan
+      password: tiendoan
+      driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  # Redis Configuration (Cache)
+  redis:
+    host: localhost
+    port: 6379
+    database: 1
+
+  # Kafka Configuration (Producer for event-driven communication)
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: cart-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    topics:
+      cart-events: cart-events
+      cart-events.partitions: 3
+      cart-events.replicas: 1
+
+
+# Eureka Configuration (Service Discovery)
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    preferIpAddress: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

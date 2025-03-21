@@ -1,0 +1,3 @@
+[submodule "frontend"]
+    path = frontend
+    url = https://github.com/TienDoan274/spring_ecommerce_frontend.git
