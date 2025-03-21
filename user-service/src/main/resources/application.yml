@@ -1,0 +1,23 @@
+# src/main/resources/application.yml
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 3600000
+  refresh-expiration: 86400000
+
+
+server:
+  port: 8090
+
+spring:
+  application:
+    name: user-service
+  config:
+    import: "optional:configserver:http://localhost:8888"
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    preferIpAddress: true
+

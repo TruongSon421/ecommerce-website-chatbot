@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  data:
+    mongodb:
+      database: products
+      authentication-database: admin
+      username: admin
+      password: password
+      host: localhost
+      port: 27017
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+  application:
+    name: product-service
+  config:
+    import: "optional:configserver:http://localhost:8888"
+  
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+
+logging:
+  level:
+    com.eazybytes: DEBUG
+
+inventory-service:
+  url: http://localhost:8100
