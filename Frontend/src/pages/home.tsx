@@ -2,9 +2,10 @@ import '../styles/slideImages.css';
 import Slider from '../components/slide';
 import ProductSection from '../components/productSection';
 import NewsSection from '../components/newSection';
-import BannerSection from '../components/bannerSection';
+import BannerSection from '../components/layout/bannerSection';
 import CategoriesSection from '../components/categoriesSection';
 function Home() {
+  console.log("Home page");
   return (
     <div className="home">
       <Slider slides={slides}/>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from './auth/authContexts';
-import '../styles/navbar.css';
+import { useAuth } from '../hooks/useAuth';
+import '../../styles/navbar.css';
 
 const Navbar: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);

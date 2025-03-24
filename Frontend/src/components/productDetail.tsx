@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import BannerSection from './bannerSection';
+import BannerSection from './layout/bannerSection';
 import ProductReview from './productReview';
 import ProductSpecifications from './productSpecifications';
 

@@ -1,6 +1,6 @@
 // src/components/Register.tsx
 import React, { useState } from 'react';
-import { useAuth } from '../auth/authContexts';
+import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
