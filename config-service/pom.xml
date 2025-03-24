@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>config-server</artifactId>
+    <artifactId>config-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>config-server</name>
+    <name>config-service</name>
 
     <properties>
         <java.version>17</java.version>
