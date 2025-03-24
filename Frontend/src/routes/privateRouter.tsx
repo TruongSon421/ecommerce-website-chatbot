@@ -3,7 +3,10 @@ import { Navigate, Route } from "react-router-dom";
 import AdminLayout from "../layouts/adminLayouts";
 import UserLayout from "../layouts/userLayouts";
 import { useAuth } from "../components/hooks/useAuth";
-
+import AdminLogin from "../pages/admin/LoginAdmin";
+import AdminRegister  from "../pages/admin/RegisterAdmin";
+import Dashboard from "../pages/dashbroad/adminDashBroad";
+import AddProductPage from "../pages/product/addProduct";
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -11,7 +14,7 @@ const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children })
 
 const AdminPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isAdmin } = useAuth();
-  return isAuthenticated && isAdmin ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated && isAdmin ? <>{children}</> : <Navigate to="/admin/login" replace />;
 };
 
 export const privateRouter = [
@@ -29,9 +32,10 @@ export const privateRouter = [
     path: "/admin",
     element: <AdminLayout />,
     children: [
-      // { path: "login", element: <AdminLogin /> },
-      // { path: "register", element: <AdminRegister /> },
-      // { path: "dashboard", element: <AdminPrivateRoute><AdminDashboard /></AdminPrivateRoute> },
+      { path: "login", element: <AdminLogin /> },
+      { path: "register", element: <AdminRegister /> },
+      { path: "dashboard", element: <AdminPrivateRoute><Dashboard /></AdminPrivateRoute> },
+      { path: "product/add", element: <AdminPrivateRoute><AddProductPage /></AdminPrivateRoute>},
     ],
   },
 ];
