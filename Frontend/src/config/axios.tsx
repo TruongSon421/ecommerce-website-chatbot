@@ -1,7 +1,10 @@
 import axios from 'axios';
-
+import ENV from './env';
 const api = axios.create({
-  baseURL: 'http://localhost:8070/api', // Khớp với backend
+  baseURL: ENV.API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 api.interceptors.request.use(
@@ -23,7 +26,7 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post('http://localhost:8070/api/refresh-token', { refreshToken });
+        const response = await axios.post(`${ENV.API_URL}/refresh-token`, { refreshToken });
         const { token } = response.data; // Backend trả về 'token'
         localStorage.setItem('accessToken', token);
         originalRequest.headers.Authorization = `Bearer ${token}`;

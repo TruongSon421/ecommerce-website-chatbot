@@ -1,5 +1,5 @@
 import React from "react";
-import CustomSlider from "./customSlider";
+import CustomSlider from "../customSlider";
 
 interface HeaderProps {
     title?: string;
