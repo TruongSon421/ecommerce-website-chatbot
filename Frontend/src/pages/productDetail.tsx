@@ -9,7 +9,7 @@ function ProductGH() {
         const fetchProducts = async () => {
           try {
             // Sử dụng API endpoint dựa trên tham số type
-            const response = await fetch(`http://localhost:8070/api/products/getPhone/${phone_id}`);
+            const response = await fetch(`http://localhost:8070/api/products/PHONE/${phone_id}`);
             if (!response.ok) {
               throw new Error("Error fetching products");
             }
