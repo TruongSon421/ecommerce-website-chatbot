@@ -7,6 +7,7 @@ import AdminLogin from "../pages/admin/LoginAdmin";
 import AdminRegister  from "../pages/admin/RegisterAdmin";
 import Dashboard from "../pages/dashbroad/adminDashBroad";
 import AddProductPage from "../pages/product/addProduct";
+
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
