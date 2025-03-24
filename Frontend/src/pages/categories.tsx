@@ -1,4 +1,4 @@
-import Header from '../components/header';
+import Header from '../components/layout/header';
 import FilterMenu from '../components/fillter_sort';
 import ProductList from '../components/productList';
 import { useState, useEffect} from 'react';
