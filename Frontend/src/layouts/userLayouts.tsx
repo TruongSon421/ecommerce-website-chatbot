@@ -1,17 +1,21 @@
 import React from "react";
-import Navbar from "../components/navbar";
-import Footer from "../components/footer";
+import Navbar from "../components/layout/navbar";
+import Footer from "../components/layout/footer";
 import ChatWidget from "../components/chatbotWidget";
+import { Outlet } from "react-router-dom";
 
-const UserLayout = ({ children }: { children: React.ReactNode }) => {
+const UserLayout = () => {
   return (
-    <>
+    <div>
       <Navbar />
-      {children}
-      <ChatWidget />
+      <main>
+        <Outlet /> {/* Nơi các component con sẽ hiển thị */}
+      </main>
+     <ChatWidget />
       <Footer />
-    </>
+    </div>
   );
 };
+
 
 export default UserLayout;

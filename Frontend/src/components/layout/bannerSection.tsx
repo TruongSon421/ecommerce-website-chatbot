@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/bannerSection.css';
+import '../../styles/bannerSection.css';
 
 interface BannerSectionProps {
   imageSrc: string;
