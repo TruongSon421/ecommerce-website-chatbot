@@ -1,5 +1,5 @@
 import React from "react";
-import { Navigate, Route } from "react-router-dom";
+import { Navigate, Route, RouteObject } from "react-router-dom";
 import AdminLayout from "../layouts/adminLayouts";
 import UserLayout from "../layouts/userLayouts";
 import { useAuth } from "../components/hooks/useAuth";
@@ -17,7 +17,7 @@ const AdminPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }
   return isAuthenticated && isAdmin ? <>{children}</> : <Navigate to="/admin/login" replace />;
 };
 
-export const privateRouter = [
+const privateRouter: RouteObject[] = [
   // Tuyến đường dành cho người dùng đã đăng nhập
   {
     path: "/",
@@ -39,3 +39,5 @@ export const privateRouter = [
     ],
   },
 ];
+
+export default privateRouter;
