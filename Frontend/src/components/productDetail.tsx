@@ -54,7 +54,7 @@ const ProductDetail: React.FC<{product: Product}> = ({ product }) => {
   //   const fetchVarients = async () => {
   //     try {
   //       // Sử dụng API endpoint dựa trên tham số type
-  //       const response = await fetch(`http://localhost:8070/api/inventory/related/${product.productId}`);
+  //       const response = await fetch(`http://192.168.28.93:8070/api/inventory/related/${product.productId}`);
   //       if (!response.ok) {
   //         throw new Error("Error fetching products");
   //       }

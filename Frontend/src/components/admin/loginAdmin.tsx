@@ -1,6 +1,6 @@
 // src/components/Login.tsx
 import React, { useState } from 'react';
-import { useAuth } from '../auth/authAdminContexts';
+import { useAdminAuth } from '../auth/authAdminContexts';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const AdminLogin: React.FC = () => {
@@ -9,7 +9,7 @@ const AdminLogin: React.FC = () => {
     password: '',
   });
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
+  const { login } = useAdminAuth();
   const navigate = useNavigate(); 
   const location = useLocation();
 

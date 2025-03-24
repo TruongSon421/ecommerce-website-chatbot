@@ -2,9 +2,6 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Home from "./pages/home";
 import PageCategory from "./pages/categories";
 import ProductGH from "./pages/productDetail";
-import Navbar from "./components/navbar";
-import Footer from "./components/footer";
-import ChatWidget from "./components/chatbotWidget";
 import Login from "./components/user/login";
 import Register from "./components/user/register";
 import { AuthProvider } from "./components/auth/authContexts";
@@ -38,7 +35,7 @@ function App() {
 
         {/* Routes cho admin */}
         <Route
-          path="/admin/*"
+          path="/trang-admin-dieu-khien/*"
           element={
             <AuthAdminProvider>
               <AdminLayout>

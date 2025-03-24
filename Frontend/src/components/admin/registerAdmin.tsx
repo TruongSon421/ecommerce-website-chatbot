@@ -1,6 +1,6 @@
 // src/components/Register.tsx
 import React, { useState } from 'react';
-import { useAuth } from '../auth/authContexts';
+import { useAdminAuth } from '../auth/authAdminContexts';
 import { useNavigate } from 'react-router-dom';
 
 const AdminRegister: React.FC = () => {
@@ -11,7 +11,7 @@ const AdminRegister: React.FC = () => {
     email: '',
   });
   const [error, setError] = useState<string | null>(null);
-  const { register } = useAuth();
+  const { register } = useAdminAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
