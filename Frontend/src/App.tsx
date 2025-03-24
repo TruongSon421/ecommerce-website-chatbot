@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import { Provider } from "react-redux";
 import  store  from "./store/index";
-import { publicRouter } from "./routes/publicRouter";
-import { privateRouter } from "./routes/privateRouter";
+import publicRouter  from "./routes/publicRouter";
+import privateRouter  from "./routes/privateRouter";
 
 function App() {
   return (
