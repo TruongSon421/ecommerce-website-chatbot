@@ -1,5 +1,6 @@
-package com.eazybytes.dto;
+package com.eazybytes.dto.phone;
 
+import com.eazybytes.dto.product.ProductRequest;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -10,7 +11,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
-public class PhoneRequest extends ProductRequest{
+public class PhoneRequest extends ProductRequest {
     private String os;
     private String processor; // chip
     private String cpuSpeed; // tốc độ chip

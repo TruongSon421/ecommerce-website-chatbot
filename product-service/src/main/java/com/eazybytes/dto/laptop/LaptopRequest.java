@@ -1,5 +1,6 @@
-package com.eazybytes.dto;
+package com.eazybytes.dto.laptop;
 
+import com.eazybytes.dto.product.ProductRequest;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -11,7 +12,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @AllArgsConstructor
 @NoArgsConstructor
-public class LaptopRequest extends ProductRequest{
+public class LaptopRequest extends ProductRequest {
 
     // Bộ xử lý
     private String processorModel; // công nghệ cpu

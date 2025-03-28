@@ -1,65 +1,65 @@
-package com.eazybytes.dto;
+package com.eazybytes.dto.phone;
 
+import com.eazybytes.dto.InventoryDto;
+import com.eazybytes.dto.product.ProductResponse;
 import com.eazybytes.model.Phone;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @SuperBuilder
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class PhoneResponse extends ProductResponse {
-    // Các trường bổ sung, không trùng với ProductResponse
     private List<String> original_prices = new ArrayList<>();
     private List<String> current_prices = new ArrayList<>();
-    private List<Specification> specifications = new ArrayList<>();
     private List<String> colors = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Specification {
-        private String name;  // Tên tiếng Việt - bỏ comment để sửa lỗi
-        private Object value; // Giá trị
-    }
 
     public static PhoneResponse fromPhone(Phone phone, List<InventoryDto> inventoryDtos) {
         PhoneResponse response = new PhoneResponse();
 
+        // Thiết lập các trường cơ bản
         response.setProductId(phone.getProductId());
         response.setProductName(phone.getProductName());
         response.setDescription(phone.getDescription());
         response.setBrand(phone.getBrand());
+
         response.setImages(phone.getImages());
         response.setType(phone.getType());
         response.setWarrantyPeriod(phone.getWarrantyPeriod());
         response.setProductReviews(phone.getProductReviews());
         response.setPromotions(phone.getPromotions());
         response.setRelease(phone.getRelease());
-        response.setColors(phone.getColors());
+
+        // Thiết lập danh sách màu sắc, giá và số lượng
         List<String> originalPrices = new ArrayList<>();
         List<String> currentPrices = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
+        List<String> colors = new ArrayList<>();
 
         for (InventoryDto inventoryDto : inventoryDtos) {
             originalPrices.add(inventoryDto.getOriginalPrice());
             currentPrices.add(inventoryDto.getCurrentPrice());
             quantities.add(inventoryDto.getQuantity());
             productNames.add(inventoryDto.getProductName());
+            colors.add(inventoryDto.getColor());
         }
 
         response.setOriginal_prices(originalPrices);
         response.setCurrent_prices(currentPrices);
         response.setQuantities(quantities);
         response.setProductNames(productNames);
+        response.setColors(colors);
+
+        // Thiết lập các thông số kỹ thuật
         List<Specification> specs = new ArrayList<>();
 
         // Thêm thông số OS

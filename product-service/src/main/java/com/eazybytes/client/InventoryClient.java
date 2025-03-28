@@ -21,11 +21,11 @@ public interface InventoryClient {
     @GetMapping("/api/inventory/productColorVariants/{productId}")
     ResponseEntity<List<InventoryDto>> getProductColorVariants(@PathVariable String productId);
 
-    @PostMapping("/api/inventory")
+    @PostMapping("/api/inventory/create")
     ResponseEntity<InventoryDto> createInventory(@Valid @RequestBody InventoryDto request);
 
-    @PutMapping("/api/inventory/product")
-    ResponseEntity<InventoryDto> updateProductInventory(@Valid @RequestBody InventoryDto request);
+    @PutMapping("/api/inventory/update")
+    ResponseEntity<InventoryDto> updateInventory(@RequestParam("inventoryId") Integer inventoryId, @Valid @RequestBody InventoryDto request);
 
     @DeleteMapping("/api/inventory/delete/{productId}")
     ResponseEntity<Void> deleteInventoriesByProductId(@PathVariable("productId") String productId);

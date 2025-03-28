@@ -2,17 +2,15 @@ package com.eazybytes.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import org.springframework.data.mongodb.core.mapping.Document;
+import lombok.experimental.SuperBuilder;
 
-import java.math.BigDecimal;
 import java.util.List;
 
-@Document(collection = "Phone")
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class Phone extends Product {
+@AllArgsConstructor
+@SuperBuilder
+public class Phone extends BaseProduct {
     private String os;
     private String processor; // chip
     private String cpuSpeed; // tốc độ chip
@@ -65,11 +63,7 @@ public class Phone extends Product {
     private String materials; // nguyên liệu
     private String sizeWeight; // kích thước khối lượng
 
-    private List<String> colors;
-
-
     public Phone() {
         setType("PHONE");
     }
 }
-
