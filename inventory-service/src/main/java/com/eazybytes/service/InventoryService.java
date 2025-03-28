@@ -40,7 +40,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public ProductInventory createProductInventory(InventoryDto request) {
+    public ProductInventory createInventory(InventoryDto request) {
         log.debug("Creating product inventory for product ID: {} and color: {}",
                 request.getProductId(), request.getColor());
 
@@ -71,14 +71,14 @@ public class InventoryService {
 
         log.debug("Saving inventory to database");
         ProductInventory savedInventory = productInventoryRepository.save(inventory);
-        log.debug("Inventory saved successfully with ID: {}", savedInventory.getInventoryId());
+        log.debug("₫ {}", savedInventory.getInventoryId());
 
         return savedInventory;
     }
 
 
     @Transactional
-    public ProductInventory updateProductInventory(InventoryDto request) {
+    public ProductInventory updateInventory(InventoryDto request) {
         Optional<ProductInventory> existingInventory = productInventoryRepository
                 .findByProductIdAndColor(request.getProductId(), request.getColor());
 

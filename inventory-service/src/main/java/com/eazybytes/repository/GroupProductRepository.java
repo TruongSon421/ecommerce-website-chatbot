@@ -13,9 +13,7 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
 
     @Query("SELECT g.groupId FROM GroupProduct g WHERE g.productId = :productId")
     Optional<Integer> findGroupIdByProductId(@Param("productId") String productId);
-
-    void deleteAllByGroupId(Integer groupId);
-
+    
     List<GroupProduct> findByProductNameContainingIgnoreCase(String query);
 
     @Query("SELECT gp FROM GroupProduct gp " +
@@ -29,5 +27,8 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
 
     List<GroupProduct> findAllByGroupIdOrderByOrderNumberAsc(Integer groupId);
 
+    void deleteAllByGroupId(Integer groupId);
+
+    void deleteByProductId(String productId);
 
 }

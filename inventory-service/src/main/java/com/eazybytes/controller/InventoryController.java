@@ -67,7 +67,7 @@ public class InventoryController {
     }
 
 
-    @PostMapping
+    @PostMapping("/create")
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
     public ResponseEntity<InventoryDto> createInventory(@Valid @RequestBody InventoryDto request) {
         log.debug("Received request to create inventory: {}", request);
@@ -76,7 +76,7 @@ public class InventoryController {
             // Bạn có thể thêm đoạn code kiểm tra role ở đây để debug
 
             log.debug("Calling service to create product inventory");
-            ProductInventory createdInventory = inventoryService.createProductInventory(request);
+            ProductInventory createdInventory = inventoryService.createInventory(request);
             log.debug("Successfully created inventory with ID: {}", createdInventory.getInventoryId());
 
             InventoryDto inventoryDto = InventoryDto.builder()
@@ -104,16 +104,17 @@ public class InventoryController {
         }
     }
 
-    @PutMapping("/product")
+    @PutMapping("/update")
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
-    public ResponseEntity<InventoryDto> updateProductInventory(
+    public ResponseEntity<InventoryDto> updateInventory(
             @Valid @RequestBody InventoryDto request) {
-        ProductInventory updatedInventory = inventoryService.updateProductInventory(request);
+        ProductInventory updatedInventory = inventoryService.updateInventory(request);
 
         InventoryDto inventoryDto = InventoryDto.builder()
                 .inventoryId(updatedInventory.getInventoryId())
                 .productId(updatedInventory.getProductId())
                 .color(updatedInventory.getColor())
+                .productName(updatedInventory.getProductName())
                 .quantity(updatedInventory.getQuantity())
                 .originalPrice(updatedInventory.getOriginalPrice())
                 .currentPrice(updatedInventory.getCurrentPrice())
