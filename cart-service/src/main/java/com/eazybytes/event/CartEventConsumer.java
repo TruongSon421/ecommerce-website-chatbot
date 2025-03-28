@@ -13,7 +13,7 @@ public class CartEventConsumer {
 
     private final CartServiceImpl cartService;
 
-    @KafkaListener(topics = "${kafka.topics.cart-events}", groupId = "${kafka.consumer.group-id}")
+    @KafkaListener(topics = "${kafka.topics.cart-events}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeCartEvent(CartEvent event) {
         log.info("Received cart event: {}", event);
         if ("ORDER_CONFIRMED".equals(event.getEventType())) {
