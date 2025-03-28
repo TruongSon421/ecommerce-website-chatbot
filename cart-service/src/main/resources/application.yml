@@ -11,7 +11,6 @@ spring:
 
   # MySQL Configuration (Primary Data Source)
   datasource:
-    datasource:
       url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
       username: tiendoan
       password: tiendoan
@@ -43,7 +42,8 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-    topics:
+kafka:
+  topics:
       cart-events: cart-events
       cart-events.partitions: 3
       cart-events.replicas: 1
@@ -65,3 +65,6 @@ management:
   endpoint:
     health:
       show-details: always
+
+inventory-service:
+  url: http://localhost:8100
