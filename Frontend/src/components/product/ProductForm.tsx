@@ -47,7 +47,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   initialData,
   onAddToList,
 }) => {
-  const [isOpen, setIsOpen] = useState(index === 0); // Form đầu tiên mặc định mở
+  const [isOpen, setIsOpen] = useState(index === 0);
   const [formData, setFormData] = useState(initialData);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -58,15 +58,103 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleConfigChange = (
+  const handleStringChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     field: keyof PhoneConfig | keyof LaptopConfig
   ) => {
-    const { value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      config: { ...prev.config, [field]: value },
-    }));
+    const value = e.target.value;
+    setFormData((prev) => {
+      if (type === "PHONE") {
+        const newConfig = { ...prev.config } as PhoneConfig;
+        const arrayFields = [
+          "rearVideoRecording",
+          "rearCameraFeatures",
+          "frontCameraFeatures",
+          "batteryFeatures",
+          "securityFeatures",
+          "specialFeatures",
+          "recording",
+          "video",
+          "audio",
+          "wifi",
+          "gps",
+          "bluetooth",
+          "otherConnectivity",
+        ] as const;
+
+        if (!arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Omit<PhoneConfig, typeof arrayFields[number]>] = value;
+        }
+        return { ...prev, config: newConfig };
+      } else if (type === "LAPTOP") {
+        const newConfig = { ...prev.config } as LaptopConfig;
+        const arrayFields = [
+          "storage",
+          "colorGamut",
+          "displayTechnology",
+          "audioTechnology",
+          "ports",
+          "wirelessConnectivity",
+          "otherFeatures",
+        ] as const;
+
+        if (!arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Omit<LaptopConfig, typeof arrayFields[number]>] = value;
+        }
+        return { ...prev, config: newConfig };
+      } else {
+        return prev;
+      }
+    });
+  };
+
+  const handleArrayUpdate = (
+    field: keyof PhoneConfig | keyof LaptopConfig,
+    arrayValue: string[]
+  ) => {
+    setFormData((prev) => {
+      if (type === "PHONE") {
+        const newConfig = { ...prev.config } as PhoneConfig;
+        const arrayFields = [
+          "rearVideoRecording",
+          "rearCameraFeatures",
+          "frontCameraFeatures",
+          "batteryFeatures",
+          "securityFeatures",
+          "specialFeatures",
+          "recording",
+          "video",
+          "audio",
+          "wifi",
+          "gps",
+          "bluetooth",
+          "otherConnectivity",
+        ] as const;
+
+        if (arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Pick<PhoneConfig, typeof arrayFields[number]>] = arrayValue;
+        }
+        return { ...prev, config: newConfig };
+      } else if (type === "LAPTOP") {
+        const newConfig = { ...prev.config } as LaptopConfig;
+        const arrayFields = [
+          "storage",
+          "colorGamut",
+          "displayTechnology",
+          "audioTechnology",
+          "ports",
+          "wirelessConnectivity",
+          "otherFeatures",
+        ] as const;
+
+        if (arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Pick<LaptopConfig, typeof arrayFields[number]>] = arrayValue;
+        }
+        return { ...prev, config: newConfig };
+      } else {
+        return prev;
+      }
+    });
   };
 
   const handlePromotionChange = (idx: number, value: string) => {
@@ -169,10 +257,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
     setFormData({ ...formData, inventories: newInventories });
   };
 
-  const handlePriceChange = (index: number, key: keyof InventoryRequest, value: string) => {
-        const formattedValue = formatCurrency(value); // Giữ nguyên định dạng tiền tệ
-        handleInventoryChange(index, key, formattedValue); // Lưu vào state dạng string
-    };
+  const handlePriceChange = (
+    index: number,
+    key: keyof InventoryRequest,
+    value: string
+  ) => {
+    const formattedValue = formatCurrency(value);
+    handleInventoryChange(index, key, formattedValue);
+  };
 
   const handleAddToList = () => {
     setValidationError(null);
@@ -200,7 +292,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
       }
       for (const image of imagesForColor) {
         if (!image.url.trim() || !image.title.trim()) {
-          setValidationError(`Hình ảnh cho màu "${color}" phải có URL và tiêu đề hợp lệ.`);
+          setValidationError(
+            `Hình ảnh cho màu "${color}" phải có URL và tiêu đề hợp lệ.`
+          );
           return;
         }
       }
@@ -212,15 +306,24 @@ const ProductForm: React.FC<ProductFormProps> = ({
     }
     for (const [index, inventory] of formData.inventories.entries()) {
       if (inventory.color !== validColors[index]) {
-        setValidationError(`Màu sắc trong thông tin kho phải khớp với danh sách màu sắc.`);
+        setValidationError(
+          `Màu sắc trong thông tin kho phải khớp với danh sách màu sắc.`
+        );
         return;
       }
       if (inventory.quantity <= 0) {
-        setValidationError(`Số lượng cho màu "${inventory.color}" phải lớn hơn 0.`);
+        setValidationError(
+          `Số lượng cho màu "${inventory.color}" phải lớn hơn 0.`
+        );
         return;
       }
-      if (!inventory.currentPrice || String(inventory.currentPrice).trim() === "") {
-        setValidationError(`Giá hiện tại cho màu "${inventory.color}" không được để trống.`);
+      if (
+        !inventory.currentPrice ||
+        String(inventory.currentPrice).trim() === ""
+      ) {
+        setValidationError(
+          `Giá hiện tại cho màu "${inventory.color}" không được để trống.`
+        );
         return;
       }
     }
@@ -235,7 +338,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
         onClick={() => setIsOpen(!isOpen)}
       >
         <h6 className="text-md font-semibold text-gray-800">
-          Sản phẩm {index + 1}: {prefixName} {formData.variant || "(Chưa nhập biến thể)"}
+          Sản phẩm {index + 1}: {prefixName}{" "}
+          {formData.variant || "(Chưa nhập biến thể)"}
         </h6>
         <span>{isOpen ? "▲" : "▼"}</span>
       </div>
@@ -249,7 +353,10 @@ const ProductForm: React.FC<ProductFormProps> = ({
           )}
 
           <div>
-            <label htmlFor={`variant-${index}`} className="block text-gray-700 font-medium mb-1">
+            <label
+              htmlFor={`variant-${index}`}
+              className="block text-gray-700 font-medium mb-1"
+            >
               Biến thể
             </label>
             <input
@@ -301,11 +408,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 required
               />
             </div>
-            
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Khuyến mãi</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Khuyến mãi
+            </label>
             {formData.promotions.map((promotion, idx) => (
               <div key={idx} className="flex items-center space-x-2 mb-2">
                 <input
@@ -334,30 +442,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
 
           <div>
-            <h6 className="text-md font-medium text-gray-700 mb-2">Cấu hình chi tiết</h6>
+            <h6 className="text-md font-medium text-gray-700 mb-2">
+              Cấu hình chi tiết
+            </h6>
             {type === "PHONE" && (
               <PhoneConfigForm
                 config={formData.config as PhoneConfig}
-                onChange={handleConfigChange}
+                onChange={handleStringChange}
+                onArrayUpdate={handleArrayUpdate}
               />
             )}
             {type === "LAPTOP" && (
               <LaptopConfigForm
                 config={formData.config as LaptopConfig}
-                onChange={handleConfigChange}
+                onChange={handleStringChange}
+                onArrayUpdate={handleArrayUpdate}
               />
             )}
             {type === "ACCESSORY" && (
-              <p className="text-gray-500">Chưa có cấu hình chi tiết cho phụ kiện.</p>
+              <p className="text-gray-500">
+                Chưa có cấu hình chi tiết cho phụ kiện.
+              </p>
             )}
           </div>
 
           <div>
-            <ColorVariantInput colors={formData.colors} onChange={handleColorChange} />
+            <ColorVariantInput
+              colors={formData.colors}
+              onChange={handleColorChange}
+            />
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Hình ảnh theo màu</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Hình ảnh theo màu
+            </label>
             {formData.colors
               .filter((color) => color.trim() !== "")
               .map((color) => (
@@ -368,7 +487,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       <input
                         type="text"
                         value={image.url}
-                        onChange={(e) => handleImageChange(color, idx, "url", e.target.value)}
+                        onChange={(e) =>
+                          handleImageChange(color, idx, "url", e.target.value)
+                        }
                         className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Nhập URL hình ảnh"
                         required
@@ -376,7 +497,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                       <input
                         type="text"
                         value={image.title}
-                        onChange={(e) => handleImageChange(color, idx, "title", e.target.value)}
+                        onChange={(e) =>
+                          handleImageChange(color, idx, "title", e.target.value)
+                        }
                         className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Nhập tiêu đề hình ảnh"
                         required
@@ -395,14 +518,18 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Thông tin kho</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Thông tin kho
+            </label>
             {formData.inventories.map((inventory, idx) => (
               <div
                 key={idx}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
               >
                 <div>
-                  <label className="block text-gray-600 text-sm mb-1">Màu sắc</label>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Màu sắc
+                  </label>
                   <input
                     type="text"
                     value={inventory.color || ""}
@@ -411,7 +538,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-sm mb-1">Số lượng</label>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Số lượng
+                  </label>
                   <input
                     type="number"
                     value={inventory.quantity}
@@ -424,7 +553,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-sm mb-1">Giá gốc</label>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Giá gốc
+                  </label>
                   <input
                     type="text"
                     value={inventory.originalPrice || ""}
@@ -435,12 +566,14 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 text-sm mb-1">Giá hiện tại</label>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Giá hiện tại
+                  </label>
                   <input
                     type="text"
                     value={inventory.currentPrice || ""}
                     onChange={(e) =>
-                      handleInventoryChange(idx, "currentPrice", e.target.value)
+                      handlePriceChange(idx, "currentPrice", e.target.value)
                     }
                     className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
@@ -451,14 +584,21 @@ const ProductForm: React.FC<ProductFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Đánh giá sản phẩm</label>
+            <label className="block text-gray-700 font-medium mb-2">
+              Đánh giá sản phẩm
+            </label>
             {formData.productReviews.map((review, idx) => (
-              <div key={idx} className="mb-4 p-4 bg-gray-100 rounded-md">
+              <div
+                key={idx}
+                className="mb-4 p-4 bg-gray-100 rounded-md"
+              >
                 <div className="flex items-center space-x-2 mb-2">
                   <input
                     type="text"
                     value={review.title}
-                    onChange={(e) => handleReviewChange(idx, "title", e.target.value)}
+                    onChange={(e) =>
+                      handleReviewChange(idx, "title", e.target.value)
+                    }
                     className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Nhập tiêu đề đánh giá"
                   />
@@ -472,7 +612,9 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 </div>
                 <textarea
                   value={review.content}
-                  onChange={(e) => handleReviewChange(idx, "content", e.target.value)}
+                  onChange={(e) =>
+                    handleReviewChange(idx, "content", e.target.value)
+                  }
                   className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                   placeholder="Nhập nội dung đánh giá"

@@ -63,12 +63,13 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
       {
         ...baseForm,
         variant: "", // Reset variant để nhập mới
-        inventories: baseForm.colors.map((color) => ({
-          color: color.trim() !== "" ? color : null,
-          quantity: 30,
-          originalPrice: null,
-          currentPrice: null,
-        })),
+        // Sao chép sâu các trường khác
+        images: {...baseForm.images},
+        colors: [...baseForm.colors],
+        config: {...baseForm.config},
+        promotions: [...baseForm.promotions],
+        productReviews: [...baseForm.productReviews],
+        inventories: baseForm.inventories.map(inv => ({...inv})),
       },
     ]);
   };
@@ -102,21 +103,42 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
       },
       inventoryRequests: data.inventories,
     };
-    setProductsToCreate([...productsToCreate, productRequest]);
+    
+    // Kiểm tra nếu sản phẩm đã tồn tại trong danh sách, thay thế nó
+    const existingIndex = productsToCreate.findIndex(
+      p => p.productRequest.variant === data.variant
+    );
+    
+    if (existingIndex >= 0) {
+      const updatedProducts = [...productsToCreate];
+      updatedProducts[existingIndex] = productRequest;
+      setProductsToCreate(updatedProducts);
+    } else {
+      setProductsToCreate([...productsToCreate, productRequest]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      // Gọi song song các API thêm sản phẩm
+      const productPromises = productsToCreate.map(product => 
+        dispatch(createProduct(product))
+      );
+      const productResults = await Promise.all(productPromises);
+      
       const createdProductIds: string[] = [];
       const allVariants: string[] = [];
       const allProductNames: string[] = [];
       const allOriginalPrices: (string | null)[] = [];
-      const allCurrentPrices: (string  | null)[] = [];
+      const allCurrentPrices: (string | null)[] = [];
 
-      for (const product of productsToCreate) {
-        const actionResult = await dispatch(createProduct(product));
+      // Xử lý kết quả từ các API thêm sản phẩm
+      for (let i = 0; i < productResults.length; i++) {
+        const actionResult = productResults[i];
+        const product = productsToCreate[i];
+        
         if (createProduct.fulfilled.match(actionResult)) {
           const productId = actionResult.payload.productId;
           createdProductIds.push(productId);
@@ -139,11 +161,13 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
         defaultCurrentPrices: allCurrentPrices,
       };
 
+      // Gọi API tạo nhóm sản phẩm
       const groupResult = await dispatch(createGroupVariant(updatedGroupData));
       if (createGroupVariant.fulfilled.match(groupResult)) {
         const groupId = groupResult.payload.groupId;
         onSuccess(groupId);
 
+        // Reset form
         setGroupData({ prefixName: "", groupImage: "", type: "PHONE" });
         setProductForms([
           {
@@ -167,6 +191,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
+      {/* UI giữ nguyên như code cũ */}
       <h4 className="text-xl font-semibold text-gray-800 mb-4">Tạo nhóm sản phẩm mới</h4>
 
       {error && (
