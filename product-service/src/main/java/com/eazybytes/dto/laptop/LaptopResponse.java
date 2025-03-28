@@ -1,5 +1,7 @@
-package com.eazybytes.dto;
+package com.eazybytes.dto.laptop;
 
+import com.eazybytes.dto.InventoryDto;
+import com.eazybytes.dto.product.ProductResponse;
 import com.eazybytes.model.Laptop;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -15,19 +17,9 @@ public class LaptopResponse extends ProductResponse {
     // Các trường bổ sung, không trùng với ProductResponse
     private List<String> original_prices = new ArrayList<>();
     private List<String> current_prices = new ArrayList<>();
-    private List<Specification> specifications = new ArrayList<>();
     private List<String> colors = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class Specification {
-        private String name;  // Tên tiếng Việt
-        private Object value; // Giá trị
-    }
 
     public static LaptopResponse fromLaptop(Laptop laptop, List<InventoryDto> inventoryDtos) {
         LaptopResponse response = new LaptopResponse();
@@ -42,7 +34,6 @@ public class LaptopResponse extends ProductResponse {
         response.setProductReviews(laptop.getProductReviews());
         response.setPromotions(laptop.getPromotions());
         response.setRelease(laptop.getRelease());
-        response.setColors(laptop.getColors());
 
         List<String> originalPrices = new ArrayList<>();
         List<String> currentPrices = new ArrayList<>();

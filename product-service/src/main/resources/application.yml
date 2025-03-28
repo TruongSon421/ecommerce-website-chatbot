@@ -30,6 +30,9 @@ eureka:
 logging:
   level:
     com.eazybytes: DEBUG
+    org.springframework.security: DEBUG  # Additional security logging
+
+
 
 inventory-service:
   url: http://localhost:8100
