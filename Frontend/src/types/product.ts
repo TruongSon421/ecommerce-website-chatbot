@@ -79,22 +79,22 @@ export interface LaptopConfig {
     ramType?: string;
     ramBusSpeed?: string;
     maxRam?: string;
-    storage?: string;
+    storage?: string[];
   
     // Màn hình
     screenSize?: string;
     resolution?: string;
     refreshRate?: string;
-    colorGamut?: string;
-    displayTechnology?: string;
+    colorGamut?: string[];
+    displayTechnology?: string[];
   
     // Đồ họa và Âm thanh
     graphicCard?: string;
-    audioTechnology?: string;
-    ports?: string;
-    wirelessConnectivity?: string;
+    audioTechnology?: string[];
+    ports?: string[];
+    wirelessConnectivity?: string[];
     webcam?: string;
-    otherFeatures?: string;
+    otherFeatures?: string[];
     keyboardBacklight?: string;
   
     // Kích thước - Khối lượng - Pin
