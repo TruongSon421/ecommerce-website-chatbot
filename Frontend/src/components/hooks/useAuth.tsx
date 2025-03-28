@@ -1,9 +1,9 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { login, register, logout } from '../../store/slices/authSlices';
+import { login, register, logout } from '../../store/slices/authSlices'; 
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
+import { useCallback } from 'react';
 
-// Định nghĩa interface cho giá trị trả về của hook
 interface UseAuth {
   user: User | null;
   accessToken: string | null;
@@ -20,26 +20,35 @@ export const useAuth = (): UseAuth => {
   const dispatch = useDispatch<AppDispatch>();
   const { user, accessToken, loading, error } = useSelector((state: RootState) => state.auth);
 
-  // Kiểm tra xem người dùng đã đăng nhập hay chưa
   const isAuthenticated = !!user && !!accessToken;
+  const isAdmin = user && user.role === 'admin' || false;
 
-  // Kiểm tra xem người dùng có phải admin hay không
-  const isAdmin = user?.role === 'admin';
+  const loginHandler = useCallback(async (credentials: LoginCredentials) => {
+    try {
+      await dispatch(login(credentials)).unwrap();
+    } catch (err) {
+      console.error('Login failed:', err);
+      throw err;
+    }
+  }, [dispatch]);
 
-  // Hàm login
-  const loginHandler = async (credentials: LoginCredentials) => {
-    await dispatch(login(credentials)).unwrap(); // unwrap để xử lý lỗi trực tiếp nếu cần
-  };
+  const registerHandler = useCallback(async (credentials: RegisterCredentials) => {
+    try {
+      await dispatch(register(credentials)).unwrap();
+    } catch (err) {
+      console.error('Register failed:', err);
+      throw err;
+    }
+  }, [dispatch]);
 
-  // Hàm register
-  const registerHandler = async (credentials: RegisterCredentials) => {
-    await dispatch(register(credentials)).unwrap();
-  };
-
-  // Hàm logout
-  const logoutHandler = async () => {
-    await dispatch(logout()).unwrap();
-  };
+  const logoutHandler = useCallback(async () => {
+    try {
+      await dispatch(logout()).unwrap();
+    } catch (err) {
+      console.error('Logout failed:', err);
+      throw err;
+    }
+  }, [dispatch]);
 
   return {
     user,

@@ -6,8 +6,13 @@ const Navbar: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const { user, logout } = useAuth();
-  console.log("User:", user);
-  console.log("localStorage:", localStorage);
+  console.log("Navbar render - User:", user);
+  console.log("Navbar render - localStorage:", localStorage);
+  const handleLogout = async () => {
+    await logout();
+    console.log("After logout - User:", user);
+    console.log("After logout - localStorage:", localStorage);
+  };
   return (
     <header className="navbar">
       <div className="navbar-container">
@@ -62,7 +67,7 @@ const Navbar: React.FC = () => {
                     Profile
                   </a>
                   <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
                   >
                     Logout
