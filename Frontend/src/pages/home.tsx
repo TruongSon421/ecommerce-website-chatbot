@@ -6,6 +6,7 @@ import BannerSection from '../components/layout/bannerSection';
 import CategoriesSection from '../components/categoriesSection';
 function Home() {
   console.log("Home page");
+  console.log("hahdahsdk"); 
   return (
     <div className="home">
       <Slider slides={slides}/>

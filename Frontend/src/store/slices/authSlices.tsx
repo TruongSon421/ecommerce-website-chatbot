@@ -63,6 +63,7 @@ export const register = createAsyncThunk(
 export const logout = createAsyncThunk('auth/logout', async (_, { getState }) => {
   const state = getState() as { auth: AuthState };
   await logoutService(state.auth.refreshToken);
+  return null;
 });
 
 const authSlice = createSlice({
@@ -109,6 +110,7 @@ const authSlice = createSlice({
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
+        state.loading = false;
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');

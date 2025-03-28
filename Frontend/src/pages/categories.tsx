@@ -13,11 +13,12 @@ function PageCategory() {
   const [loading, setLoading] = useState(false);
   const page = Number(searchParams.get("pages")) || 1;
   const remainingProducts = totalProducts - products.length;
+  console.log("adhahdakdjhla");
   const fetchProducts = async (currentPage: number) => {
       try {
         setLoading(true);
         // Sử dụng API endpoint dựa trên tham số type
-        const response = await fetch(`http://localhost:8070/api/group-variants/groups?page=${currentPage}&size=20&type=${type?.toLocaleUpperCase()}`);            
+        const response = await fetch(`http://localhost:8070/api/group-variants/groups?page=${currentPage}&size=20&type=${type?.toLocaleUpperCase()}`);          
         if (!response.ok) {
           throw new Error("Error fetching products");
         }

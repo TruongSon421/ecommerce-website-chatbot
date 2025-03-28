@@ -1,309 +1,644 @@
 // src/components/product/ProductForm.tsx
-
-import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { createProduct } from '../../store/slices/productSlices';
-import { ProductCreateRequest, InventoryRequest } from '../../types/product';
-import ColorVariantInput from './ColorVariantInput';
+import React, { useState } from "react";
+import {
+  PhoneConfig,
+  LaptopConfig,
+  InventoryRequest,
+  ProductReview,
+  ImageData,
+} from "../../types/product";
+import PhoneConfigForm from "./productConfig/PhoneConfigForm";
+import LaptopConfigForm from "./productConfig/LaptopConfigForm";
+import ColorVariantInput from "./ColorVariantInput";
+import { formatCurrency } from "../utils/formatCurrency";
 
 interface ProductFormProps {
-  onSuccess: (productId: string, productName: string, variant: string, prices: { originalPrice: string | null, currentPrice: string | null }[]) => void;
+  index: number;
+  prefixName: string;
+  type: "PHONE" | "LAPTOP" | "ACCESSORY";
+  initialData: {
+    variant: string;
+    description: string;
+    brand: string;
+    images: Record<string, ImageData[]>;
+    colors: string[];
+    config: PhoneConfig | LaptopConfig;
+    promotions: string[];
+    productReviews: ProductReview[];
+    inventories: InventoryRequest[];
+  };
+  onAddToList: (data: {
+    variant: string;
+    description: string;
+    brand: string;
+    images: Record<string, ImageData[]>;
+    colors: string[];
+    config: PhoneConfig | LaptopConfig;
+    promotions: string[];
+    productReviews: ProductReview[];
+    inventories: InventoryRequest[];
+  }) => void;
 }
 
-const ProductForm: React.FC<ProductFormProps> = ({ onSuccess }) => {
-  const dispatch = useAppDispatch();
-  const { loading, error } = useAppSelector((state) => state.product);
-  
-  const [productData, setProductData] = useState({
-    productName: '',
-    description: '',
-    brand: '',
-    category: '',
-    images: [''],
-    colors: [''],
-    variant: '',
-    type: 'PHONE',
-  });
-  
-  const [inventories, setInventories] = useState<InventoryRequest[]>([
-    { color: null, quantity: 30, originalPrice: null, currentPrice: null }
-  ]);
-  
-  const handleProductChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+const ProductForm: React.FC<ProductFormProps> = ({
+  index,
+  prefixName,
+  type,
+  initialData,
+  onAddToList,
+}) => {
+  const [isOpen, setIsOpen] = useState(index === 0);
+  const [formData, setFormData] = useState(initialData);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setProductData({ ...productData, [name]: value });
+    setFormData({ ...formData, [name]: value });
   };
-  
-  const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const newImages = [...productData.images];
-    newImages[index] = e.target.value;
-    setProductData({ ...productData, images: newImages });
+
+  const handleStringChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    field: keyof PhoneConfig | keyof LaptopConfig
+  ) => {
+    const value = e.target.value;
+    setFormData((prev) => {
+      if (type === "PHONE") {
+        const newConfig = { ...prev.config } as PhoneConfig;
+        const arrayFields = [
+          "rearVideoRecording",
+          "rearCameraFeatures",
+          "frontCameraFeatures",
+          "batteryFeatures",
+          "securityFeatures",
+          "specialFeatures",
+          "recording",
+          "video",
+          "audio",
+          "wifi",
+          "gps",
+          "bluetooth",
+          "otherConnectivity",
+        ] as const;
+
+        if (!arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Omit<PhoneConfig, typeof arrayFields[number]>] = value;
+        }
+        return { ...prev, config: newConfig };
+      } else if (type === "LAPTOP") {
+        const newConfig = { ...prev.config } as LaptopConfig;
+        const arrayFields = [
+          "storage",
+          "colorGamut",
+          "displayTechnology",
+          "audioTechnology",
+          "ports",
+          "wirelessConnectivity",
+          "otherFeatures",
+        ] as const;
+
+        if (!arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Omit<LaptopConfig, typeof arrayFields[number]>] = value;
+        }
+        return { ...prev, config: newConfig };
+      } else {
+        return prev;
+      }
+    });
   };
-  
-  const addImageField = () => {
-    setProductData({ ...productData, images: [...productData.images, ''] });
+
+  const handleArrayUpdate = (
+    field: keyof PhoneConfig | keyof LaptopConfig,
+    arrayValue: string[]
+  ) => {
+    setFormData((prev) => {
+      if (type === "PHONE") {
+        const newConfig = { ...prev.config } as PhoneConfig;
+        const arrayFields = [
+          "rearVideoRecording",
+          "rearCameraFeatures",
+          "frontCameraFeatures",
+          "batteryFeatures",
+          "securityFeatures",
+          "specialFeatures",
+          "recording",
+          "video",
+          "audio",
+          "wifi",
+          "gps",
+          "bluetooth",
+          "otherConnectivity",
+        ] as const;
+
+        if (arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Pick<PhoneConfig, typeof arrayFields[number]>] = arrayValue;
+        }
+        return { ...prev, config: newConfig };
+      } else if (type === "LAPTOP") {
+        const newConfig = { ...prev.config } as LaptopConfig;
+        const arrayFields = [
+          "storage",
+          "colorGamut",
+          "displayTechnology",
+          "audioTechnology",
+          "ports",
+          "wirelessConnectivity",
+          "otherFeatures",
+        ] as const;
+
+        if (arrayFields.includes(field as typeof arrayFields[number])) {
+          newConfig[field as keyof Pick<LaptopConfig, typeof arrayFields[number]>] = arrayValue;
+        }
+        return { ...prev, config: newConfig };
+      } else {
+        return prev;
+      }
+    });
   };
-  
-  const removeImageField = (index: number) => {
-    const newImages = [...productData.images];
-    newImages.splice(index, 1);
-    setProductData({ ...productData, images: newImages });
+
+  const handlePromotionChange = (idx: number, value: string) => {
+    const newPromotions = [...formData.promotions];
+    newPromotions[idx] = value;
+    setFormData({ ...formData, promotions: newPromotions });
   };
-  
+
+  const addPromotionField = () => {
+    setFormData((prev) => ({
+      ...prev,
+      promotions: [...prev.promotions, ""],
+    }));
+  };
+
+  const removePromotionField = (idx: number) => {
+    const newPromotions = formData.promotions.filter((_, i) => i !== idx);
+    setFormData({ ...formData, promotions: newPromotions });
+  };
+
+  const handleReviewChange = (
+    idx: number,
+    field: "title" | "content",
+    value: string
+  ) => {
+    const newReviews = [...formData.productReviews];
+    newReviews[idx] = { ...newReviews[idx], [field]: value };
+    setFormData({ ...formData, productReviews: newReviews });
+  };
+
+  const addReviewField = () => {
+    setFormData((prev) => ({
+      ...prev,
+      productReviews: [...prev.productReviews, { title: "", content: "" }],
+    }));
+  };
+
+  const removeReviewField = (idx: number) => {
+    const newReviews = formData.productReviews.filter((_, i) => i !== idx);
+    setFormData({ ...formData, productReviews: newReviews });
+  };
+
+  const handleImageChange = (
+    color: string,
+    idx: number,
+    field: "url" | "title",
+    value: string
+  ) => {
+    const newImages = { ...formData.images };
+    if (!newImages[color]) newImages[color] = [];
+    newImages[color][idx] = { ...newImages[color][idx], [field]: value };
+    setFormData({ ...formData, images: newImages });
+  };
+
+  const addImageField = (color: string) => {
+    const newImages = { ...formData.images };
+    if (!newImages[color]) newImages[color] = [];
+    newImages[color].push({ url: "", title: "" });
+    setFormData({ ...formData, images: newImages });
+  };
+
   const handleColorChange = (colors: string[]) => {
-    setProductData({ ...productData, colors });
-    
-    // Cập nhật inventories để phù hợp với số lượng màu
-    if (colors.length > 0) {
+    setFormData((prev) => {
+      const newImages = { ...prev.images };
+      Object.keys(newImages).forEach((color) => {
+        if (!colors.includes(color)) delete newImages[color];
+      });
+      colors.forEach((color) => {
+        if (!newImages[color] && color.trim() !== "") {
+          newImages[color] = [{ url: "", title: "" }];
+        }
+      });
       const newInventories = colors.map((color, index) => {
-        const existingInventory = inventories[index];
+        const existingInventory = formData.inventories[index] || {
+          color: null,
+          quantity: 30,
+          originalPrice: null,
+          currentPrice: null,
+        };
         return {
-          color,
-          quantity: existingInventory?.quantity || 30,
-          originalPrice: existingInventory?.originalPrice || null,
-          currentPrice: existingInventory?.currentPrice || null,
+          ...existingInventory,
+          color: color.trim() !== "" ? color : null,
         };
       });
-      setInventories(newInventories);
-    } else {
-      // Nếu không có màu, sử dụng một inventory mặc định
-      setInventories([{ color: null, quantity: 30, originalPrice: null, currentPrice: null }]);
+      return { ...prev, colors, images: newImages, inventories: newInventories };
+    });
+  };
+
+  const handleInventoryChange = (
+    idx: number,
+    field: keyof InventoryRequest,
+    value: any
+  ) => {
+    const newInventories = [...formData.inventories];
+    if (field === "quantity") {
+      newInventories[idx][field] = parseInt(value) || 0;
+    } else if (field === "originalPrice" || field === "currentPrice") {
+      newInventories[idx][field] = value ? value : null;
     }
+    setFormData({ ...formData, inventories: newInventories });
   };
-  
-  const handleInventoryChange = (index: number, field: keyof InventoryRequest, value: any) => {
-    const newInventories = [...inventories];
-    newInventories[index] = { ...newInventories[index], [field]: value };
-    setInventories(newInventories);
+
+  const handlePriceChange = (
+    index: number,
+    key: keyof InventoryRequest,
+    value: string
+  ) => {
+    const formattedValue = formatCurrency(value);
+    handleInventoryChange(index, key, formattedValue);
   };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const productRequest: ProductCreateRequest = {
-      productRequest: productData,
-      inventoryRequests: inventories,
-    };
-    
-    try {
-      const actionResult = await dispatch(createProduct(productRequest));
-      if (createProduct.fulfilled.match(actionResult)) {
-        const productId = actionResult.payload.productId;
-        const prices = inventories.map(inv => ({
-          originalPrice: inv.originalPrice !== null ? String (inv.originalPrice) : null,
-          currentPrice: inv.currentPrice !== null ? String (inv.currentPrice) : null
-        }));
-        onSuccess(productId, productData.productName, productData.variant, prices);
-        
-        // Reset form sau khi thành công
-        setProductData({
-          productName: '',
-          description: '',
-          brand: '',
-          category: '',
-          images: [''],
-          colors: [''],
-          variant: '',
-          type: 'PHONE',
-        });
-        setInventories([{ color: null, quantity: 30, originalPrice: null, currentPrice: null }]);
+
+  const handleAddToList = () => {
+    setValidationError(null);
+
+    if (!formData.variant.trim()) {
+      setValidationError("Vui lòng nhập biến thể (variant) của sản phẩm.");
+      return;
+    }
+    if (!formData.brand.trim()) {
+      setValidationError("Vui lòng nhập thương hiệu (brand) của sản phẩm.");
+      return;
+    }
+
+    const validColors = formData.colors.filter((color) => color.trim() !== "");
+    if (validColors.length === 0) {
+      setValidationError("Vui lòng nhập ít nhất một màu sắc hợp lệ.");
+      return;
+    }
+
+    for (const color of validColors) {
+      const imagesForColor = formData.images[color] || [];
+      if (imagesForColor.length === 0) {
+        setValidationError(`Vui lòng thêm ít nhất một hình ảnh cho màu "${color}".`);
+        return;
       }
-    } catch (error) {
-      console.error('Lỗi khi tạo sản phẩm:', error);
+      for (const image of imagesForColor) {
+        if (!image.url.trim() || !image.title.trim()) {
+          setValidationError(
+            `Hình ảnh cho màu "${color}" phải có URL và tiêu đề hợp lệ.`
+          );
+          return;
+        }
+      }
     }
+
+    if (formData.inventories.length !== validColors.length) {
+      setValidationError("Số lượng màu sắc và thông tin kho không khớp.");
+      return;
+    }
+    for (const [index, inventory] of formData.inventories.entries()) {
+      if (inventory.color !== validColors[index]) {
+        setValidationError(
+          `Màu sắc trong thông tin kho phải khớp với danh sách màu sắc.`
+        );
+        return;
+      }
+      if (inventory.quantity <= 0) {
+        setValidationError(
+          `Số lượng cho màu "${inventory.color}" phải lớn hơn 0.`
+        );
+        return;
+      }
+      if (
+        !inventory.currentPrice ||
+        String(inventory.currentPrice).trim() === ""
+      ) {
+        setValidationError(
+          `Giá hiện tại cho màu "${inventory.color}" không được để trống.`
+        );
+        return;
+      }
+    }
+
+    onAddToList({ ...formData, colors: validColors });
   };
-  
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <h4>Thêm sản phẩm mới</h4>
+    <div className="mb-4 p-4 bg-gray-100 rounded-md shadow-sm">
+      <div
+        className="flex justify-between items-center cursor-pointer"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h6 className="text-md font-semibold text-gray-800">
+          Sản phẩm {index + 1}: {prefixName}{" "}
+          {formData.variant || "(Chưa nhập biến thể)"}
+        </h6>
+        <span>{isOpen ? "▲" : "▼"}</span>
       </div>
-      <div className="card-body">
-        {error && <div className="alert alert-danger">{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label htmlFor="productName" className="form-label">Tên sản phẩm</label>
-            <input
-              type="text"
-              className="form-control"
-              id="productName"
-              name="productName"
-              value={productData.productName}
-              onChange={handleProductChange}
-              required
-            />
-          </div>
-          
-          <div className="mb-3">
-            <label htmlFor="description" className="form-label">Mô tả</label>
-            <textarea
-              className="form-control"
-              id="description"
-              name="description"
-              value={productData.description}
-              onChange={handleProductChange}
-              rows={3}
-            ></textarea>
-          </div>
-          
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <label htmlFor="brand" className="form-label">Thương hiệu</label>
-              <input
-                type="text"
-                className="form-control"
-                id="brand"
-                name="brand"
-                value={productData.brand}
-                onChange={handleProductChange}
-                required
-              />
+
+      {isOpen && (
+        <div className="mt-4 space-y-4">
+          {validationError && (
+            <div className="p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
+              {validationError}
             </div>
-            
-            <div className="col-md-6 mb-3">
-              <label htmlFor="category" className="form-label">Danh mục</label>
-              <input
-                type="text"
-                className="form-control"
-                id="category"
-                name="category"
-                value={productData.category}
-                onChange={handleProductChange}
-                required
-              />
-            </div>
-          </div>
-          
-          <div className="mb-3">
-            <label htmlFor="variant" className="form-label">Biến thể</label>
-            <input
-              type="text"
-              className="form-control"
-              id="variant"
-              name="variant"
-              value={productData.variant}
-              onChange={handleProductChange}
-              required
-            />
-          </div>
-          
-          <div className="mb-3">
-            <label htmlFor="type" className="form-label">Loại</label>
-            <select
-              className="form-select"
-              id="type"
-              name="type"
-              value={productData.type}
-              onChange={handleProductChange}
-              required
+          )}
+
+          <div>
+            <label
+              htmlFor={`variant-${index}`}
+              className="block text-gray-700 font-medium mb-1"
             >
-              <option value="PHONE">Điện thoại</option>
-              <option value="LAPTOP">Laptop</option>
-              <option value="ACCESSORY">Phụ kiện</option>
-            </select>
+              Biến thể
+            </label>
+            <input
+              type="text"
+              id={`variant-${index}`}
+              name="variant"
+              value={formData.variant}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ví dụ: 128GB"
+              required
+            />
           </div>
-          
-          <div className="mb-3">
-            <label className="form-label">Hình ảnh</label>
-            {productData.images.map((image, index) => (
-              <div key={index} className="input-group mb-2">
+
+          <div>
+            <label
+              htmlFor={`description-${index}`}
+              className="block text-gray-700 font-medium mb-1"
+            >
+              Mô tả
+            </label>
+            <textarea
+              id={`description-${index}`}
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={3}
+              placeholder="Nhập mô tả sản phẩm"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor={`brand-${index}`}
+                className="block text-gray-700 font-medium mb-1"
+              >
+                Thương hiệu
+              </label>
+              <input
+                type="text"
+                id={`brand-${index}`}
+                name="brand"
+                value={formData.brand}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ví dụ: iPhone (Apple)"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Khuyến mãi
+            </label>
+            {formData.promotions.map((promotion, idx) => (
+              <div key={idx} className="flex items-center space-x-2 mb-2">
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="URL hình ảnh"
-                  value={image}
-                  onChange={(e) => handleImagesChange(e, index)}
-                  required
+                  value={promotion}
+                  onChange={(e) => handlePromotionChange(idx, e.target.value)}
+                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Nhập khuyến mãi"
                 />
-                {index > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger"
-                    onClick={() => removeImageField(index)}
-                  >
-                    Xóa
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="text-red-500 hover:text-red-700"
+                  onClick={() => removePromotionField(idx)}
+                >
+                  ✕
+                </button>
               </div>
             ))}
             <button
               type="button"
-              className="btn btn-outline-secondary"
-              onClick={addImageField}
+              className="text-blue-600 hover:text-blue-800"
+              onClick={addPromotionField}
             >
-              Thêm hình ảnh
+              + Thêm khuyến mãi
             </button>
           </div>
-          
-          <div className="mb-3">
+
+          <div>
+            <h6 className="text-md font-medium text-gray-700 mb-2">
+              Cấu hình chi tiết
+            </h6>
+            {type === "PHONE" && (
+              <PhoneConfigForm
+                config={formData.config as PhoneConfig}
+                onChange={handleStringChange}
+                onArrayUpdate={handleArrayUpdate}
+              />
+            )}
+            {type === "LAPTOP" && (
+              <LaptopConfigForm
+                config={formData.config as LaptopConfig}
+                onChange={handleStringChange}
+                onArrayUpdate={handleArrayUpdate}
+              />
+            )}
+            {type === "ACCESSORY" && (
+              <p className="text-gray-500">
+                Chưa có cấu hình chi tiết cho phụ kiện.
+              </p>
+            )}
+          </div>
+
+          <div>
             <ColorVariantInput
-              colors={productData.colors}
+              colors={formData.colors}
               onChange={handleColorChange}
             />
           </div>
-          
-          <div className="mb-3">
-            <label className="form-label">Thông tin kho</label>
-            {inventories.map((inventory, index) => (
-              <div key={index} className="card mb-3 p-3 bg-light">
-                <div className="row align-items-center">
-                  <div className="col-md-3 mb-2">
-                    <label className="form-label">Màu sắc</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={inventory.color || ''}
-                      disabled
-                    />
-                  </div>
-                  <div className="col-md-3 mb-2">
-                    <label className="form-label">Số lượng</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={inventory.quantity}
-                      onChange={(e) => handleInventoryChange(index, 'quantity', parseInt(e.target.value))}
-                      min="1"
-                      required
-                    />
-                  </div>
-                  <div className="col-md-3 mb-2">
-                    <label className="form-label">Giá gốc</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={inventory.originalPrice || ''}
-                      onChange={(e) => handleInventoryChange(index, 'originalPrice', e.target.value ? parseInt(e.target.value) : null)}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-3 mb-2">
-                    <label className="form-label">Giá hiện tại</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={inventory.currentPrice || ''}
-                      onChange={(e) => handleInventoryChange(index, 'currentPrice', e.target.value ? parseInt(e.target.value) : null)}
-                      required
-                    />
-                  </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Hình ảnh theo màu
+            </label>
+            {formData.colors
+              .filter((color) => color.trim() !== "")
+              .map((color) => (
+                <div key={color} className="mb-4">
+                  <p className="text-gray-600 font-medium mb-2">Màu: {color}</p>
+                  {(formData.images[color] || []).map((image, idx) => (
+                    <div key={idx} className="space-y-2 mb-2">
+                      <input
+                        type="text"
+                        value={image.url}
+                        onChange={(e) =>
+                          handleImageChange(color, idx, "url", e.target.value)
+                        }
+                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nhập URL hình ảnh"
+                        required
+                      />
+                      <input
+                        type="text"
+                        value={image.title}
+                        onChange={(e) =>
+                          handleImageChange(color, idx, "title", e.target.value)
+                        }
+                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nhập tiêu đề hình ảnh"
+                        required
+                      />
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:text-blue-800"
+                    onClick={() => addImageField(color)}
+                  >
+                    + Thêm hình ảnh
+                  </button>
+                </div>
+              ))}
+          </div>
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Thông tin kho
+            </label>
+            {formData.inventories.map((inventory, idx) => (
+              <div
+                key={idx}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
+              >
+                <div>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Màu sắc
+                  </label>
+                  <input
+                    type="text"
+                    value={inventory.color || ""}
+                    className="w-full p-2 border rounded-md bg-gray-100"
+                    disabled
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Số lượng
+                  </label>
+                  <input
+                    type="number"
+                    value={inventory.quantity}
+                    onChange={(e) =>
+                      handleInventoryChange(idx, "quantity", parseInt(e.target.value))
+                    }
+                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    min="1"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Giá gốc
+                  </label>
+                  <input
+                    type="text"
+                    value={inventory.originalPrice || ""}
+                    onChange={(e) =>
+                      handlePriceChange(idx, "originalPrice", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-600 text-sm mb-1">
+                    Giá hiện tại
+                  </label>
+                  <input
+                    type="text"
+                    value={inventory.currentPrice || ""}
+                    onChange={(e) =>
+                      handlePriceChange(idx, "currentPrice", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
                 </div>
               </div>
             ))}
           </div>
-          
-          <div className="d-grid gap-2">
+
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Đánh giá sản phẩm
+            </label>
+            {formData.productReviews.map((review, idx) => (
+              <div
+                key={idx}
+                className="mb-4 p-4 bg-gray-100 rounded-md"
+              >
+                <div className="flex items-center space-x-2 mb-2">
+                  <input
+                    type="text"
+                    value={review.title}
+                    onChange={(e) =>
+                      handleReviewChange(idx, "title", e.target.value)
+                    }
+                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Nhập tiêu đề đánh giá"
+                  />
+                  <button
+                    type="button"
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => removeReviewField(idx)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  value={review.content}
+                  onChange={(e) =>
+                    handleReviewChange(idx, "content", e.target.value)
+                  }
+                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Nhập nội dung đánh giá"
+                />
+              </div>
+            ))}
             <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
+              type="button"
+              className="text-blue-600 hover:text-blue-800"
+              onClick={addReviewField}
             >
-              {loading ? 'Đang xử lý...' : 'Thêm sản phẩm'}
+              + Thêm đánh giá
             </button>
           </div>
-        </form>
-      </div>
+
+          <button
+            type="button"
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
+            onClick={handleAddToList}
+          >
+            Thêm vào danh sách
+          </button>
+        </div>
+      )}
     </div>
   );
 };

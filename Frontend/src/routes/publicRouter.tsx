@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, RouteObject } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import Login from "../components/user/login";
 import Register from "../components/user/register";
 import Home from "../pages/home";
@@ -7,18 +7,18 @@ import PageCategory from "../pages/categories";
 import ProductGH from "../pages/productDetail";
 import UserLayout from "../layouts/userLayouts";
 
-const publicRouter: RouteObject[] = [
-  {
-    path: "/",
-    element: <UserLayout />, // Bọc layout cho các route con
-    children: [
-      { path: "login", element: <Login /> },
-      { path: "register", element: <Register /> },
-      { path: "/", element: <Home /> },
-      { path: ":type", element: <PageCategory /> },
-      { path: "phone/:phone_id", element: <ProductGH /> },
-    ],
-  },
-];
+const PublicRouter = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<UserLayout />}>
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+        <Route index element={<Home />} /> {/* Dùng index cho path="/" */}
+        <Route path=":type" element={<PageCategory />} />
+        <Route path="phone/:phone_id" element={<ProductGH />} />
+      </Route>
+    </Routes>
+  );
+};
 
-export default publicRouter;
+export default PublicRouter;
