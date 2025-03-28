@@ -4,7 +4,7 @@ SELECT 'INITIALIZING DATABASES' AS 'INFO';
 CREATE DATABASE IF NOT EXISTS ecommerce_users;
 CREATE DATABASE IF NOT EXISTS ecommerce_orders;
 CREATE DATABASE IF NOT EXISTS ecommerce_inventory;
-
+CREATE DATABASE IF NOT EXISTS ecommerce_cart;
 -- Create user if not exists
 CREATE USER IF NOT EXISTS 'tiendoan'@'%' IDENTIFIED BY 'tiendoan';
 
@@ -12,6 +12,7 @@ CREATE USER IF NOT EXISTS 'tiendoan'@'%' IDENTIFIED BY 'tiendoan';
 GRANT ALL PRIVILEGES ON ecommerce_users.* TO 'tiendoan'@'%';
 GRANT ALL PRIVILEGES ON ecommerce_orders.* TO 'tiendoan'@'%';
 GRANT ALL PRIVILEGES ON ecommerce_inventory.* TO 'tiendoan'@'%';
+GRANT ALL PRIVILEGES ON ecommerce_cart.* TO 'tiendoan'@'%';
 FLUSH PRIVILEGES;
 
 USE ecommerce_users;
