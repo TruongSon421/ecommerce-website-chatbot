@@ -1,6 +1,6 @@
 package com.eazybytes.model;
 
-import jakarta.persistence.*;
+
 import org.springframework.data.annotation.Id; // MongoDB annotation
 import org.springframework.data.mongodb.core.mapping.Document; // MongoDB annotation
 
