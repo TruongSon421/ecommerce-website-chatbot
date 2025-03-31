@@ -7,11 +7,76 @@ server:
 spring:
   application:
     name: api-gateway
-  config:
-    import: "optional:configserver:http://localhost:8888"
+#  config:
+#    import: "optional:configserver:http://localhost:8888"
   redis:
     host: localhost
     port: 6379
+  cloud:
+    config:
+      enabled: false
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - Authentication
+
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - Authentication
+
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - Authentication    # Thêm filter
+
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - Authentication    # Thêm filter
+
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
+          filters:
+            - Authentication    # Thêm filter
+
+        - id: group-variants-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/group-variants/**
+          filters:
+            - Authentication    # Thêm filter
+
+        - id: cart-service
+          uri: lb://cart-service
+          predicates:
+            - Path=/api/carts/**
+          filters:
+            - Authentication    # Thêm filter
 eureka:
   client:
     serviceUrl:
@@ -23,3 +88,13 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     com.eazybytes.filter: DEBUG
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
