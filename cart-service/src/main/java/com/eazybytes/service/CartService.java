@@ -1,16 +1,16 @@
 package com.eazybytes.service;
 
-import com.eazybytes.model.Cart;
-import com.eazybytes.model.CartItems;
 import java.util.List;
 import com.eazybytes.exception.CartNotFoundException;
 import com.eazybytes.exception.InvalidItemException;
-
+import com.eazybytes.dto.CheckoutResponse;
+import com.eazybytes.dto.CartResponse;
+import com.eazybytes.dto.CartItemRequest;
 public interface CartService {
-    Cart getCartByUserId(String userId) throws CartNotFoundException;
-    Cart addItemToCart(String userId, CartItems cartItem) throws CartNotFoundException, InvalidItemException;
-    Cart updateCartItem(String userId, String productId, Integer quantity, String color) throws CartNotFoundException;
-    Cart removeItemFromCart(String userId, String productId) throws CartNotFoundException;
+    CartResponse getCartByUserId(String userId) throws CartNotFoundException;
+    CartResponse addItemToCart(String userId, CartItemRequest cartItem) throws CartNotFoundException, InvalidItemException;
+    CartResponse updateCartItem(String userId, String productId, Integer quantity, String color) throws CartNotFoundException;
+    CartResponse removeItemFromCart(String userId, String productId, String color) throws CartNotFoundException;
     void clearCart(String userId) throws CartNotFoundException;
     void checkoutCart(String userId);
     /**
@@ -21,7 +21,7 @@ public interface CartService {
      * @throws CartNotFoundException if the cart does not exist
      * @throws InvalidItemException if selected items are invalid
      */
-    Cart checkoutSelectedItems(String userId, List<String> selectedProductIds) throws CartNotFoundException, InvalidItemException;
+    CheckoutResponse checkoutSelectedItems(String userId, List<CartItemIdentifier> selectedProductIds) throws CartNotFoundException, InvalidItemException;
 
     /**
      * Removes checked-out items from the cart based on a signal from OrderService via Kafka.
@@ -29,7 +29,8 @@ public interface CartService {
      * @param userId the ID of the user
      * @param orderedProductIds list of product IDs that were successfully ordered
      */
-    void removeCheckedOutItems(String userId, List<String> orderedProductIds) throws CartNotFoundException;
+    void removeCheckedOutItems(String userId, List<CartItemIdentifier> orderedProductIds) throws CartNotFoundException;
 }
 
-
+// DTO mới để xác định biến thể
+// Moved to its own file: CartItemIdentifier.java
