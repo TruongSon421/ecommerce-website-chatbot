@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class CartEventProducer {
 
-    private final KafkaTemplate<String, CartEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate; // Cập nhật kiểu
 
     @Value("${kafka.topics.cart-events}")
     private String cartEventsTopic;
