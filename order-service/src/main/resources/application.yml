@@ -1,73 +1,78 @@
+# Server Configuration
 server:
-  port: 8110
+  port: 8084
 
+# Application Name (for Eureka and identification)
 spring:
   application:
     name: order-service
   config:
     import: "optional:configserver:http://localhost:8888"
-  datasource:
-    url: jdbc:mysql://localhost:3307/ecommerce_order?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
-    username: tiendoan
-    password: tiendoan
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      connection-timeout: 20000
-      maximum-pool-size: 10
-      minimum-idle: 5
-      idle-timeout: 300000
-      max-lifetime: 1200000
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
 
+  # MySQL Configuration (Primary Data Source)
+  datasource:
+      url: jdbc:mysql://localhost:3307/ecommerce_order?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+      username: tiendoan
+      password: tiendoan
+      driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
     properties:
       hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: org.hibernate.dialect.MySQL8Dialect
 
-  jackson:
-    serialization:
-      write-dates-as-timestamps: false
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: UTC
+  
 
-  mvc:
-    async:
-      request-timeout: 300000
+  # Kafka Configuration (Producer for event-driven communication)
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: order-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+  
+kafka:
+  topics:
+      cart-service-get-cart: cart-service-get-cart
+      payment-service-process-payment: payment-service-process-payment
+      payment-service-reply: payment-service-reply  # Thêm topic để nhận phản hồi thanh toán
+      order-service-reply: order-service-reply
+      cart-service-order-confirmed: cart-service-order-confirmed
+      cart-events.partitions: 3
+      cart-events.replicas: 1
 
+
+# Eureka Configuration (Service Discovery)
 eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/
+  instance:
+    preferIpAddress: true
 
-logging:
-  level:
-    org:
-      springframework: INFO
-      hibernate:
-        SQL: DEBUG
-        type:
-          descriptor:
-            sql:
-              BasicBinder: TRACE
-    com:
-      eazybytes: DEBUG
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
 
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: method
-
-app:
-  inventory:
-    check-enabled: true
-  order:
-    auto-confirm: false
-    cancel-timeout-minutes: 30
-  services:
-    inventory:
-      url: http://localhost:8100/ecommerce/api/inventory
+inventory-service:
+  url: http://localhost:8100
