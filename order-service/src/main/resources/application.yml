@@ -8,13 +8,7 @@ spring:
     name: order-service
   config:
     import: "optional:configserver:http://localhost:8888"
-  cloud:
-    openfeign:
-      client:
-        config:
-          default:
-            connectTimeout: 5000
-            readTimeout: 5000
+  
 
   # MySQL Configuration (Primary Data Source)
   datasource:
@@ -48,11 +42,13 @@ spring:
   
 kafka:
   topics:
+      cart-events: cart-events
       cart-service-get-cart: cart-service-get-cart
       payment-service-process-payment: payment-service-process-payment
-      payment-service-reply: payment-service-reply  # Thêm topic để nhận phản hồi thanh toán
+      payment-service-reply: payment-service-reply
       order-service-reply: order-service-reply
       cart-service-order-confirmed: cart-service-order-confirmed
+      order-events: order-events
       cart-events.partitions: 3
       cart-events.replicas: 1
 
@@ -74,5 +70,4 @@ management:
     health:
       show-details: always
 
-inventory-service:
-  url: http://localhost:8100
+
