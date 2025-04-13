@@ -18,10 +18,10 @@ spring:
 
   # MySQL Configuration (Primary Data Source)
   datasource:
-      url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
-      username: tiendoan
-      password: tiendoan
-      driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: tiendoan
+    password: tiendoan
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
       ddl-auto: update
@@ -31,35 +31,35 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
 
   # Redis Configuration (Cache)
-  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 1
 
-  # Kafka Configuration (Producer for event-driven communication)
+  # Kafka Configuration
   kafka:
     bootstrap-servers: localhost:9092
     producer:
-      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: cart-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      enable-auto-commit: false  # Dùng ack thủ công
       properties:
-        spring.json.trusted.packages: "*"
-  data:
-    redis:
-      host: localhost
-      port: 6379
-      database: 1
+        spring.json.trusted.packages: "com.eazybytes.cart.event.model"  # Chỉ trust package của sự kiện
+
+# Kafka Topics
 kafka:
   topics:
-      cart-events: cart-events
-      cart-service-get-cart: cart-service-get-cart
-      order-service-reply: order-service-reply
-      cart-service-order-confirmed: cart-service-order-confirmed
-      cart-events.partitions: 3
-      cart-events.replicas: 1
-
+    checkout-initiated: checkout-initiated
+    order-completed: order-completed
+    checkout-failed: checkout-failed
+    cart-cleared: cart-cleared
+    cart-clear-failed: cart-clear-failed
 
 # Eureka Configuration (Service Discovery)
 eureka:
@@ -69,6 +69,7 @@ eureka:
   instance:
     preferIpAddress: true
 
+# Management Endpoints (Monitoring)
 management:
   endpoints:
     web:
@@ -78,5 +79,23 @@ management:
     health:
       show-details: always
 
-inventory-service:
-  url: http://localhost:8100
+# Resilience4j Configuration (Circuit Breaker and Retry)
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000  # 10 seconds
+        permittedNumberOfCallsInHalfOpenState: 3
+        registerHealthIndicator: true
+  retry:
+    instances:
+      inventoryService:
+        maxAttempts: 3
+        waitDuration: 1000  # 1 second
+        retryExceptions:
+          - org.springframework.web.client.RestClientException
+          - java.io.IOException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException

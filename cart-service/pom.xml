@@ -97,6 +97,18 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- Spring Cloud Circuit Breaker -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
+        </dependency>
+        
+        <!-- Spring Boot AOP (cần cho Resilience4j annotations) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
