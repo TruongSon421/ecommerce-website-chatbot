@@ -16,3 +16,13 @@ export const registerService = async (
 export const logoutService = async (refreshToken: string | null): Promise<void> => {
   await api.post('/auth/logout', { refreshToken });
 };
+
+export const validateTokenService = async (token: string) => {
+  const response = await api.post('/auth/validate-token', { token });
+  return response.data;
+};
+
+export const refreshTokenService = async (refreshToken: string) => {
+  const response = await api.post('/auth/refresh-token', { refreshToken });
+  return response.data;
+};
