@@ -15,6 +15,7 @@
         <module name="product-service" />
         <module name="order-service" />
         <module name="user-service" />
+        <module name="eureka-server" />
         <module name="discovery-service" />
         <module name="notification-service" />
       </profile>
@@ -26,6 +27,7 @@
       <module name="cart-service" options="-parameters" />
       <module name="config-service" options="-parameters" />
       <module name="discovery-service" options="-parameters" />
+      <module name="eureka-server" options="-parameters" />
       <module name="inventory-service" options="-parameters" />
       <module name="order-service" options="-parameters" />
       <module name="payment-service" options="-parameters" />
