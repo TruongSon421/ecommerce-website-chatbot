@@ -77,6 +77,13 @@ spring:
             - Path=/api/carts/**
           filters:
             - Authentication    # Thêm filter
+
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payment/**
+          filters:
+            - Authentication
 eureka:
   client:
     serviceUrl:
