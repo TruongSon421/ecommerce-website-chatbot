@@ -1,5 +1,6 @@
 import axios from 'axios';
 import ENV from './env';
+
 const api = axios.create({
   baseURL: ENV.API_URL,
   headers: {
@@ -26,14 +27,21 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post(`${ENV.API_URL}/refresh-token`, { refreshToken });
-        const { token } = response.data; // Backend trả về 'token'
-        localStorage.setItem('accessToken', token);
-        originalRequest.headers.Authorization = `Bearer ${token}`;
+        const response = await axios.post(`${ENV.API_URL}/auth/refresh-token`, { 
+          refreshToken 
+        });
+        
+        // Cập nhật cả access token và refresh token mới
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        
+        // Cập nhật header cho request tiếp theo
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        // Xóa toàn bộ thông tin authentication khi refresh thất bại
+        localStorage.clear();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
@@ -43,5 +51,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-

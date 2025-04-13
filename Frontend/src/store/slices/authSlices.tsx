@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { User, LoginCredentials, RegisterCredentials } from '../../types/auth';
-import { loginService, registerService, logoutService } from '../../services/authService';
+import { loginService, registerService, logoutService, validateTokenService, refreshTokenService } from '../../services/authService';
 
 interface AuthState {
   user: User | null;
@@ -60,6 +60,35 @@ export const register = createAsyncThunk(
   }
 );
 
+export const validateToken = createAsyncThunk(
+  'auth/validateToken',
+  async (_, { getState, dispatch }) => {
+    const state = getState() as { auth: AuthState };
+    if (!state.auth.accessToken) return false;
+    
+    try {
+      await validateTokenService(state.auth.accessToken);
+      return true;
+    } catch (error) {
+      await dispatch(refreshToken());
+      return false;
+    }
+  }
+);
+
+export const refreshToken = createAsyncThunk(
+  'auth/refreshToken',
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { auth: AuthState };
+    try {
+      const response = await refreshTokenService(state.auth.refreshToken!);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue('Failed to refresh token');
+    }
+  }
+);
+
 export const logout = createAsyncThunk('auth/logout', async (_, { getState }) => {
   const state = getState() as { auth: AuthState };
   await logoutService(state.auth.refreshToken);
@@ -105,6 +134,19 @@ const authSlice = createSlice({
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(refreshToken.fulfilled, (state, action) => {
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        localStorage.setItem('accessToken', action.payload.accessToken);
+        localStorage.setItem('refreshToken', action.payload.refreshToken);
+      })
+      .addCase(refreshToken.rejected, (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        localStorage.clear();
       })
       .addCase(logout.fulfilled, (state) => {
         state.user = null;
