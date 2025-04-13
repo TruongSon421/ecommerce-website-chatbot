@@ -48,58 +48,63 @@ interface Variant {
 
 // Component chính: ProductDetail
 const ProductDetail: React.FC<{product: Product}> = ({ product }) => {
-  // const [selectedStorage, setSelectedStorage] = useState(product.variants[0]);
-  // const [variants, setVariants] = useState<Variant[]>([]);
-  // useEffect(() => {
-  //   const fetchVarients = async () => {
-  //     try {
-  //       // Sử dụng API endpoint dựa trên tham số type
-  //       const response = await fetch(`http://192.168.28.93:8070/api/inventory/related/${product.productId}`);
-  //       if (!response.ok) {
-  //         throw new Error("Error fetching products");
-  //       }
-  //       const data = await response.json();
-  //       if (data.length > 2) {
-  //         setVariants(data)
-  //       };
-  //     } catch (error) {
-  //       console.error("Error fetching products:", error);
-  //     }
-  //   };
-
-  //   fetchVarients();
-  // },[]);
   const [selectedColor, setSelectedColor] = useState(
-     product.colors?.length > 0 ? product.colors[0] : "default"
-   );
-  // console.log("variant:",variants)
-  // const defaultStoreage = variants.find((variant) => variant.productId === product.productId) || null
-  // const [selectedStorage, setSelectedStorage] = useState(defaultStoreage?.varient)
+    product.colors?.length > 0 ? product.colors[0] : "default"
+  );
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [variants, setVariants] = useState<Variant[]>([]);
+
+  useEffect(() => {
+    const fetchVariants = async () => {
+      try {
+        const response = await fetch(`http://192.168.28.93:8070/api/inventory/related/${product.productId}`);
+        if (!response.ok) {
+          throw new Error("Error fetching products");
+        }
+        const data = await response.json();
+        if (data.length > 0) {
+          setVariants(data);
+        }
+      } catch (error) {
+        console.error("Error fetching variants:", error);
+      }
+    };
+
+    fetchVariants();
+  }, [product.productId]);
+
+  const handleColorChange = (color: string) => {
+    setSelectedColor(color);
+  };
+
+  const handleVariantChange = (variantIndex: number) => {
+    setSelectedVariantIndex(variantIndex);
+  };
+
   const imageSrc = product.images[selectedColor] || product.images["default"];
-  // console.log("akjd: ",variants[0].varient)
+  const currentPrice = product.current_prices[selectedVariantIndex] || product.current_prices[0];
+
   return (
     <>
     <div className="bg-[#333] text-white p-8 ml-24 mr-24">
       <div className="flex flex-col md:flex-row">
-        {/* Bên trái: Bộ sưu tập hình ảnh */}
-
         <ProductImageGallery thumbnails={imageSrc} />
         
-        {/* Bên phải: Chi tiết sản phẩm */}
         <div className="md:ml-8 w-full md:w-1/2">
           <ProductHeader
             title={product.productName}
             isNew={product.isNew}
           />
-          <ProductPrice current_prices={product.current_prices[0]} />
-          {/* <ProductOptions
-            storageOptions={variants}
-            selectedStorage={variants[0].varient}
-            onStorageChange={setSelectedStorage}
+          <ProductPrice current_prices={currentPrice} />
+          <ProductOptions
+            variants={variants}
+            selectedVariantIndex={selectedVariantIndex}
+            onVariantChange={handleVariantChange}
             colorOptions={product.colors}
             selectedColor={selectedColor}
-            onColorChange={setSelectedColor}
-          /> */}
+            onColorChange={handleColorChange}
+            productNames={product.productNames}
+          />
           <BannerSection imageSrc='/images/slider/slide1.png' altText='banner-pd-dt'/>
           <Promotions promotions={product.promotions} />
           <ActionButtons />
@@ -144,53 +149,61 @@ const ProductPrice: React.FC<ProductPriceProps> = ({ current_prices}) => (
 
 // Component hiển thị tùy chọn dung lượng và màu sắc
 interface ProductOptionsProps {
-  storageOptions: Variant[];
-  selectedStorage: string;
-  onStorageChange: (storage:string) => void;
+  variants: Variant[];
+  selectedVariantIndex: number;
+  onVariantChange: (index: number) => void;
   colorOptions: string[];
   selectedColor: string;
-  onColorChange: (color: string )  => void;
+  onColorChange: (color: string) => void;
+  productNames: string[];
 }
 
 const ProductOptions: React.FC<ProductOptionsProps> = ({
-  storageOptions,
-  selectedStorage,
-  onStorageChange,
+  variants,
+  selectedVariantIndex,
+  onVariantChange,
   colorOptions,
   selectedColor,
   onColorChange,
+  productNames,
 }) => (
   <div className="mt-6 mb-6">
-    <div>
-      <h3 className="text-lg font-semibold">Dung lượng</h3>
-      <div className="flex space-x-4 mt-2">
-        {storageOptions.map((storage) => (
-          <button
-            key={storage.productId}
-            className={`px-4 py-2 rounded-full ${
-              selectedStorage === storage.varient? 'bg-black text-white' : 'bg-gray-200 text-black'
-            }`}
-            onClick={() => onStorageChange(storage.varient)}
-          >
-            {storage.varient}
-          </button>
-        ))}
+    {variants.length > 0 && (
+      <div>
+        <h3 className="text-lg font-semibold">Phiên bản</h3>
+        <div className="flex flex-wrap gap-4 mt-2">
+          {productNames.map((name, index) => (
+            <button
+              key={index}
+              className={`px-4 py-2 rounded-full ${
+                selectedVariantIndex === index ? 'bg-black text-white' : 'bg-gray-200 text-black'
+              }`}
+              onClick={() => onVariantChange(index)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
-    <div className="mt-4">
-      <h3 className="text-lg font-semibold">Màu: {selectedColor}</h3>
-      <div className="flex space-x-2 mt-2">
-        {colorOptions.map((color) => (
-          <button
-            key={color}
-            className={`w-8 h-8 rounded-full border-2 ${
-              selectedColor === color ? 'border-blue-500' : 'border-transparent'
-            }`}
-            onClick={() => onColorChange(color)}
-          />
-        ))}
+    )}
+    
+    {colorOptions && colorOptions.length > 0 && (
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold">Màu sắc: {selectedColor}</h3>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {colorOptions.map((color) => (
+            <button
+              key={color}
+              className={`w-8 h-8 rounded-full border-2 ${
+                selectedColor === color ? 'border-blue-500' : 'border-transparent'
+              }`}
+              style={{ backgroundColor: color.toLowerCase() }}
+              onClick={() => onColorChange(color)}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    )}
   </div>
 );
 
