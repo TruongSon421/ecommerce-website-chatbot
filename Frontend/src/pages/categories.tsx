@@ -1,130 +1,191 @@
-// src/pages/PageCategory.tsx
+// src/pages/PageCategory.tsx (continued)
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Header from '../components/layout/header';
 import ProductList from '../components/productList';
-import ProductFilter from '../components/ProductFilter';
-import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import ProductFilter from '../components/filters/ProductFilter';
+import ProductListSkeleton from '../components/ProductListSkeleton';
+import useProductApi from '../components/hooks/useProductApi';
 
 function PageCategory() {
-  const { type } = useParams();
-  const [products, setProducts] = useState([]);
-  let [searchParams, setSearchParams] = useSearchParams();
-  const [totalProducts, setTotalProducts] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const { type = '' } = useParams<{ type: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
   const [sortByPrice, setSortByPrice] = useState<string>('desc');
-  const page = Number(searchParams.get('pages')) || 0;
+  
+  // Get page from URL params or default to 0
+  const page = Number(searchParams.get('page')) || 0;
+  
+  // Custom hook for product API operations
+  const { 
+    products, 
+    totalProducts, 
+    loading, 
+    error, 
+    fetchProducts 
+  } = useProductApi();
+
   const remainingProducts = totalProducts - products.length;
 
-  const fetchProducts = async (currentPage: number, appliedFilters: { [key: string]: string[] | number[] }) => {
-    try {
-      setLoading(true);
-      const queryParams: string[] = [];
+  // Create query params for API request
+  const createQueryParams = useCallback((
+    currentPage: number, 
+    appliedFilters: { [key: string]: string[] | number[] }
+  ) => {
+    const queryParams: string[] = [
+      `page=${currentPage}`,
+      `size=20`,
+      `sortByPrice=${sortByPrice}`
+    ];
 
-      queryParams.push(`page=${currentPage}`);
-      queryParams.push(`size=20`);
-
-      if (type) {
-        queryParams.push(`type=${type.toUpperCase()}`);
-      }
-
-      queryParams.push(`sortByPrice=${sortByPrice}`);
-
-      if (appliedFilters.brand && (appliedFilters.brand as string[]).length > 0) {
-        queryParams.push(`brand=${(appliedFilters.brand as string[]).join(',')}`);
-      }
-
-      if (appliedFilters.tags && (appliedFilters.tags as string[]).length > 0) {
-        queryParams.push(`tags=${(appliedFilters.tags as string[]).join(',')}`);
-      }
-
-      if (appliedFilters.priceRange) {
-        const [minPrice, maxPrice] = appliedFilters.priceRange as number[];
-        queryParams.push(`minPrice=${minPrice}`);
-        queryParams.push(`maxPrice=${maxPrice}`);
-      }
-
-      if (appliedFilters.ram && (appliedFilters.ram as string[]).length > 0) {
-        queryParams.push(`ram=${(appliedFilters.ram as string[]).join(',')}`);
-      }
-      if (appliedFilters.resolution && (appliedFilters.resolution as string[]).length > 0) {
-        queryParams.push(`resolution=${(appliedFilters.resolution as string[]).join(',')}`);
-      }
-      if (appliedFilters.refresh_rate && (appliedFilters.refresh_rate as string[]).length > 0) {
-        queryParams.push(`refresh_rate=${(appliedFilters.refresh_rate as string[]).join(',')}`);
-      }
-      if (appliedFilters.cpu && (appliedFilters.cpu as string[]).length > 0) {
-        queryParams.push(`cpu=${(appliedFilters.cpu as string[]).join(',')}`);
-      }
-      if (appliedFilters.storage && (appliedFilters.storage as string[]).length > 0) {
-        queryParams.push(`storage=${(appliedFilters.storage as string[]).join(',')}`);
-      }
-
-      const url = `http://localhost:8070/api/group-variants/groups?${queryParams.join('&')}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Error fetching products');
-      }
-      const data = await response.json();
-      setProducts((prevProducts) =>
-        currentPage === 0 ? data['content'] : [...prevProducts, ...data['content']]
-      );
-      if (currentPage === 0) {
-        setTotalProducts(data['totalElements']);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    } finally {
-      setLoading(false);
+    if (type) {
+      queryParams.push(`type=${type.toUpperCase()}`);
     }
-  };
 
+    // Process filters
+    const filterMapping = {
+      brand: 'brand',
+      tags: 'tags',
+      ram: 'ram',
+      resolution: 'resolution',
+      refresh_rate: 'refresh_rate',
+      cpu: 'cpu',
+      storage: 'storage'
+    };
+
+    Object.entries(filterMapping).forEach(([key, param]) => {
+      if (appliedFilters[key] && (appliedFilters[key] as string[]).length > 0) {
+        queryParams.push(`${param}=${(appliedFilters[key] as string[]).join(',')}`);
+      }
+    });
+
+    // Process price range
+    if (appliedFilters.priceRange) {
+      const [minPrice, maxPrice] = appliedFilters.priceRange as number[];
+      queryParams.push(`minPrice=${minPrice}`, `maxPrice=${maxPrice}`);
+    }
+
+    return queryParams.join('&');
+  }, [type, sortByPrice]);
+
+  // Fetch products when dependencies change
   useEffect(() => {
-    fetchProducts(page, filters);
-  }, [type, page, filters, sortByPrice]);
+    const queryString = createQueryParams(page, filters);
+    fetchProducts(queryString, page === 0);
+  }, [fetchProducts, page, filters, createQueryParams]);
+
+  // Save filters to URL
+  useEffect(() => {
+    const currentParams = Object.fromEntries(searchParams.entries());
+    setSearchParams({
+      ...currentParams,
+      filters: JSON.stringify(filters),
+      sort: sortByPrice,
+      page: page.toString()
+    }, { replace: true }); // Use replace to avoid adding multiple history entries
+  }, [filters, sortByPrice, page, setSearchParams, searchParams]);
+
+  // Restore state from URL on mount
+  useEffect(() => {
+    const filtersFromUrl = searchParams.get('filters');
+    const sortFromUrl = searchParams.get('sort');
+    
+    if (filtersFromUrl) {
+      try {
+        setFilters(JSON.parse(filtersFromUrl));
+      } catch (e) {
+        console.error('Error parsing filters from URL:', e);
+      }
+    }
+    
+    if (sortFromUrl) {
+      setSortByPrice(sortFromUrl);
+    }
+  }, [searchParams]); // Only run on mount
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
-    setSearchParams({ pages: nextPage.toString() });
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', nextPage.toString());
+      return newParams;
+    });
   };
 
   const handleApplyFilters = (newFilters: { [key: string]: string[] | number[] }) => {
     setFilters(newFilters);
-    setSearchParams({ pages: '0' });
+    // Reset to page 0 when filters change
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '0');
+      return newParams;
+    });
   };
 
   const handleSortChange = (order: string) => {
     setSortByPrice(order);
-    setSearchParams({ pages: '0' });
+    // Reset to page 0 when sort changes
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '0');
+      return newParams;
+    });
   };
 
   return (
     <div className="pageCategory">
       <Header title={type} />
-      <div className="flex flex-col md:flex-row gap-6 p-6">
-        <div className="md:w-1/4">
+      <div className="flex flex-col gap-6 p-6">
+        <div className="w-full">
           {type ? (
             <ProductFilter
               type={type}
               onApplyFilters={handleApplyFilters}
               onSortChange={handleSortChange}
               sortByPrice={sortByPrice}
+              isLoading={loading}
             />
           ) : (
-            <div>Không có bộ lọc cho loại sản phẩm này.</div>
+            <div className="text-center p-4 bg-gray-100 rounded-md">
+              Không có bộ lọc cho loại sản phẩm này.
+            </div>
           )}
         </div>
-        <div className="md:w-3/4">
-          <ProductList grouplist={products} />
-          {remainingProducts > 0 && (
-            <div className="flex justify-center">
-              <button
-                className="text-white bg-slate-500 p-5 m-5 hover:bg-slate-300 py-2 px-4 rounded"
-                onClick={handleLoadMore}
-                disabled={loading}
-              >
-                Xem thêm <span className="m-1">{remainingProducts}</span> sản phẩm
-              </button>
+        <div className="w-full">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <strong className="font-bold">Lỗi!</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+          
+          {loading && products.length === 0 ? (
+            <ProductListSkeleton />
+          ) : (
+            <div className="w-full">
+              <ProductList grouplist={products} />
+              {remainingProducts > 0 && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md
+                             disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
+                    onClick={handleLoadMore}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang tải...
+                      </span>
+                    ) : (
+                      `Xem thêm ${remainingProducts} sản phẩm`
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

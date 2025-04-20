@@ -1,7 +1,7 @@
 import React from "react";
-import { useState, useEffect} from "react";
-
-
+import { useState } from "react";
+import formatProductName from "./utils/formatProductName";
+import { Link } from "react-router-dom";
 interface Product {
     productId: string;
     variant: string;
@@ -29,112 +29,103 @@ interface ProductListProps {
 
 interface ProductItemProps {
     groupproduct: GroupProduct;
-  }
+}
 
 const ProductList: React.FC<ProductListProps> = ({ grouplist }) => {
     return (
-      <div className="w-full">
-        {grouplist.map((groupproduct, index) => (
-          <ProductItem key={index} groupproduct={groupproduct} />
-        ))}
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {grouplist.map((groupproduct, index) => (
+                <ProductItem key={groupproduct.groupDto.groupId || index} groupproduct={groupproduct} />
+            ))}
+        </div>
     );
-  };
+};
 
-  export default ProductList;
+const parsePrice = (price: string | number | null): number | null => {
+    if (price === null) return null;
+    if (typeof price === 'number') return price;
+    return Number(price.replace(/\./g, '').replace('₫', ''));
+};
 
+const formatPrice = (price: string | number | null): string => {
+    if (price === null) return '';
+    const num = typeof price === 'string' ? parsePrice(price) : price;
+    if (num === null) return '';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫';
+};
 
-  const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
+const calculateDiscount = (originalPrice: number, currentPrice: number): number => {
+    return Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
+};
+
+const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
     const [selectedProduct, setSelectedProduct] = useState<Product>(groupproduct.products[0]);
-    const [href, setHref] = useState(
-      `/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`
-    );
-  
-    useEffect(() => {
-      setHref(`/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`);
-    }, [selectedProduct]);
-  
-    const parsePrice = (price: string | number | null): number | null => {
-      if (price === null) return null;
-      if (typeof price === 'number') return price;
-      return Number(price.replace(/\./g, '').replace('₫', ''));
-    };
-  
-    const formatPrice = (price: string | number | null): string => {
-      if (price === null) return '';
-      const num = typeof price === 'string' ? parsePrice(price) : price;
-      if (num === null) return '';
-      return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫';
-    };
-  
-    let originalPrice: number | null = null;
-    let currentPrice: number | null = null;
-    let discountPercentage: number | null = null;
-    if (selectedProduct.defaultCurrentPrice) {
-      currentPrice = parsePrice(selectedProduct.defaultCurrentPrice);
-      if (selectedProduct.defaultOriginalPrice) {
-        originalPrice = parsePrice(selectedProduct.defaultOriginalPrice);
-        if (originalPrice && currentPrice && originalPrice > currentPrice) {
-          discountPercentage = Math.round(((originalPrice - currentPrice) / originalPrice) * 100);
-        }
-      }
-    }
-  
-    return (
-      <div className="w-full bg-white rounded-lg shadow-sm overflow-hidden mb-2">
-        <a href={href} onClick={(e) => e.stopPropagation()}>
-          <div className="flex">
-            <div className="w-1/3 p-2">
-              <img
-                src={groupproduct.groupDto.image || '/images/categories/phone.png'}
-                alt={selectedProduct.productName}
-                className="w-full h-24 object-contain"
-              />
-            </div>
-            <div className="w-2/3 p-3 flex flex-col justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-black line-clamp-2">
-                  {selectedProduct.productName}
-                </h2>
-                {groupproduct.products.length > 1 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {groupproduct.products.map((product) => (
-                      <button
-                        key={product.productId}
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          product.productId === selectedProduct.productId
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setSelectedProduct(product);
-                        }}
-                      >
-                        {product.variant}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="mt-1">
-                <div className="text-red-500 font-bold text-sm">
-                  {formatPrice(selectedProduct.defaultCurrentPrice)}
-                </div>
-                {originalPrice && discountPercentage && (
-                  <div className="flex items-center mt-0.5">
-                    <span className="text-gray-500 text-xs line-through">
-                      {formatPrice(selectedProduct.defaultOriginalPrice)}
-                    </span>
-                    <span className="text-red-500 text-xs ml-1">-{discountPercentage}%</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </a>
-      </div>
-    );
-  };
+    
+    const href = `/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`;
+    
+    const originalPrice = selectedProduct.defaultOriginalPrice ? parsePrice(selectedProduct.defaultOriginalPrice) : null;
+    const currentPrice = selectedProduct.defaultCurrentPrice ? parsePrice(selectedProduct.defaultCurrentPrice) : null;
+    const discountPercentage = originalPrice && currentPrice && originalPrice > currentPrice 
+        ? calculateDiscount(originalPrice, currentPrice) 
+        : null;
 
+    return (
+        <div className="w-full bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden mb-4">
+            <Link to={href} onClick={(e) => e.stopPropagation()}>
+                <div className="flex flex-col">
+                    <div className="w-full p-4 flex items-center justify-center min-h-[200px]">
+                        <img
+                            src={groupproduct.groupDto.image || '/images/categories/phone.png'}
+                            alt={selectedProduct.productName}
+                            className="w-full h-48 object-contain"
+                            loading="lazy"
+                        />
+                    </div>
+                    <div className="w-full p-4 flex flex-col justify-between border-t min-h-[120px]">
+                        <div>
+                            <h2 className="text-base font-medium text-black line-clamp-2 mb-2">
+                                {formatProductName(selectedProduct.productName)}
+                            </h2>
+                            {groupproduct.products.length > 1 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {groupproduct.products.map((product) => (
+                                        <button
+                                            key={product.productId}
+                                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                                                product.productId === selectedProduct.productId
+                                                    ? 'bg-blue-500 text-white'
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            }`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                setSelectedProduct(product);
+                                            }}
+                                        >
+                                            {product.variant}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-3">
+                            <div className="text-red-500 font-bold text-lg">
+                                {formatPrice(selectedProduct.defaultCurrentPrice)}
+                            </div>
+                            {originalPrice && discountPercentage && (
+                                <div className="flex items-center mt-1">
+                                    <span className="text-gray-500 text-sm line-through">
+                                        {formatPrice(selectedProduct.defaultOriginalPrice)}
+                                    </span>
+                                    <span className="text-red-500 text-sm ml-2">-{discountPercentage}%</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </Link>
+        </div>
+    );
+};
+
+export default ProductList;
