@@ -15,7 +15,7 @@ const PublicRouter = () => {
         <Route path="register" element={<Register />} />
         <Route index element={<Home />} /> {/* Dùng index cho path="/" */}
         <Route path=":type" element={<PageCategory />} />
-        <Route path="phone/:phone_id" element={<ProductGH />} />
+        <Route path=":type/:product_id" element={<ProductGH />} />
       </Route>
     </Routes>
   );
