@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProcessPaymentRequest {
     private String orderId;
-    private String amount;
+    private String transactionId;
+    private String userId;
+    private Integer totalAmount;
     private String currency;
-    private PaymentMethod paymentMethod;
+    private String paymentMethod;
 }
