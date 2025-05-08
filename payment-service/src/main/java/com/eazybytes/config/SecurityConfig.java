@@ -1,5 +1,5 @@
 // src/main/java/com/eazybytes/config/SecurityConfig.java
-package com.eazybytes.payment.config;
+package com.eazybytes.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

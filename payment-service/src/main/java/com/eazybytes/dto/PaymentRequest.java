@@ -1,24 +1,24 @@
-package com.eazybytes.payment.dto;
-
-import com.eazybytes.payment.model.Payment;
+package com.eazybytes.dto;
 
 import java.util.UUID;
 
+import com.eazybytes.model.Payment;
+
 public class PaymentRequest {
-    private UUID orderId;
+    private Long orderId;
     private String amount;
     private Payment.PaymentMethod paymentMethod; // Thêm paymentMethod
 
     public PaymentRequest() {}
 
-    public PaymentRequest(UUID orderId, String amount, Payment.PaymentMethod paymentMethod) {
+    public PaymentRequest(Long orderId, String amount, Payment.PaymentMethod paymentMethod) {
         this.orderId = orderId;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
     }
 
-    public UUID getOrderId() { return orderId; }
-    public void setOrderId(UUID orderId) { this.orderId = orderId; }
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
     public String getAmount() { return amount; }
     public void setAmount(String amount) { this.amount = amount; }
     public Payment.PaymentMethod getPaymentMethod() { return paymentMethod; }

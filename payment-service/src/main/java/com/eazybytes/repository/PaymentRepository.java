@@ -1,16 +1,17 @@
-package com.eazybytes.payment.repository;
+package com.eazybytes.repository;
 
-import com.eazybytes.payment.model.Payment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.eazybytes.model.Payment;
+
 import java.util.Optional;
-import java.util.UUID;
+
 
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    Optional<Payment> findByOrderId(UUID orderId);
+    Optional<Payment> findByOrderId(Long orderId);
 
     Optional<Payment> findByPaymentId(String paymentId);
 

@@ -36,7 +36,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     producer:
-      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: payment-service-group
@@ -44,14 +44,18 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
-  
+        spring.json.trusted.packages: "com.eazybytes.event.model"
+        spring.json.type.mapping: 
+          process-payment-request:com.eazybytes.event.model.ProcessPaymentRequest,
+          payment-succeeded:com.eazybytes.event.model.PaymentSucceededEvent,
+          payment-failed:com.eazybytes.event.model.PaymentFailedEvent
+
 kafka:
   topics:
-      payment-service-process-payment: payment-service-process-payment
-      payment-service-reply: payment-service-reply
-      cart-events.partitions: 3
-      cart-events.replicas: 1
+    payment:
+      process: process-payment-request
+      succeeded: payment-succeeded
+      failed: payment-failed
 
 
 # Eureka Configuration (Service Discovery)

@@ -1,4 +1,4 @@
-package com.eazybytes.payment.model;
+package com.eazybytes.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -24,7 +24,7 @@ public class Payment {
     private Long id;
 
     @Column(nullable = false)
-    private UUID orderId;
+    private Long orderId;
 
     // Thêm transactionId để dễ truy vết và kiểm tra tính ổn định (idempotency)
     @Column(nullable = false)

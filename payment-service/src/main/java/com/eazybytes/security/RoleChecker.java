@@ -1,4 +1,4 @@
-package com.eazybytes.payment.security;
+package com.eazybytes.security;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

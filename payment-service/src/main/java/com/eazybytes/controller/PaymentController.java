@@ -1,8 +1,8 @@
-package com.eazybytes.payment.controller;
+package com.eazybytes.controller;
 
-// Import các lớp cần thiết
-import com.eazybytes.payment.model.Payment;
-import com.eazybytes.payment.service.PaymentService;
+import com.eazybytes.model.Payment;
+import com.eazybytes.service.PaymentService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,12 +26,12 @@ public class PaymentController {
      * Endpoint để lấy thông tin chi tiết của một giao dịch thanh toán
      * dựa trên ID của đơn hàng liên quan.
      *
-     * @param orderId ID của đơn hàng (UUID)
+     * @param orderId ID của đơn hàng 
      * @return ResponseEntity chứa thông tin Payment nếu tìm thấy, hoặc 404 Not Found.
      */
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<Payment> getPaymentByOrderId(@PathVariable String orderId) { // Nhận String từ path
-        UUID orderUuid;
+    public ResponseEntity<Payment> getPaymentByOrderId(@PathVariable String orderId) { 
+        Long orderUuid;
         try {
             orderUuid = UUID.fromString(orderId); // Parse String sang UUID
         } catch (IllegalArgumentException e) {
