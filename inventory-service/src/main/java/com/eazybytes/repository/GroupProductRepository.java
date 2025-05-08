@@ -13,8 +13,10 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
 
     @Query("SELECT g.groupId FROM GroupProduct g WHERE g.productId = :productId")
     Optional<Integer> findGroupIdByProductId(@Param("productId") String productId);
-    
+
     List<GroupProduct> findByProductNameContainingIgnoreCase(String query);
+
+    List<GroupProduct> findAllByGroupIdInOrderByOrderNumberAsc(List<Integer> groupIds);
 
     @Query("SELECT gp FROM GroupProduct gp " +
             "WHERE gp.productName LIKE %:query% " +

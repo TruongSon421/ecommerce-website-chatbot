@@ -25,4 +25,9 @@ public interface ProductInventoryRepository extends JpaRepository<ProductInvento
     @Modifying
     @Transactional
     void deleteAllByProductId(String productId);
+    
+    @Modifying
+    @jakarta.transaction.Transactional
+    @Query(value = "UPDATE product_inventory SET quantity = :quantity WHERE product_id = :productId AND color = :color", nativeQuery = true)
+    int updateInventoryQuantity(@Param("productId") String productId, @Param("color") String color, @Param("quantity") Integer quantity);
 }

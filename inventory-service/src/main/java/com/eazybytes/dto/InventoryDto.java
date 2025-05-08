@@ -25,8 +25,8 @@ public class InventoryDto {
 
     private Integer quantity;
 
-    private String originalPrice;
+    private Integer originalPrice;
 
-    private String currentPrice;
+    private Integer currentPrice;
 
 }
