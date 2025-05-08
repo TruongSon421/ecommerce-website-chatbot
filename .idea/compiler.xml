@@ -9,8 +9,8 @@
         <outputRelativeToContentRoot value="true" />
         <module name="cart-service" />
         <module name="config-service" />
-        <module name="inventory-service" />
         <module name="payment-service" />
+        <module name="inventory-service" />
         <module name="api-gateway" />
         <module name="product-service" />
         <module name="order-service" />
