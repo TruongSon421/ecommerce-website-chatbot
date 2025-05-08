@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.Random;
 
 
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,7 +33,7 @@ public class PaymentServiceImpl implements PaymentService {
         Long orderUuid;
         String invalidOrderIdReason = "Invalid Order ID format";
         try {
-            orderUuid = Long.fromString(request.getOrderId());
+            orderUuid = Long.parseLong(request.getOrderId());
         } catch (IllegalArgumentException e) {
             log.error("{} received: {}", invalidOrderIdReason, request.getOrderId());
             // Gọi lại constructor với reason
@@ -153,7 +154,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
-    public Payment getPaymentByOrderId(UUID orderId) {
+    public Payment getPaymentByOrderId(Long orderId) {
         return paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new RuntimeException("Payment not found for orderId: " + orderId));
     }

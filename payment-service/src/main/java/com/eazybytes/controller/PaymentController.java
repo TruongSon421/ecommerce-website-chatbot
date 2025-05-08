@@ -12,8 +12,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.UUID;
-
 @RestController
 @RequestMapping("/api/payments") // Base path cho các API liên quan đến payment
 @RequiredArgsConstructor
@@ -31,25 +29,24 @@ public class PaymentController {
      */
     @GetMapping("/order/{orderId}")
     public ResponseEntity<Payment> getPaymentByOrderId(@PathVariable String orderId) { 
-        Long orderUuid;
+        Long orderIdLong;
         try {
-            orderUuid = UUID.fromString(orderId); // Parse String sang UUID
-        } catch (IllegalArgumentException e) {
+            orderIdLong = Long.parseLong(orderId);
+        } catch (NumberFormatException e) {
             log.error("Invalid Order ID format received in path: {}", orderId);
-            // Có thể trả về 400 Bad Request thay vì 404
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         }
 
         try {
-            log.debug("Received request to get payment details for order ID: {}", orderUuid);
-            Payment payment = paymentService.getPaymentByOrderId(orderUuid);
+            log.debug("Received request to get payment details for order ID: {}", orderIdLong);
+            Payment payment = paymentService.getPaymentByOrderId(orderIdLong);
             log.debug("Found payment details: {}", payment);
-            return ResponseEntity.ok(payment); // Trả về 200 OK và thông tin payment
-        } catch (RuntimeException e) { // Bắt lỗi cụ thể hơn nếu cần (ví dụ: PaymentNotFoundException)
-            log.error("Payment not found for order ID: {}", orderUuid, e);
+            return ResponseEntity.ok(payment);
+        } catch (RuntimeException e) {
+            log.error("Payment not found for order ID: {}", orderIdLong, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
         } catch (Exception e) {
-            log.error("An unexpected error occurred while fetching payment for order ID: {}", orderUuid, e);
+            log.error("An unexpected error occurred while fetching payment for order ID: {}", orderIdLong, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
