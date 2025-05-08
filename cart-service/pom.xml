@@ -116,6 +116,13 @@
             <optional>true</optional>
         </dependency>
 
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
+            <version>2.14.2</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
