@@ -30,7 +30,7 @@ spring:
   kafka:
     bootstrap-servers: localhost:9092
     producer:
-      key-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       group-id: order-service-group
@@ -38,19 +38,34 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
-  
+        spring.json.trusted.packages: "com.eazybytes.event.model"
+        spring.json.type.mapping: >-
+          checkout-initiated:com.eazybytes.event.model.CheckoutInitiatedEvent,
+          checkout-failed:com.eazybytes.event.model.CheckoutFailedEvent,
+          inventory-reserved:com.eazybytes.event.model.InventoryReservedEvent,
+          inventory-reservation-failed:com.eazybytes.event.model.InventoryReservationFailedEvent,
+          payment-succeeded:com.eazybytes.event.model.PaymentSucceededEvent,
+          payment-failed:com.eazybytes.event.model.PaymentFailedEvent,
+          order-completed:com.eazybytes.event.model.OrderCompletedEvent
+    
 kafka:
   topics:
-      cart-events: cart-events
-      cart-service-get-cart: cart-service-get-cart
-      payment-service-process-payment: payment-service-process-payment
-      payment-service-reply: payment-service-reply
-      order-service-reply: order-service-reply
-      cart-service-order-confirmed: cart-service-order-confirmed
-      order-events: order-events
-      cart-events.partitions: 3
-      cart-events.replicas: 1
+    checkout:
+      initiated: checkout-initiated  # Lắng nghe từ CartService
+      failed: checkout-failed       # Có thể gửi hoặc lắng nghe
+    order:
+      completed: order-completed    # Có thể gửi hoặc lắng nghe
+      failed: order-failed
+    inventory:
+      reserved: inventory-reserved  # Lắng nghe từ InventoryService
+      reservation-failed: inventory-reservation-failed  # Lắng nghe từ InventoryService
+    payment:
+      succeeded: payment-succeeded  # Lắng nghe từ PaymentService
+      failed: payment-failed        # Lắng nghe từ PaymentService
+    reserve-inventory-request: reserve-inventory-request
+    process-payment-request: process-payment-request
+    confirm-inventory-reservation: confirm-inventory-reservation
+    cancel-inventory-reservation: cancel-inventory-reservation
 
 
 # Eureka Configuration (Service Discovery)
@@ -70,4 +85,11 @@ management:
     health:
       show-details: always
 
-
+logging:
+  level:
+    root: INFO
+    com.eazybytes: INFO
+    org.springframework.kafka: INFO
+    org.apache.kafka: INFO
+    # Chỉ log ERROR cho các vấn đề serialization
+    org.springframework.kafka.support.serializer: INFO
