@@ -9,9 +9,10 @@ spring:
     name: api-gateway
 #  config:
 #    import: "optional:configserver:http://localhost:8888"
-  redis:
-    host: localhost
-    port: 6379
+  data:
+    redis:
+      host: localhost
+      port: 6379
   cloud:
     config:
       enabled: false
@@ -84,6 +85,8 @@ spring:
             - Path=/api/payment/**
           filters:
             - Authentication
+
+
 eureka:
   client:
     serviceUrl:
