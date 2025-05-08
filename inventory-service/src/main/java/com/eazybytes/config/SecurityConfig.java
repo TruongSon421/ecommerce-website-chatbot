@@ -1,7 +1,6 @@
 // src/main/java/com/eazybytes/config/SecurityConfig.java
 package com.eazybytes.config;
 
-import org.springframework.http.HttpMethod;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

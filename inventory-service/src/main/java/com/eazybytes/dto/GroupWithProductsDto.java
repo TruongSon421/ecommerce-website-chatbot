@@ -13,4 +13,8 @@ import lombok.NoArgsConstructor;
 public class GroupWithProductsDto {
     private List<GroupProductDto> products;
     private GroupDto groupDto;
+    private Float elasticsearchScore; // Thêm trường mới
+
+    public GroupWithProductsDto(GroupDto groupDto, List<GroupProductDto> productDtos) {
+    }
 }

@@ -5,17 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GroupProductDto {
+public class CartItemResponse {
     private String productId;
-    private String variant;
-    private Integer orderNumber;
     private String productName;
-    private Integer defaultOriginalPrice;
-    private Integer defaultCurrentPrice;
+    private Integer price;
+    private Integer quantity;
+    private String color;
+    private boolean available;
 }
