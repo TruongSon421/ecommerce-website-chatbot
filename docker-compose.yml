@@ -1,23 +1,29 @@
 version: '3.8'
 
 services:
+  # Database services - using your existing configuration
   mysql:
     image: mysql:8.0
     container_name: ecommerce_mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root             # Root password (vẫn giữ để admin)
-      MYSQL_USER: tiendoan                  # User trong application.properties
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: tiendoan
       MYSQL_PASSWORD: tiendoan
     ports:
       - "3307:3306"
     volumes:
-      - mysql_data:/var/lib/mysql            # Persist data even if container is removed
+      - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongodb:
-    image: mongo:latest
+    image: mongo:4.4.6
     container_name: mongodb
     restart: always
     ports:
@@ -29,6 +35,11 @@ services:
       - mongodb_data:/data/db
     networks:
       - ecommerce_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --host mongodb:27017 -u admin -p password --authenticationDatabase admin --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   mongo-express:
     image: mongo-express:latest
@@ -56,15 +67,126 @@ services:
     restart: always
     networks:
       - ecommerce_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Spring Cloud services
+  config-service:
+    build:
+      context: ./config-service
+      dockerfile: Dockerfile
+    container_name: config-service
+    ports:
+      - "8888:8888"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  discovery-service:
+    build:
+      context: ./discovery-service
+      dockerfile: Dockerfile
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    depends_on:
+      - config-service
+    
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  # Application services
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    depends_on:
+      - config-service
+      - discovery-service
+      - mysql
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    depends_on:
+      - config-service
+      - discovery-service
+      - mongodb
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    depends_on:
+      - config-service
+      - discovery-service
+      - mysql
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8070:8070"
+    depends_on:
+      - config-service
+      - discovery-service
+      - user-service
+      - product-service
+      - inventory-service
+    networks:
+      - ecommerce_network
+    restart: on-failure
+
+  chatbot:
+    build: 
+      context: ./chatbot/src
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - LLAMA_INDEX_API_KEY=${LLAMA_INDEX_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    command: gunicorn --bind 0.0.0.0:5001 --workers 4 --threads 2 app:app
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    container_name: zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+      image: confluentinc/cp-zookeeper:latest
+      container_name: zookeeper
+      environment:
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_TICK_TIME: 2000
+      ports:
+        - "2181:2181"
+      networks:
+        - ecommerce_network
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -80,6 +202,8 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - ecommerce_network
 
 volumes:
   mysql_data:

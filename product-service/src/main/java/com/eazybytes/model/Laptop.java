@@ -32,6 +32,7 @@ public class Laptop extends BaseProduct {
     private String refreshRate;// tần số quét
     private List<String> colorGamut; // độ phủ màu
     private List<String> displayTechnology; // công nghệ màn hình
+    private List<String> touchScreen;
 
     //Đồ họa và âm thanh
     private String graphicCard; // card màn hình
@@ -48,7 +49,8 @@ public class Laptop extends BaseProduct {
     private String battery;
     private String os;
 
+
     public Laptop() {
-        setType("LAPTOP");
+        setType("laptop");
     }
 }

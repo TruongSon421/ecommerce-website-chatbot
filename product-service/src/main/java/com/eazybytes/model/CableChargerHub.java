@@ -25,6 +25,6 @@ public class CableChargerHub extends BaseProduct {
     private String length;
 
     public CableChargerHub() {
-        setType("CABLE_CHARGER_HUB");
+        setType("cable_charger_hub");
     }
 }

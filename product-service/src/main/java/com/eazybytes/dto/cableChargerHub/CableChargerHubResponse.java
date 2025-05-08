@@ -15,8 +15,8 @@ import java.util.List;
 @NoArgsConstructor
 public class CableChargerHubResponse extends ProductResponse {
     // Các trường bổ sung, không trùng với ProductResponse
-    private List<String> original_prices = new ArrayList<>();
-    private List<String> current_prices = new ArrayList<>();
+    private List<Integer> original_prices = new ArrayList<>();
+    private List<Integer> current_prices = new ArrayList<>();
     private List<String> colors = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
@@ -35,8 +35,8 @@ public class CableChargerHubResponse extends ProductResponse {
         response.setPromotions(cableChargerHub.getPromotions());
         response.setRelease(cableChargerHub.getRelease());
 
-        List<String> originalPrices = new ArrayList<>();
-        List<String> currentPrices = new ArrayList<>();
+        List<Integer> originalPrices = new ArrayList<>();
+        List<Integer> currentPrices = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
 

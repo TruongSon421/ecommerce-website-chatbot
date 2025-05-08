@@ -14,16 +14,24 @@ public class RouterValidator {
             "/api/auth/refresh-token",
 
             "/api/products/type/{type}",
-            "/api/products/getPhone/{id}",
-            "/api/products/getLaptop/{id}",
+
             "/api/products/search",
+            "/api/products/get/{type}/{id}",
 
             "/api/inventory/product",
             "/api/inventory/productColorVariants/{productId}",
             "/api/inventory/related/{productId}",
+
             "/api/group-variants/groups",
-            "/api/group-variants/search"
-            );
+            "/api/group-variants/search",
+            "/api/group-variants/get",
+
+            "/api/tags/get",
+
+            "/api/group-tags/get/{groupId}",
+            "/api/group-tags/groups-by-tags"
+
+    );
 
     public Predicate<ServerHttpRequest> isSecured =
             request -> openApiEndpoints

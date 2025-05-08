@@ -1,6 +1,5 @@
 package com.eazybytes.model;
 
-
 import org.springframework.data.annotation.Id; // MongoDB annotation
 import org.springframework.data.mongodb.core.mapping.Document; // MongoDB annotation
 

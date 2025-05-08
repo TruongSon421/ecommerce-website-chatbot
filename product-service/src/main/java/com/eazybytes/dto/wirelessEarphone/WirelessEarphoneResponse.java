@@ -17,8 +17,8 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 
 public class WirelessEarphoneResponse extends ProductResponse {
-    private List<String> original_prices = new ArrayList<>();
-    private List<String> current_prices = new ArrayList<>();
+    private List<Integer> original_prices = new ArrayList<>();
+    private List<Integer> current_prices = new ArrayList<>();
     private List<String> colors = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
@@ -40,8 +40,8 @@ public class WirelessEarphoneResponse extends ProductResponse {
         response.setRelease(wirelessEarphone.getRelease());
 
         // Thiết lập danh sách màu sắc, giá và số lượng
-        List<String> originalPrices = new ArrayList<>();
-        List<String> currentPrices = new ArrayList<>();
+        List<Integer> originalPrices = new ArrayList<>();
+        List<Integer> currentPrices = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
         List<String> colors = new ArrayList<>();

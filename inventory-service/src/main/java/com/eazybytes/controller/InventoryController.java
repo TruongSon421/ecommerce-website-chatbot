@@ -58,7 +58,6 @@ public class InventoryController {
         InventoryDto inventoryDto = InventoryDto.builder()
                 .productId(inventory.getProductId())
                 .color(inventory.getColor())
-                .productName(inventory.getProductName())
                 .quantity(inventory.getQuantity())
                 .originalPrice(inventory.getOriginalPrice())
                 .currentPrice(inventory.getCurrentPrice())
@@ -133,6 +132,7 @@ public class InventoryController {
         ProductInventory updatedInventory = inventoryService.decreaseProductQuantity(productId, color, quantity);
 
         InventoryDto inventoryDto = InventoryDto.builder()
+                .productName(updatedInventory.getProductName())
                 .productId(updatedInventory.getProductId())
                 .color(updatedInventory.getColor())
                 .quantity(updatedInventory.getQuantity())
@@ -156,6 +156,7 @@ public class InventoryController {
 
         InventoryDto inventoryDto = InventoryDto.builder()
                 .inventoryId(updatedInventory.getInventoryId())
+                .productName(updatedInventory.getProductName())
                 .productId(updatedInventory.getProductId())
                 .color(updatedInventory.getColor())
                 .quantity(updatedInventory.getQuantity())

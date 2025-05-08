@@ -21,7 +21,7 @@ public class ProductResponse {
 
     private String brand;
     private Map<String,List<Map<String,String>>> images;
-    private String type;  // "PHONE" or "LAPTOP"
+    private String type;
     private String warrantyPeriod; // thời gian bảo hành
     private List<Map<String,String>> productReviews; // bài đánh giá sản phẩm
     private List<String> promotions; // chương trình khuyến mãi
@@ -29,8 +29,8 @@ public class ProductResponse {
 
     // Các trường chung cho inventory
     private List<String> colors = new ArrayList<>();
-    private List<String> original_prices = new ArrayList<>();
-    private List<String> current_prices = new ArrayList<>();
+    private List<Integer> original_prices = new ArrayList<>();
+    private List<Integer> current_prices = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
 

@@ -24,6 +24,6 @@ public class WiredEarphone extends BaseProduct{
 
 
     public WiredEarphone(){
-        setType("WIRED_EARPHONE");
+        setType("wired_earphone");
     }
 }

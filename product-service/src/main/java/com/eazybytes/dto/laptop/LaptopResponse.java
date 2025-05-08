@@ -15,8 +15,8 @@ import java.util.List;
 @NoArgsConstructor
 public class LaptopResponse extends ProductResponse {
     // Các trường bổ sung, không trùng với ProductResponse
-    private List<String> original_prices = new ArrayList<>();
-    private List<String> current_prices = new ArrayList<>();
+    private List<Integer> original_prices = new ArrayList<>();
+    private List<Integer> current_prices = new ArrayList<>();
     private List<String> colors = new ArrayList<>();
     private List<Integer> quantities = new ArrayList<>();
     private List<String> productNames = new ArrayList<>();
@@ -35,8 +35,8 @@ public class LaptopResponse extends ProductResponse {
         response.setPromotions(laptop.getPromotions());
         response.setRelease(laptop.getRelease());
 
-        List<String> originalPrices = new ArrayList<>();
-        List<String> currentPrices = new ArrayList<>();
+        List<Integer> originalPrices = new ArrayList<>();
+        List<Integer> currentPrices = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
 
@@ -74,6 +74,7 @@ public class LaptopResponse extends ProductResponse {
         addSpecification(specs, "Tần số quét", laptop.getRefreshRate());
         addSpecification(specs, "Độ phủ màu", laptop.getColorGamut());
         addSpecification(specs, "Công nghệ màn hình", laptop.getDisplayTechnology());
+        addSpecification(specs, "Màn hình cảm ứng", laptop.getTouchScreen());
 
         // Đồ họa và âm thanh
         addSpecification(specs, "Card màn hình", laptop.getGraphicCard());
