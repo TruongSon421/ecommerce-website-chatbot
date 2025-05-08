@@ -1,4 +1,4 @@
-package com.eazybytes.payment.event.model;
+package com.eazybytes.event.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

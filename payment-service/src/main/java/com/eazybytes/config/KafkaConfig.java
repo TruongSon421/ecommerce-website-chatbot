@@ -1,4 +1,4 @@
-package com.eazybytes.payment.config;
+package com.eazybytes.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;

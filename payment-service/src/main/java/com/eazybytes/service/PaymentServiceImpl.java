@@ -1,12 +1,13 @@
 // com/eazybytes/payment/service/PaymentServiceImpl.java
-package com.eazybytes.payment.service;
+package com.eazybytes.service;
 
-import com.eazybytes.payment.event.PaymentProducer;
-import com.eazybytes.payment.event.model.PaymentFailedEvent;
-import com.eazybytes.payment.event.model.PaymentSucceededEvent;
-import com.eazybytes.payment.event.model.ProcessPaymentRequest;
-import com.eazybytes.payment.model.Payment;
-import com.eazybytes.payment.repository.PaymentRepository;
+import com.eazybytes.event.PaymentProducer;
+import com.eazybytes.event.model.PaymentFailedEvent;
+import com.eazybytes.event.model.PaymentSucceededEvent;
+import com.eazybytes.event.model.ProcessPaymentRequest;
+import com.eazybytes.model.Payment;
+import com.eazybytes.repository.PaymentRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +29,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public void handlePaymentRequest(ProcessPaymentRequest request) {
-        UUID orderUuid;
+        Long orderUuid;
         String invalidOrderIdReason = "Invalid Order ID format";
         try {
-            orderUuid = UUID.fromString(request.getOrderId());
+            orderUuid = Long.fromString(request.getOrderId());
         } catch (IllegalArgumentException e) {
             log.error("{} received: {}", invalidOrderIdReason, request.getOrderId());
             // Gọi lại constructor với reason
