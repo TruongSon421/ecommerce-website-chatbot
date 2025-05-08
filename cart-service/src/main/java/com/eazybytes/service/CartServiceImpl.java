@@ -259,6 +259,83 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public CartResponse mergeListItemToCart(String userId, List<CartItemRequest> guestCartItems) throws CartNotFoundException {
+        if (guestCartItems == null || guestCartItems.isEmpty()) {
+            log.info("Guest cart is empty. No items to merge for user: {}", userId);
+            return getCartByUserId(userId);
+        }
+        
+        log.info("Merging {} guest cart items for user: {}", guestCartItems.size(), userId);
+        CartResponse result = null;
+        
+        // Lấy giỏ hàng hiện tại của người dùng
+        CartResponse currentCart = getCartByUserId(userId);
+        
+        // Process each item in the guest cart
+        for (CartItemRequest item : guestCartItems) {
+            try {
+                log.debug("Processing guest cart item: {} ({}) x{}", item.getProductId(), item.getColor(), item.getQuantity());
+                
+                // Validate item inventory before adding
+                InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), item.getColor());
+                if (inventory == null || inventory.getQuantity() <= 0) {
+                    log.warn("Skipping item due to no inventory: {} ({})", item.getProductId(), item.getColor());
+                    continue;
+                }
+                
+                // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+                boolean itemExists = false;
+                for (CartItemResponse existingItem : currentCart.getItems()) {
+                    if (existingItem.getProductId().equals(item.getProductId()) && 
+                        existingItem.getColor().equals(item.getColor())) {
+                        // Sản phẩm đã tồn tại, cập nhật số lượng
+                        int newQuantity = existingItem.getQuantity() + item.getQuantity();
+                        
+                        // Kiểm tra số lượng tồn kho
+                        if (newQuantity > inventory.getQuantity()) {
+                            log.warn("Cannot update item quantity due to insufficient inventory: {} ({}), requested: {}, available: {}", 
+                                    item.getProductId(), item.getColor(), newQuantity, inventory.getQuantity());
+                            continue;
+                        }
+                        
+                        // Cập nhật số lượng cho sản phẩm hiện tại
+                        result = updateCartItem(userId,  item.getProductId(), newQuantity, item.getColor()); // Giả sử có phương thức updateItemInCart
+                        log.debug("Updated item quantity in cart: {} ({}) x{}", 
+                                item.getProductId(), item.getColor(), newQuantity);
+                        itemExists = true;
+                        break;
+                    }
+                }
+                
+                // Nếu sản phẩm chưa tồn tại, thêm mới
+                if (!itemExists) {
+                    if (item.getQuantity() > inventory.getQuantity()) {
+                        log.warn("Skipping item due to insufficient inventory: {} ({}), requested: {}, available: {}", 
+                                item.getProductId(), item.getColor(), item.getQuantity(), inventory.getQuantity());
+                        continue;
+                    }
+                    
+                    // Thêm sản phẩm mới vào giỏ hàng
+                    result = addItemToCart(userId, item);
+                    log.debug("Successfully added item to cart: {} ({}) x{}", 
+                            item.getProductId(), item.getColor(), item.getQuantity());
+                }
+            } catch (InvalidItemException e) {
+                log.warn("Skipping invalid item during merge: {} ({}). Reason: {}", 
+                        item.getProductId(), item.getColor(), e.getMessage());
+            } catch (Exception e) {
+                log.error("Error processing item {} ({}) during merge for user {}. Reason: {}", 
+                        item.getProductId(), item.getColor(), userId, e.getMessage(), e);
+            }
+        }
+        
+        // Return the final cart state
+        return result != null ? result : getCartByUserId(userId);
+    }
+
+
+    @Override
+    @Transactional
     public void clearCart(String userId) throws CartNotFoundException {
         int attempt = 0;
         while (true) {

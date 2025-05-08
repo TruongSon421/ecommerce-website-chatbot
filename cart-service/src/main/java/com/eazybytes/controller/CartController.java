@@ -13,6 +13,8 @@ import com.eazybytes.dto.SagaInitiationResponse;
 import com.eazybytes.exception.CartNotFoundException;
 import com.eazybytes.exception.InvalidItemException;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -89,4 +91,21 @@ public class CartController {
         }
     }
 
+    @PostMapping("/merge")
+    @PreAuthorize("@roleChecker.hasRole('USER')")
+    public ResponseEntity<CartResponse> mergeGuestCart(@RequestBody List<CartItemRequest> guestCartItems) {
+        String userId = getCurrentUserId();
+        log.info("Received cart merge request for user: {} with {} items", userId, guestCartItems.size());
+        
+        try {
+            CartResponse mergedCart = cartService.mergeListItemToCart(userId, guestCartItems);
+            return ResponseEntity.ok(mergedCart);
+        } catch (CartNotFoundException e) {
+            log.error("Cart merge failed for user: {}. Reason: {}", userId, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Unexpected error during cart merge for user: {}. Reason: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
