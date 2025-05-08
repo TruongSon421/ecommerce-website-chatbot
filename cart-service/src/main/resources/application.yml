@@ -25,6 +25,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    open-in-view: true
     show-sql: true
     properties:
       hibernate:
@@ -36,6 +37,12 @@ spring:
       host: localhost
       port: 6379
       database: 1
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+        shutdown-timeout: 100ms
 
   # Kafka Configuration
   kafka:
@@ -50,16 +57,20 @@ spring:
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       enable-auto-commit: false  # Dùng ack thủ công
       properties:
-        spring.json.trusted.packages: "com.eazybytes.cart.event.model"  # Chỉ trust package của sự kiện
+        spring.json.trusted.packages: "com.eazybytes.event.model"  # Chỉ trust package của sự kiện
 
 # Kafka Topics
 kafka:
   topics:
-    checkout-initiated: checkout-initiated
-    order-completed: order-completed
-    checkout-failed: checkout-failed
-    cart-cleared: cart-cleared
-    cart-clear-failed: cart-clear-failed
+    checkout:
+      initiated: checkout-initiated
+      failed: checkout-failed
+    order:
+      completed: order-completed
+      failed: order-failed
+    cart:
+      cleared: cart-cleared
+      clearfailed: cart-clear-failed
 
 # Eureka Configuration (Service Discovery)
 eureka:
