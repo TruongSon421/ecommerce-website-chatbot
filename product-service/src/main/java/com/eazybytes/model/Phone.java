@@ -64,6 +64,6 @@ public class Phone extends BaseProduct {
     private String sizeWeight; // kích thước khối lượng
 
     public Phone() {
-        setType("PHONE");
+        setType("phone");
     }
 }

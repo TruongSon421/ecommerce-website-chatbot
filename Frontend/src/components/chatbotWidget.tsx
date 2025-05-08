@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import ProductList from './ProductList'; // Assuming ProductList is in a separate file
 
 interface Product {
   productId: string;
   variant: string;
   orderNumber: number;
   productName: string;
-  defaultOriginalPrice: string | number | null;
-  defaultCurrentPrice: string | number | null;
+  defaultOriginalPrice: number | null;
+  defaultCurrentPrice: number | null;
 }
 
 interface GroupDto {
@@ -25,15 +24,9 @@ interface GroupProduct {
 
 interface Message {
   id: number;
-  text?: string; // Optional for product messages
+  text?: string;
   sender: 'user' | 'bot';
-  products?: GroupProduct[]; // New field for product data
-}
-
-interface ChatSession {
-  thread_id: string;
-  last_active: number;
-  messages: Message[];
+  products?: GroupProduct[];
 }
 
 interface ChatbotResponse {
@@ -42,17 +35,116 @@ interface ChatbotResponse {
   groupids?: number[];
 }
 
+const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, Product>>({});
+
+  useEffect(() => {
+    // Initialize selected variants with the first product in each group
+    const initialSelected: Record<string, Product> = {};
+    grouplist.forEach(group => {
+      if (group.products.length > 0) {
+        initialSelected[group.groupDto.groupId.toString()] = group.products[0];
+      }
+    });
+    setSelectedVariants(initialSelected);
+  }, [grouplist]);
+
+  const handleVariantClick = (groupId: number, product: Product) => {
+    setSelectedVariants(prev => ({
+      ...prev,
+      [groupId.toString()]: product
+    }));
+  };
+
+  return (
+    <div className="space-y-4">
+      {grouplist.map((group) => {
+        const selectedVariant = selectedVariants[group.groupDto.groupId.toString()];
+        const displayProduct = selectedVariant || group.products[0];
+        
+        return (
+          <div key={group.groupDto.groupId} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+            <div className="flex">
+              {group.groupDto.image && (
+                <div className="w-1/3 flex-shrink-0">
+                  <img 
+                    src={displayProduct.productId === group.products[0].productId 
+                      ? group.groupDto.image 
+                      : `https://cdn.tgdd.vn/Products/Images/42/${displayProduct.productId.substring(0, 6)}/thumb-600x600.jpg`}
+                    alt={displayProduct.productName} 
+                    className="w-full h-full object-contain bg-gray-100 p-2"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = group.groupDto.image || '';
+                    }}
+                  />
+                </div>
+              )}
+              <div className="w-2/3 p-3">
+                <h4 className="font-medium text-sm mb-2">
+                  {displayProduct.productName}
+                </h4>
+                <div className="space-y-2 mb-3">
+                  <div className="flex justify-between items-center text-xs">
+                    {/* <span className="text-gray-600">{displayProduct.variant}</span> */}
+                    <div className="flex items-center space-x-2">
+                      {displayProduct.defaultOriginalPrice && (
+                        <span className="text-gray-400 line-through">
+                          {displayProduct.defaultOriginalPrice.toLocaleString()}đ
+                        </span>
+                      )}
+                      <span className="font-medium text-red-500">
+                        {displayProduct.defaultCurrentPrice?.toLocaleString()}đ
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Variant options */}
+                <div className="mt-2">
+                  <div className="text-xs text-gray-500 mb-1">Phiên bản:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {group.products.map((product) => (
+                      <button
+                        key={`${group.groupDto.groupId}-${product.productId}`}
+                        onClick={() => handleVariantClick(group.groupDto.groupId, product)}
+                        className={`px-2 py-1 text-xs rounded border ${
+                          selectedVariant?.productId === product.productId
+                            ? 'bg-blue-100 border-blue-500 text-blue-700'
+                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {product.variant}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <a 
+                  href={`/products/${group.groupDto.groupId}`}
+                  className="block mt-3 text-center text-xs bg-blue-500 text-white py-1 rounded hover:bg-blue-600 transition"
+                >
+                  Xem chi tiết
+                </a>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const ChatbotWidget: React.FC = () => {
   const generateThreadId = (): string => {
     return 'thread-' + Math.random().toString(36).substring(2, 11);
   };
 
-  const initializeChatSession = (): ChatSession => {
+  const initializeChatSession = (): { thread_id: string; last_active: number; messages: Message[] } => {
     const savedSession = localStorage.getItem('chatSession');
     const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
 
     if (savedSession) {
-      const session: ChatSession = JSON.parse(savedSession);
+      const session = JSON.parse(savedSession);
       if (Date.now() - session.last_active < threeDaysInMs) {
         return session;
       }
@@ -64,22 +156,22 @@ const ChatbotWidget: React.FC = () => {
       messages: [
         {
           id: Date.now(),
-          text: 'Xin chào Bạn! Tôi là trợ lý ảo của NEXUS. Rất vui khi được giúp đỡ bạn',
+          text: 'Xin chào! Tôi là trợ lý ảo của NEXUS. Tôi có thể giúp gì cho bạn?',
           sender: 'bot',
         },
       ],
     };
   };
 
-  const [chatSession, setChatSession] = useState<ChatSession>(initializeChatSession());
-  const [input, setInput] = useState<string>('');
-  const [isOpen, setIsOpen] = useState<boolean>(() => {
-    const savedIsOpen = localStorage.getItem('chatIsOpen');
-    return savedIsOpen ? JSON.parse(savedIsOpen) : false;
+  const [chatSession, setChatSession] = useState(initializeChatSession);
+  const [input, setInput] = useState('');
+  const [isOpen, setIsOpen] = useState(() => {
+    return JSON.parse(localStorage.getItem('chatIsOpen') || 'false');
   });
-  const [isBotTyping, setIsBotTyping] = useState<boolean>(false);
-  const [showHelpButton, setShowHelpButton] = useState<boolean>(false);
+  const [isBotTyping, setIsBotTyping] = useState(false);
+  const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [viewAllUrl, setViewAllUrl] = useState('');
 
   useEffect(() => {
     localStorage.setItem('chatSession', JSON.stringify(chatSession));
@@ -107,9 +199,7 @@ const ChatbotWidget: React.FC = () => {
       const response = await fetch(
         `http://localhost:8070/api/group-variants/get?groupIds=${groupIds.join(',')}`
       );
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (error) {
       console.error('Fetch Products Error:', error);
@@ -124,7 +214,6 @@ const ChatbotWidget: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify({
           thread_id: chatSession.thread_id,
@@ -132,10 +221,7 @@ const ChatbotWidget: React.FC = () => {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data: ChatbotResponse = await response.json();
       setApiError(null);
       return data;
@@ -147,6 +233,10 @@ const ChatbotWidget: React.FC = () => {
         role: 'assistant',
       };
     }
+  };
+
+  const generateViewAllUrl = (groupIds: number[]): string => {
+    return `http://localhost:3000/products?groupIds=${groupIds.join(',')}`;
   };
 
   const handleSend = async () => {
@@ -176,8 +266,10 @@ const ChatbotWidget: React.FC = () => {
       },
     ];
 
-    // If groupids are present, fetch products and add as a separate message
     if (botResponse.groupids && botResponse.groupids.length > 0) {
+      const url = generateViewAllUrl(botResponse.groupids);
+      setViewAllUrl(url);
+      
       const products = await fetchProducts(botResponse.groupids);
       if (products.length > 0) {
         messagesToAdd.push({
@@ -203,12 +295,13 @@ const ChatbotWidget: React.FC = () => {
       messages: [
         {
           id: Date.now(),
-          text: 'Xin chào Bạn! Tôi là trợ lý ảo của NEXUS. Rất vui khi được giúp đỡ bạn',
+          text: 'Xin chào! Tôi là trợ lý ảo của NEXUS. Tôi có thể giúp gì cho bạn?',
           sender: 'bot',
         },
       ],
     });
     setApiError(null);
+    setViewAllUrl('');
   };
 
   return (
@@ -243,7 +336,6 @@ const ChatbotWidget: React.FC = () => {
 
       {isOpen && (
         <div className="w-[350px] h-[500px] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200">
-          {/* Header */}
           <div className="bg-blue-500 text-white p-3 rounded-t-lg flex justify-between items-center">
             <h3 className="font-semibold">NEXUS Assistant</h3>
             <div className="flex gap-2">
@@ -268,21 +360,18 @@ const ChatbotWidget: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat content */}
           <div className="flex-1 p-3 overflow-y-auto">
             {chatSession.messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`mb-3 flex ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`mb-3 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.sender === 'user' ? (
                   <div className="max-w-[80%] p-2 rounded-lg bg-blue-500 text-white">
                     {msg.text}
                   </div>
                 ) : msg.products ? (
-                  <div className="w-full">
+                  <div className="w-full relative">
                     {msg.text && (
                       <div className="flex mb-2">
                         <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
@@ -291,7 +380,33 @@ const ChatbotWidget: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    <ProductList grouplist={msg.products} />
+                    
+                    <div className="relative border rounded-lg p-2 bg-gray-50">
+                      {viewAllUrl && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <a 
+                            href={viewAllUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white rounded-lg shadow-sm hover:bg-blue-50 transition border border-gray-200"
+                          >
+                            Xem toàn bộ
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              className="h-3 w-3 ml-1" 
+                              fill="none" 
+                              viewBox="0 0 24 24" 
+                              stroke="currentColor"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </a>
+                        </div>
+                      )}
+                      <div className="overflow-y-auto max-h-60 pr-2">
+                        <ProductList grouplist={msg.products} />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex">
@@ -303,6 +418,7 @@ const ChatbotWidget: React.FC = () => {
                 )}
               </div>
             ))}
+            
             {isBotTyping && (
               <div className="flex justify-start mb-2">
                 <div className="flex items-center">
@@ -315,6 +431,7 @@ const ChatbotWidget: React.FC = () => {
                 </div>
               </div>
             )}
+            
             {apiError && (
               <div className="text-red-500 text-xs text-center mt-2 p-1 bg-red-50 rounded">
                 {apiError}
@@ -322,7 +439,6 @@ const ChatbotWidget: React.FC = () => {
             )}
           </div>
 
-          {/* Input area */}
           <div className="p-3 border-t border-gray-200">
             <div className="relative flex items-center">
               <input

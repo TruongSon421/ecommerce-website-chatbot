@@ -34,6 +34,7 @@ public class LaptopRequest extends ProductRequest {
     private String refreshRate;// tần số quét
     private List<String> colorGamut; // độ phủ màu
     private List<String> displayTechnology; // công nghệ màn hình
+    private List<String> touchScreen; // cảm ứng màn hình
 
     //Đồ họa và âm thanh
     private String graphicCard; // card màn hình

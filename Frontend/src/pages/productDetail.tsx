@@ -4,12 +4,13 @@ import { useState,useEffect } from "react";
 
 function ProductGH() {
     const {product_id} = useParams();
-    const [products, setProducts] = useState();
+    const {type} = useParams();
+    const [products, setProducts] = useState()
     useEffect(() => {
         const fetchProducts = async () => {
           try {
             // Sử dụng API endpoint dựa trên tham số type
-            const response = await fetch(`http://localhost:8070/api/products/get/PHONE/${product_id}`);
+            const response = await fetch(`http://localhost:8070/api/products/get/${type}/${product_id}`);
             if (!response.ok) {
               throw new Error("Error fetching products");
             }

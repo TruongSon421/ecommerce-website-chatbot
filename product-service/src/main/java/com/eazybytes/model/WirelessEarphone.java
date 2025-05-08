@@ -32,6 +32,6 @@ public class WirelessEarphone extends BaseProduct{
     private String manufactured;
 
     public WirelessEarphone(){
-        setType("WIRELESS_EARPHONE");
+        setType("wireless_earphone");
     }
 }
