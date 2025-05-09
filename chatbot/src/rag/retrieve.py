@@ -9,9 +9,7 @@ load_dotenv()
 openai_key = os.getenv("OPENAI_API_KEY")
 # Cấu hình kết nối
 
-es_client = Elasticsearch("http://localhost:9200")
-qdrant_client = QdrantClient("localhost", port=6333)
-client = OpenAI(api_key=openai_key)  # Thay bằng API key của bạn
+es_client = Elasticsearch("http://elasticsearch:9200")
 
 # Hàm tạo embedding từ OpenAI
 def get_openai_embedding(text):
