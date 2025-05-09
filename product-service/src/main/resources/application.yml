@@ -8,7 +8,7 @@ spring:
       authentication-database: admin
       username: admin
       password: password
-      host: localhost
+      host: mongodb
       port: 27017
   cloud:
     openfeign:
@@ -20,12 +20,12 @@ spring:
   application:
     name: product-service
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:http://config-service:8888"
   
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-service:8761/eureka/
 
 logging:
   level:
@@ -35,4 +35,14 @@ logging:
 
 
 inventory-service:
-  url: http://localhost:8100
+  url: http://inventory-service:8100
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

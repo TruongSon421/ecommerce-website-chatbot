@@ -5,8 +5,7 @@ import re
 
 app = Flask(__name__)
 
-# Kết nối tới Elasticsearch (cấu hình mặc định localhost:9200)
-es = Elasticsearch(["http://localhost:9200"])
+es = Elasticsearch(["http://elasticsearch:9200"])
 
 # Hàm loại bỏ "(Xem chi tiết tại đây)" khỏi chuỗi
 def remove_detail_link(text):

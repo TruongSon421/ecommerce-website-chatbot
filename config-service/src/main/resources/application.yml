@@ -9,7 +9,7 @@ spring:
    server:
     git:
      uri: https://github.com/TienDoan274/KLTN-config
-     default-label: main
+     default-label: dev
      search-paths: config
      clone-on-start: true
 

@@ -5,9 +5,9 @@ spring:
   application:
     name: inventory-service
   config:
-    import: "optional:configserver:http://localhost:8888"
+    import: "optional:configserver:http://config-service:8888"
   datasource:
-    url: jdbc:mysql://localhost:3307/ecommerce_inventory?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://mysql:3306/ecommerce_inventory?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: tiendoan
     password: tiendoan
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -54,7 +54,7 @@ spring:
 
   # Cấu hình Kafka
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:29092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -75,7 +75,9 @@ spring:
         spring.json.value.default.type: "com.eazybytes.dto.ReserveInventoryRequest"
         spring.json.deserialization.fail.on.unknown.properties: false
         spring.json.type.mapping: "reserve-inventory-request:com.eazybytes.dto.ReserveInventoryRequest,confirm-inventory-reservation:com.eazybytes.dto.ConfirmInventoryReservationRequest,cancel-inventory-reservation:com.eazybytes.dto.CancelInventoryReservationRequest"
-
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 10000
+        max.poll.interval.ms: 300000
 kafka:
   topics:
     inventory:
@@ -89,7 +91,7 @@ kafka:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-service:8761/eureka/
 
 logging:
   level:
