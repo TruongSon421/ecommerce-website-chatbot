@@ -42,7 +42,14 @@ const Cart: React.FC = () => {
   const handleUpdateQuantity = async (item: CartItem, newQuantity: number) => {
     if (newQuantity < 1) return;
     try {
-      await updateCartItem(item.productId, newQuantity, item.color);
+      if (isAuthenticated) {
+        // Call API to update server cart
+        await updateCartItem(item.productId, newQuantity, item.color);
+      } else {
+        // Update local cart only
+        const updatedItem: CartItem = { ...item, quantity: newQuantity };
+        useCartStore.getState().addItem(updatedItem);
+      }
       showNotification(`Cập nhật số lượng ${item.productName} thành công!`, 'success');
     } catch (err) {
       console.error('Failed to update quantity:', err);
@@ -52,7 +59,16 @@ const Cart: React.FC = () => {
 
   const handleRemoveItem = async (productId: string, color: string) => {
     try {
-      await removeItemFromCart(productId, color);
+      if (isAuthenticated) {
+        // Call API to remove from server cart
+        await removeItemFromCart(productId, color);
+      } else {
+        // Remove from local cart
+        const updatedItems = cartItems.filter(
+          (item) => !(item.productId === productId && item.color === color)
+        );
+        useCartStore.getState().mergeCart(updatedItems);
+      }
       showNotification('Đã xóa sản phẩm khỏi giỏ hàng!', 'success');
     } catch (err) {
       console.error('Failed to remove item:', err);
@@ -62,7 +78,13 @@ const Cart: React.FC = () => {
 
   const handleClearCart = async () => {
     try {
-      await clearCart();
+      if (isAuthenticated) {
+        // Call API to clear server cart
+        await clearCart();
+      } else {
+        // Clear local cart
+        useCartStore.getState().clearCart();
+      }
       showNotification('Đã xóa toàn bộ giỏ hàng!', 'success');
     } catch (err) {
       console.error('Failed to clear cart:', err);

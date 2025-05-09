@@ -84,7 +84,6 @@ export const mergeCart = async (userId: string) => {
   const localItems = useCartStore.getState().items;
   if (localItems.length > 0) {
     try {
-      // Prepare payload in the required format
       const payload = {
         userId,
         items: localItems.map(item => ({
