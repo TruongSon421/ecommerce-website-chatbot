@@ -12,6 +12,5 @@ public class ProcessPaymentRequest {
     private String transactionId;
     private String userId;
     private Integer totalAmount;
-    private String currency;
     private String paymentMethod;
 }

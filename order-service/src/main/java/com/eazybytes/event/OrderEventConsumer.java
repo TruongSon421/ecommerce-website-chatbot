@@ -11,8 +11,8 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.DeserializationFeature;
+
+
 
 @Component
 @RequiredArgsConstructor
@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 public class OrderEventConsumer {
 
     private final OrderService orderService;
-    private final ObjectMapper objectMapper;
+    
 
     @KafkaListener(topics = "${kafka.topics.checkout.initiated}", groupId = "${spring.kafka.consumer.group-id}")
     public void consumeCheckoutInitiatedEvent(
