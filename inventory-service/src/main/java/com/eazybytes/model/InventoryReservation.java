@@ -28,7 +28,7 @@ public class InventoryReservation {
     @Column(name = "product_id", nullable = false)
     private String productId;
 
-    @Column(name = "color", nullable = false)
+    @Column(name = "color")
     private String color;
 
     @Column(name = "quantity", nullable = false)

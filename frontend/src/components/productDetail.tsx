@@ -54,7 +54,6 @@ interface Variant {
 const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct }) => {
   const navigate = useNavigate();
   const { productId: urlProductId } = useParams<{ productId: string }>();
-  const { user, isAuthenticated } = useAuth();
   const [product, setProduct] = useState<Product>(initialProduct);
   const [selectedColor, setSelectedColor] = useState<string>('default');
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
