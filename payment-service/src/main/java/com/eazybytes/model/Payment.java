@@ -11,8 +11,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments", uniqueConstraints = {
         // Cân nhắc thêm UNIQUE constraint nếu logic nghiệp vụ yêu cầu
-        // @UniqueConstraint(columnNames = {"orderId"}),
-        // @UniqueConstraint(columnNames = {"transactionId"})
+        @UniqueConstraint(columnNames = {"orderId"}),
+        @UniqueConstraint(columnNames = {"transactionId"})
 })
 @Data
 @NoArgsConstructor
@@ -23,6 +23,7 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    
     @Column(nullable = false)
     private Long orderId;
 

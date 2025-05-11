@@ -111,25 +111,29 @@ public class CartServiceImpl implements CartService {
                 log.info("Attempt {} to add item {} for user: {}", attempt + 1, cartItemRequest.getProductId(), userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
+                
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(cartItemRequest.getColor());
 
                 CartItems cartItemToAdd = new CartItems();
                 cartItemToAdd.setProductId(cartItemRequest.getProductId());
                 cartItemToAdd.setQuantity(cartItemRequest.getQuantity());
-                cartItemToAdd.setColor(cartItemRequest.getColor());
+                cartItemToAdd.setColor(normalizedColor);
 
-                InventoryDto inventory = checkInventoryWithCircuitBreaker(cartItemToAdd.getProductId(), cartItemToAdd.getColor());
+                InventoryDto inventory = checkInventoryWithCircuitBreaker(cartItemToAdd.getProductId(), normalizedColor);
                 cartItemToAdd.setProductName(inventory.getProductName());
                 cartItemToAdd.setPrice(inventory.getCurrentPrice());
 
                 Optional<CartItems> existingItemOpt = cart.getItems().stream()
-                        .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) && item.getColor().equals(cartItemToAdd.getColor()))
+                        .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) && 
+                                normalizeColor(item.getColor()).equals(normalizedColor))
                         .findFirst();
 
                 int currentQuantityInCart = existingItemOpt.map(CartItems::getQuantity).orElse(0);
                 int requestedTotalQuantity = currentQuantityInCart + cartItemToAdd.getQuantity();
 
                 if (requestedTotalQuantity > inventory.getQuantity()) {
-                    throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + ", color: " + cartItemToAdd.getColor() +
+                    throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + ", color: " + normalizedColor +
                             ". Available: " + inventory.getQuantity() + ", requested total: " + requestedTotalQuantity);
                 }
 
@@ -169,28 +173,32 @@ public class CartServiceImpl implements CartService {
         int attempt = 0;
         while (true) {
             try {
-                log.info("Attempt {} to update item {} (color: {}) to quantity {} for user: {}", attempt + 1, productId, color, quantity, userId);
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(color);
+                
+                log.info("Attempt {} to update item {} (color: {}) to quantity {} for user: {}", attempt + 1, productId, normalizedColor, quantity, userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
 
-                InventoryDto inventory = checkInventoryWithCircuitBreaker(productId, color);
+                InventoryDto inventory = checkInventoryWithCircuitBreaker(productId, normalizedColor);
                 if (quantity > inventory.getQuantity()) {
-                    throw new InvalidItemException("Insufficient inventory for " + productId + ", color: " + color +
+                    throw new InvalidItemException("Insufficient inventory for " + productId + ", color: " + normalizedColor +
                             ". Available: " + inventory.getQuantity() + ", requested: " + quantity);
                 }
 
                 Optional<CartItems> itemOpt = cart.getItems().stream()
-                        .filter(item -> item.getProductId().equals(productId) && item.getColor().equals(color))
+                        .filter(item -> item.getProductId().equals(productId) && 
+                                normalizeColor(item.getColor()).equals(normalizedColor))
                         .findFirst();
 
                 if (itemOpt.isPresent()) {
                     CartItems item = itemOpt.get();
                     if (quantity <= 0) {
                         cart.getItems().remove(item);
-                        log.info("Item {} (color: {}) removed due to quantity <= 0 for user {}", productId, color, userId);
+                        log.info("Item {} (color: {}) removed due to quantity <= 0 for user {}", productId, normalizedColor, userId);
                     } else {
                         item.setQuantity(quantity);
-                        log.info("Item {} (color: {}) quantity updated to {} for user {}", productId, color, quantity, userId);
+                        log.info("Item {} (color: {}) quantity updated to {} for user {}", productId, normalizedColor, quantity, userId);
                     }
                 }
                 cart.setTotalPrice(calculateTotalPrice(cart));
@@ -223,13 +231,19 @@ public class CartServiceImpl implements CartService {
         int attempt = 0;
         while (true) {
             try {
-                log.info("Attempt {} to remove item {} (color: {}) for user: {}", attempt + 1, productId, color, userId);
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(color);
+                
+                log.info("Attempt {} to remove item {} (color: {}) for user: {}", attempt + 1, productId, normalizedColor, userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
 
-                boolean removed = cart.getItems().removeIf(item -> item.getProductId().equals(productId) && item.getColor().equals(color));
+                boolean removed = cart.getItems().removeIf(item -> 
+                        item.getProductId().equals(productId) && 
+                        normalizeColor(item.getColor()).equals(normalizedColor));
+                        
                 if (!removed) {
-                    log.warn("Attempted to remove item {} (color: {}) not found in cart for user {}", productId, color, userId);
+                    log.warn("Attempted to remove item {} (color: {}) not found in cart for user {}", productId, normalizedColor, userId);
                     cartRedisRepository.save(userId, cart);
                     return toCartResponse(cart);
                 }
@@ -274,12 +288,15 @@ public class CartServiceImpl implements CartService {
         // Process each item in the guest cart
         for (CartItemRequest item : guestCartItems) {
             try {
-                log.debug("Processing guest cart item: {} ({}) x{}", item.getProductId(), item.getColor(), item.getQuantity());
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(item.getColor());
+                
+                log.debug("Processing guest cart item: {} ({}) x{}", item.getProductId(), normalizedColor, item.getQuantity());
                 
                 // Validate item inventory before adding
-                InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), item.getColor());
+                InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), normalizedColor);
                 if (inventory == null || inventory.getQuantity() <= 0) {
-                    log.warn("Skipping item due to no inventory: {} ({})", item.getProductId(), item.getColor());
+                    log.warn("Skipping item due to no inventory: {} ({})", item.getProductId(), normalizedColor);
                     continue;
                 }
                 
@@ -287,21 +304,21 @@ public class CartServiceImpl implements CartService {
                 boolean itemExists = false;
                 for (CartItemResponse existingItem : currentCart.getItems()) {
                     if (existingItem.getProductId().equals(item.getProductId()) && 
-                        existingItem.getColor().equals(item.getColor())) {
+                        normalizeColor(existingItem.getColor()).equals(normalizedColor)) {
                         // Sản phẩm đã tồn tại, cập nhật số lượng
                         int newQuantity = existingItem.getQuantity() + item.getQuantity();
                         
                         // Kiểm tra số lượng tồn kho
                         if (newQuantity > inventory.getQuantity()) {
                             log.warn("Cannot update item quantity due to insufficient inventory: {} ({}), requested: {}, available: {}", 
-                                    item.getProductId(), item.getColor(), newQuantity, inventory.getQuantity());
+                                    item.getProductId(), normalizedColor, newQuantity, inventory.getQuantity());
                             continue;
                         }
                         
                         // Cập nhật số lượng cho sản phẩm hiện tại
-                        result = updateCartItem(userId,  item.getProductId(), newQuantity, item.getColor()); // Giả sử có phương thức updateItemInCart
+                        result = updateCartItem(userId, item.getProductId(), newQuantity, normalizedColor);
                         log.debug("Updated item quantity in cart: {} ({}) x{}", 
-                                item.getProductId(), item.getColor(), newQuantity);
+                                item.getProductId(), normalizedColor, newQuantity);
                         itemExists = true;
                         break;
                     }
@@ -311,14 +328,21 @@ public class CartServiceImpl implements CartService {
                 if (!itemExists) {
                     if (item.getQuantity() > inventory.getQuantity()) {
                         log.warn("Skipping item due to insufficient inventory: {} ({}), requested: {}, available: {}", 
-                                item.getProductId(), item.getColor(), item.getQuantity(), inventory.getQuantity());
+                                item.getProductId(), normalizedColor, item.getQuantity(), inventory.getQuantity());
                         continue;
                     }
                     
+                    // Tạo một CartItemRequest mới với color đã chuẩn hóa
+                    CartItemRequest normalizedItem = new CartItemRequest(
+                            item.getProductId(),
+                            item.getQuantity(),
+                            normalizedColor
+                    );
+                    
                     // Thêm sản phẩm mới vào giỏ hàng
-                    result = addItemToCart(userId, item);
+                    result = addItemToCart(userId, normalizedItem);
                     log.debug("Successfully added item to cart: {} ({}) x{}", 
-                            item.getProductId(), item.getColor(), item.getQuantity());
+                            item.getProductId(), normalizedColor, item.getQuantity());
                 }
             } catch (InvalidItemException e) {
                 log.warn("Skipping invalid item during merge: {} ({}). Reason: {}", 
@@ -332,7 +356,6 @@ public class CartServiceImpl implements CartService {
         // Return the final cart state
         return result != null ? result : getCartByUserId(userId);
     }
-
 
     @Override
     @Transactional
@@ -383,9 +406,15 @@ public class CartServiceImpl implements CartService {
 
         List<CartItems> itemsToCheckout = cart.getItems();
         if (selectedItems != null && !selectedItems.isEmpty()) {
+            // Chuẩn hóa colors trong selectedItems trước khi so sánh
+            List<CartItemIdentifier> normalizedSelectedItems = selectedItems.stream()
+                    .map(item -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
+                    .collect(Collectors.toList());
+                    
             itemsToCheckout = cart.getItems().stream()
-                    .filter(item -> selectedItems.stream()
-                            .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && sel.getColor().equals(item.getColor())))
+                    .filter(item -> normalizedSelectedItems.stream()
+                            .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && 
+                                    normalizeColor(item.getColor()).equals(sel.getColor())))
                     .collect(Collectors.toList());
             if (itemsToCheckout.isEmpty()) {
                 throw new InvalidItemException("No valid items selected for checkout");
@@ -408,18 +437,28 @@ public class CartServiceImpl implements CartService {
 
         List<CartItemResponse> cartItems = itemsToCheckout.stream()
                 .map(item -> {
-                    InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), item.getColor());
+                    // Chuẩn hóa color
+                    String normalizedColor = normalizeColor(item.getColor());
+                    InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), normalizedColor);
                     boolean isAvailable = inventory != null && item.getQuantity() <= inventory.getQuantity();
                     return new CartItemResponse(
                             item.getProductId(),
                             item.getProductName(),
                             item.getPrice(),
                             item.getQuantity(),
-                            item.getColor(),
+                            normalizedColor,
                             isAvailable
                     );
                 })
                 .collect(Collectors.toList());
+
+        // Chuẩn hóa selectedItems cho CheckoutInitiatedEvent
+        List<CartItemIdentifier> normalizedSelectedItems = null;
+        if (selectedItems != null) {
+            normalizedSelectedItems = selectedItems.stream()
+                    .map(item -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
+                    .collect(Collectors.toList());
+        }
 
         CheckoutInitiatedEvent event = CheckoutInitiatedEvent.builder()
                 .transactionId(transactionId)
@@ -427,7 +466,7 @@ public class CartServiceImpl implements CartService {
                 .cartItems(cartItems)
                 .shippingAddress(checkoutRequest.getShippingAddress())
                 .paymentMethod(checkoutRequest.getPaymentMethod())
-                .selectedItems(selectedItems)
+                .selectedItems(normalizedSelectedItems)
                 .build();
 
         cartEventProducer.sendCheckoutInitiatedEvent(event);
@@ -453,8 +492,14 @@ public class CartServiceImpl implements CartService {
             cart.getItems().clear();
             log.info("Cleared all items from cart for user: {}", event.getUserId());
         } else {
-            cart.getItems().removeIf(item -> selectedItems.stream()
-                    .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && sel.getColor().equals(item.getColor())));
+            // Chuẩn hóa selectedItems trước khi so sánh để xóa
+            List<CartItemIdentifier> normalizedSelectedItems = selectedItems.stream()
+                    .map(sel -> new CartItemIdentifier(sel.getProductId(), normalizeColor(sel.getColor())))
+                    .collect(Collectors.toList());
+                    
+            cart.getItems().removeIf(item -> normalizedSelectedItems.stream()
+                    .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && 
+                            normalizeColor(item.getColor()).equals(sel.getColor())));
             log.info("Removed selected items from cart for user: {}", event.getUserId());
         }
 
@@ -518,19 +563,22 @@ public class CartServiceImpl implements CartService {
     }
 
     private InventoryDto checkInventoryWithCircuitBreaker(String productId, String color) throws InvalidItemException {
+        // Xử lý khi color là null hoặc rỗng
+        final String colorParam = (color == null || color.trim().isEmpty()) ? "default" : color;
+        
         InventoryDto inventory = cbFactory.create("inventoryService").run(
                 () -> {
-                    log.debug("Calling inventory service for product: {}, color: {}", productId, color);
-                    return inventoryClient.getProductInventory(productId, color).getBody();
+                    log.debug("Calling inventory service for product: {}, color: {}", productId, colorParam);
+                    return inventoryClient.getProductInventory(productId, colorParam).getBody();
                 },
                 throwable -> {
-                    log.error("CircuitBreaker: Failed to fetch inventory for product: {}, color: {}", productId, color, throwable);
-                    throw new InvalidItemException("Unable to verify inventory (service unavailable) for product: " + productId + ", color: " + color);
+                    log.error("CircuitBreaker: Failed to fetch inventory for product: {}, color: {}", productId, colorParam, throwable);
+                    throw new InvalidItemException("Unable to verify inventory (service unavailable) for product: " + productId + ", color: " + colorParam);
                 }
         );
         if (inventory == null) {
-            log.error("Inventory service returned null for product: {}, color: {}", productId, color);
-            throw new InvalidItemException("Inventory information not found for product: " + productId + ", color: " + color);
+            log.error("Inventory service returned null for product: {}, color: {}", productId, colorParam);
+            throw new InvalidItemException("Inventory information not found for product: " + productId + ", color: " + colorParam);
         }
         return inventory;
     }
@@ -568,15 +616,17 @@ public class CartServiceImpl implements CartService {
     private CartResponse toCartResponse(Cart cart) {
         List<CartItemResponse> itemResponses = cart.getItems().stream()
                 .map(item -> {
+                    // Chuẩn hóa color
+                    String normalizedColor = normalizeColor(item.getColor());
                     InventoryDto inventory = null;
                     boolean checkInventory = true;
 
                     if (checkInventory) {
                         try {
-                            inventory = checkInventoryWithCircuitBreaker(item.getProductId(), item.getColor());
+                            inventory = checkInventoryWithCircuitBreaker(item.getProductId(), normalizedColor);
                         } catch (Exception e) {
                             log.warn("Failed to get inventory during response mapping for product: {}, color: {}. Marking as unavailable.",
-                                    item.getProductId(), item.getColor(), e);
+                                    item.getProductId(), normalizedColor, e);
                             inventory = null;
                         }
                     }
@@ -597,7 +647,7 @@ public class CartServiceImpl implements CartService {
                             productName,
                             price,
                             item.getQuantity(),
-                            item.getColor(),
+                            normalizedColor,
                             isAvailable
                     );
                 })
@@ -606,5 +656,10 @@ public class CartServiceImpl implements CartService {
         int totalPrice = calculateTotalPrice(cart);
 
         return new CartResponse(cart.getUserId(), totalPrice, itemResponses);
+    }
+
+    // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng
+    private String normalizeColor(String color) {
+        return (color == null || color.trim().isEmpty()) ? "default" : color;
     }
 }

@@ -158,6 +158,18 @@ public class InventoryConsumerEvent {
         try {
             logger.info("Processing reserve inventory request for order: {}", request.getOrderId());
             
+            // Log các item để debug
+            if (request.getItems() != null) {
+                logger.debug("Request items: {}", request.getItems().size());
+                for (int i = 0; i < request.getItems().size(); i++) {
+                    logger.debug("Item {}: productId={}, color='{}', quantity={}", 
+                            i+1, 
+                            request.getItems().get(i).getProductId(),
+                            request.getItems().get(i).getColor(),
+                            request.getItems().get(i).getQuantity());
+                }
+            }
+            
             // Đảm bảo có expiresAt
             if (request.getReservationExpiresAt() == null) {
                 request.setReservationExpiresAt(LocalDateTime.now().plusMinutes(10));
