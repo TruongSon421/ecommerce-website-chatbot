@@ -1,17 +1,12 @@
 export interface CartItem {
-    productId: string;
-    productName: string;
-    price: number;
-    quantity: number;
-    color: string;
-    isAvailable?: boolean;
-  }
-  
-  export interface CartState {
-    items: CartItem[];
-    totalPrice: number;
-    addItem: (item: CartItem) => void;
-    removeItem: (productId: string, color: string) => void;
-    clearCart: () => void;
-    mergeCart: (serverItems: CartItem[]) => void;
-  }
+  productId: string;
+  quantity: number;
+  color: string;
+  productName?: string; // Optional for display
+  price?: number; // Optional for display
+  type?: string; // Added to store product type (e.g., "PHONE", "LAPTOP")
+}
+
+export interface CartResponse {
+  items: CartItem[];
+}

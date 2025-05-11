@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../../store/cartStore';
+import { showNotification } from '../common/Notification';
 
-// Component Navbar
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Get unique item count (distinct by productId and color)
   const uniqueItemCount = useCartStore((state) => {
     const uniqueItems = new Set(
@@ -14,11 +17,32 @@ const Navbar: React.FC = () => {
     return uniqueItems.size;
   });
 
+  // Toggle dropdown on click
+  const toggleDropdown = () => {
+    setIsDropdownOpen((prev) => !prev);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logout();
+      showNotification('Đăng xuất thành công!', 'success');
+      setIsDropdownOpen(false);
     } catch (error) {
       console.error('Logout failed:', error);
+      showNotification('Lỗi khi đăng xuất', 'error');
     }
   };
 
@@ -44,14 +68,33 @@ const Navbar: React.FC = () => {
             )}
           </Link>
           {isAuthenticated ? (
-            <>
-              <Link to="/profile" className="hover:text-gray-300">
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={toggleDropdown}
+                className="hover:text-gray-300 focus:outline-none"
+                aria-expanded={isDropdownOpen}
+                aria-haspopup="true"
+              >
                 Tài khoản
-              </Link>
-              <button onClick={handleLogout} className="hover:text-gray-300">
-                Đăng xuất
               </button>
-            </>
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-gray-800 text-white rounded-md shadow-lg z-10">
+                  <Link
+                    to="/profile"
+                    className="block px-4 py-2 hover:bg-gray-700"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    Thông tin
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 hover:bg-gray-700"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Link to="/login" className="hover:text-gray-300">

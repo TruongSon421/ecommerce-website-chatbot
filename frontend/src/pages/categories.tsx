@@ -39,7 +39,7 @@ function PageCategory() {
     ];
 
     if (type) {
-      queryParams.push(`type=${type.toUpperCase()}`);
+      queryParams.push(`type=${type}`);
     }
 
     // Process filters

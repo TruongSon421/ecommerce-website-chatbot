@@ -27,7 +27,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const history = useNavigate(); // Nếu dùng React Router
 
-  const currentFilterData = filterData[type.toUpperCase()] || {};
+  const currentFilterData = filterData[type] || {};
 
   // Calculate number of active filters
   const getSelectedFiltersCount = () => {

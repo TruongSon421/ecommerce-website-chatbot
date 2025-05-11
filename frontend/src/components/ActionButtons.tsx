@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService';
 import { CartItem } from '../types/cart';
 
@@ -9,6 +9,7 @@ interface ActionButtonsProps {
     productName: string;
     price: number;
     color: string;
+    type: string; // Added type
   };
 }
 
@@ -22,7 +23,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
       price: product.price,
       quantity: 1,
       color: product.color,
-      isAvailable: true, // Assume item is available; adjust if backend provides this info
+      type: product.type
     };
 
     try {

@@ -25,7 +25,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const sortMenuRef = useRef<HTMLDivElement>(null);
 
-  const currentFilterData = filterData[type.toUpperCase()] || {};
+  const currentFilterData = filterData[type] || {};
 
   // Tính toán số lượng filter đã chọn
   const getSelectedFiltersCount = () => {

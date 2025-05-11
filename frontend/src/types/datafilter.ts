@@ -29,7 +29,7 @@ export interface AllFilterData {
 
 // Export price ranges as a constant
 export const PRICE_RANGES = {
-  PHONE: [
+  phone: [
     { min: 0, max: 2000000, label: 'Dưới 2 triệu' },
     { min: 2000000, max: 4000000, label: 'Từ 2 - 4 triệu' },
     { min: 4000000, max: 7000000, label: 'Từ 4 - 7 triệu' },
@@ -37,7 +37,7 @@ export const PRICE_RANGES = {
     { min: 13000000, max: 20000000, label: 'Từ 13 - 20 triệu' },
     { min: 20000000, max: null, label: 'Trên 20 triệu' }
   ],
-  LAPTOP: [
+  laptop: [
     { min: 0, max: 10000000, label: 'Dưới 10 triệu' },
     { min: 10000000, max: 15000000, label: 'Từ 10 - 15 triệu' },
     { min: 15000000, max: 20000000, label: 'Từ 15 - 20 triệu' },
@@ -78,7 +78,7 @@ export const phoneFilterData: FilterData = {
       key: 'price',
       label: 'Giá',
       multiSelect: false,
-      options: PRICE_RANGES.PHONE.map(range => ({
+      options: PRICE_RANGES.phone.map(range => ({
         label: range.label,
         value: `${range.min}-${range.max || ''}`
       }))
@@ -118,8 +118,8 @@ export const getPriceRange = (type: string, value: string): PriceRange => {
 
 // Main export
 export const filterData: AllFilterData = {
-  PHONE: phoneFilterData,
-  LAPTOP: {
+  phone: phoneFilterData,
+  laptop: {
     brands: [
       {
         key: 'brand',
@@ -142,7 +142,7 @@ export const filterData: AllFilterData = {
         key: 'price',
         label: 'Giá',
         multiSelect: false,
-        options: PRICE_RANGES.LAPTOP.map(range => ({
+        options: PRICE_RANGES.laptop.map(range => ({
           label: range.label,
           value: `${range.min}-${range.max || ''}`
         }))

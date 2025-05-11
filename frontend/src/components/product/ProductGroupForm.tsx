@@ -28,7 +28,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
   const [groupData, setGroupData] = useState({
     prefixName: "",
     groupImage: "",
-    type: "PHONE" as "PHONE" | "LAPTOP" | "ACCESSORY",
+    type: "phone" as "phone" | "LAPTOP" | "ACCESSORY",
   });
 
   const [productForms, setProductForms] = useState([
@@ -168,7 +168,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
         onSuccess(groupId);
 
         // Reset form
-        setGroupData({ prefixName: "", groupImage: "", type: "PHONE" });
+        setGroupData({ prefixName: "", groupImage: "", type: "phone" });
         setProductForms([
           {
             variant: "",
@@ -246,9 +246,8 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
-                <option value="PHONE">Điện thoại</option>
-                <option value="LAPTOP">Laptop</option>
-                <option value="ACCESSORY">Phụ kiện</option>
+                <option value="phone">Điện thoại</option>
+                <option value="laptop">Laptop</option>
               </select>
             </div>
           </div>

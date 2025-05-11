@@ -9,7 +9,6 @@ public class CartItemRequest {
     private final String productId;
     private final Integer quantity;
     private final String color;
-
     // Constructor
     public CartItemRequest() {
         this.productId = null;
