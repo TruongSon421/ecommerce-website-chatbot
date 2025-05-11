@@ -59,6 +59,7 @@ public class InventoryController {
                 .productId(inventory.getProductId())
                 .color(inventory.getColor())
                 .quantity(inventory.getQuantity())
+                .productName(inventory.getProductName())
                 .originalPrice(inventory.getOriginalPrice())
                 .currentPrice(inventory.getCurrentPrice())
                 .build();

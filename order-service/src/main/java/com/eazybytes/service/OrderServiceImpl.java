@@ -43,7 +43,7 @@ public class OrderServiceImpl implements OrderService {
             List<OrderItem> items = event.getCartItems().stream()
                     .map(item -> new OrderItem(
                             item.getProductId(),
-                            item.getColor(),
+                            normalizeColor(item.getColor()),
                             item.getProductName(),
                             item.getQuantity(),
                             (int)item.getPrice()))
@@ -54,11 +54,26 @@ public class OrderServiceImpl implements OrderService {
             Order savedOrder = orderRepository.save(order);
             log.info("Order created with ID: {} for user: {}", savedOrder.getId(), event.getUserId());
 
+            // Chuẩn hóa color trước khi gửi yêu cầu giữ sản phẩm
+            List<CartItemResponse> normalizedCartItems = event.getCartItems().stream()
+                    .map(item -> {
+                        CartItemResponse normalizedItem = new CartItemResponse(
+                                item.getProductId(),
+                                item.getProductName(),
+                                item.getPrice(),
+                                item.getQuantity(),
+                                normalizeColor(item.getColor()),
+                                item.isAvailable()
+                        );
+                        return normalizedItem;
+                    })
+                    .collect(Collectors.toList());
+
             // Gửi yêu cầu giữ sản phẩm
             ReserveInventoryRequest reserveRequest = ReserveInventoryRequest.builder()
                     .transactionId(event.getTransactionId())
                     .orderId(savedOrder.getId().toString())
-                    .items(event.getCartItems())
+                    .items(normalizedCartItems)
                     .build();
             orderEventProducer.sendReserveInventoryRequest(reserveRequest);
             log.info("ReserveInventoryRequest sent for orderId: {}", savedOrder.getId());
@@ -70,7 +85,7 @@ public class OrderServiceImpl implements OrderService {
                     .userId(event.getUserId())
                     .orderId(null)
                     .productIdentifiers(event.getCartItems().stream()
-                            .map((CartItemResponse item) -> new CartItemIdentifier(item.getProductId(), item.getColor()))
+                            .map((CartItemResponse item) -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
                             .collect(Collectors.toList()))
                     .reason(e.getMessage())
                     .build();
@@ -92,7 +107,6 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(event.getOrderId())
                 .totalAmount(order.getTotalAmount())
                 .paymentMethod(order.getPaymentMethod().name())
-                .items(event.getItems())
                 .build();
         orderEventProducer.sendProcessPaymentRequest(paymentRequest);
         log.info("ProcessPaymentRequest sent for orderId: {}", event.getOrderId());
@@ -111,7 +125,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(order.getUserId())
                 .orderId(event.getOrderId())
                 .productIdentifiers(event.getItems().stream()
-                        .map((CartItemResponse item) -> new CartItemIdentifier(item.getProductId(), item.getColor()))
+                        .map((CartItemResponse item) -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
                         .collect(Collectors.toList()))
                 .reason(event.getReason())
                 .build();
@@ -137,7 +151,7 @@ public class OrderServiceImpl implements OrderService {
                             item.getProductName(),
                             item.getPrice(),
                             item.getQuantity(),
-                            item.getColor(),
+                            normalizeColor(item.getColor()),
                             true))
                         .collect(Collectors.toList()))
                 .build();
@@ -173,7 +187,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(order.getUserId())
                 .orderId(event.getOrderId())
                 .productIdentifiers(order.getItems().stream()
-                        .map((OrderItem item) -> new CartItemIdentifier(item.getProductId(), item.getColor()))
+                        .map((OrderItem item) -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
                         .collect(Collectors.toList()))
                 .reason(event.getReason())
                 .build();
@@ -293,6 +307,11 @@ public class OrderServiceImpl implements OrderService {
                     .build();
             orderEventProducer.sendCheckoutFailedEvent(failedEvent);
         }
+    }
+
+    // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng
+    private String normalizeColor(String color) {
+        return (color == null || color.trim().isEmpty()) ? "default" : color;
     }
 
     private Integer calculateTotalPrice(List<OrderItem> items) {
