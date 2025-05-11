@@ -1,8 +1,8 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { login, register, logout } from '../../store/slices/authSlices'; 
+import { login, register, logout } from '../../store/slices/authSlices';
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 interface UseAuth {
   user: User | null;
@@ -21,7 +21,41 @@ export const useAuth = (): UseAuth => {
   const { user, accessToken, loading, error } = useSelector((state: RootState) => state.auth);
 
   const isAuthenticated = !!user && !!accessToken;
-  const isAdmin = user && user.role === 'admin' || false;
+  const isAdmin = user?.roles?.includes('ADMIN') || false;
+
+  // Initialize auth state from localStorage
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    const storedAccessToken = localStorage.getItem('accessToken');
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+
+    if (storedUser && storedAccessToken) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser && typeof parsedUser === 'object') {
+          dispatch(
+            login.fulfilled(
+              {
+                user: parsedUser,
+                accessToken: storedAccessToken,
+                refreshToken: storedRefreshToken || null,
+              },
+              'auth/login',
+              { username: '', password: '' }
+            )
+          );
+        } else {
+          throw new Error('Invalid user data');
+        }
+      } catch (err) {
+        console.error('Failed to parse user from localStorage:', err);
+        // Clear invalid localStorage to prevent repeated errors
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+  }, [dispatch]);
 
   const loginHandler = useCallback(async (credentials: LoginCredentials) => {
     try {

@@ -1,12 +1,13 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { CartItem } from '../types/cart';
 
 interface CartState {
   items: CartItem[];
-  totalPrice: number;
   addItem: (item: CartItem) => void;
-  mergeCart: (serverItems: CartItem[]) => void;
+  removeItem: (productId: string, color: string) => void;
+  updateQuantity: (productId: string, color: string, quantity: number) => void;
+  setItems: (items: CartItem[]) => void;
   clearCart: () => void;
 }
 
@@ -14,50 +15,47 @@ export const useCartStore = create<CartState>()(
   persist(
     (set) => ({
       items: [],
-      totalPrice: 0,
+
       addItem: (item) =>
         set((state) => {
           const existingItem = state.items.find(
             (i) => i.productId === item.productId && i.color === item.color
           );
-          let newItems;
           if (existingItem) {
-            newItems = state.items.map((i) =>
-              i.productId === item.productId && i.color === item.color
-                ? { ...i, quantity: item.quantity }
-                : i
-            );
-          } else {
-            newItems = [...state.items, item];
+            return {
+              items: state.items.map((i) =>
+                i.productId === item.productId && i.color === item.color
+                  ? { ...i, quantity: i.quantity + item.quantity }
+                  : i
+              ),
+            };
           }
-          const newTotalPrice = newItems.reduce(
-            (total, i) => total + i.price * i.quantity,
-            0
-          );
-          return { items: newItems, totalPrice: newTotalPrice };
+          return { items: [...state.items, item] };
         }),
-      mergeCart: (serverItems) =>
-        set((state) => {
-          const mergedItems = [...state.items];
-          serverItems.forEach((serverItem) => {
-            const existingItem = mergedItems.find(
-              (i) => i.productId === serverItem.productId && i.color === serverItem.color
-            );
-            if (existingItem) {
-              existingItem.quantity = serverItem.quantity;
-              existingItem.isAvailable = serverItem.isAvailable;
-            } else {
-              mergedItems.push(serverItem);
-            }
-          });
-          const newTotalPrice = mergedItems.reduce(
-            (total, i) => total + i.price * i.quantity,
-            0
-          );
-          return { items: mergedItems, totalPrice: newTotalPrice };
-        }),
-      clearCart: () => set({ items: [], totalPrice: 0 }),
+
+      removeItem: (productId, color) =>
+        set((state) => ({
+          items: state.items.filter(
+            (item) => !(item.productId === productId && item.color === color)
+          ),
+        })),
+
+      updateQuantity: (productId, color, quantity) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.productId === productId && item.color === color
+              ? { ...item, quantity }
+              : item
+          ),
+        })),
+
+      setItems: (items) => set({ items }),
+
+      clearCart: () => set({ items: [] }),
     }),
-    { name: 'cart-storage' }
+    {
+      name: 'cart-storage',
+      storage: createJSONStorage(() => localStorage),
+    }
   )
 );

@@ -4,8 +4,10 @@ import BannerSection from './layout/bannerSection';
 import ProductReview from './productReview';
 import ProductSpecifications from './productSpecifications';
 import ENV from '../config/env';
-import { useAuth } from '../components/hooks/useAuth';
+import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService';
+import { useCartStore } from '../store/cartStore';
+import { showNotification } from './common/Notification';
 import { CartItem } from '../types/cart';
 
 // Định nghĩa interface cho props của sản phẩm
@@ -52,6 +54,7 @@ interface Variant {
 const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct }) => {
   const navigate = useNavigate();
   const { productId: urlProductId } = useParams<{ productId: string }>();
+  const { user, isAuthenticated } = useAuth();
   const [product, setProduct] = useState<Product>(initialProduct);
   const [selectedColor, setSelectedColor] = useState<string>('default');
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
@@ -68,9 +71,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
     setIsProductLoading(true);
     setProductError(null);
 
-    // Validate product.type
-    const productType = product.type ? product.type.toUpperCase() : 'PRODUCT';
-    const apiUrl = `${ENV.API_URL}/products/get/${productType}/${productId}`;
+    const apiUrl = `${ENV.API_URL}/products/get/${product.type}/${productId}`;
     console.log('Fetching product from:', apiUrl);
 
     try {
@@ -83,7 +84,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       const data: Product = await response.json();
       console.log('Fetched product:', data);
       setProduct(data);
-      setRetryCount(0); // Reset retry count on success
+      setRetryCount(0);
       if (data.colors && data.colors.length > 0 && data.colors[0] != null) {
         setSelectedColor(data.colors[0]);
       } else {
@@ -94,7 +95,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       if (retryCount < maxRetries && isRetry) {
         setTimeout(() => {
           setRetryCount((prev) => prev + 1);
-          fetchProduct(productId, true); // Retry after 1 second
+          fetchProduct(productId, true);
         }, 1000);
       } else {
         setProductError(
@@ -179,7 +180,6 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       const type = product.type ? product.type.toLowerCase() : 'product';
       console.log('Navigating to:', `/${type}/${newProductId}`);
       navigate(`/${type}/${newProductId}`, { replace: true });
-      // Fetch new product data
       fetchProduct(newProductId, true);
     }
   };
@@ -220,12 +220,10 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
     fetchProduct(product.productId, true);
   };
 
-  // Lấy index của selectedColor trong product.colors
   const colorIndex = product.colors && product.colors.length > 0
     ? product.colors.indexOf(selectedColor)
     : -1;
 
-  // Lấy giá dựa trên colorIndex
   const currentPrice = colorIndex >= 0 && product.current_prices[colorIndex]
     ? product.current_prices[colorIndex]
     : product.current_prices[0] || 0;
@@ -234,7 +232,6 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
     ? product.original_prices[colorIndex]
     : product.original_prices[0] || 0;
 
-  // Thêm kiểm tra null cho images và xử lý selected color
   const imageSrc = product.images
     ? product.images[selectedColor] || product.images['default'] || []
     : [];
@@ -295,6 +292,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
                   productName: product.productName,
                   price: currentPrice,
                   color: selectedColor,
+                  type: product.type, // Pass type
                 }}
               />
             </div>
@@ -412,13 +410,13 @@ const ProductOptions: React.FC<ProductOptionsProps> = ({
 // Helper function to convert color names to CSS color codes
 function getColorCode(colorName: string | null | undefined): string {
   if (!colorName) {
-    return '#808080'; // Default gray for null or undefined
+    return '#808080';
   }
   const colorMap: Record<string, string> = {
-    'titan tự nhiên': '#D2B48C', // Natural Titanium
-    'titan đen': '#1C2526', // Black Titanium
-    'titan sa mạc': '#C19A6B', // Desert Titanium
-    'titan trắng': '#F5F6F5', // White Titanium
+    'titan tự nhiên': '#D2B48C',
+    'titan đen': '#1C2526',
+    'titan sa mạc': '#C19A6B',
+    'titan trắng': '#F5F6F5',
     'đen': '#000000',
     'trắng': '#FFFFFF',
     'đỏ': '#FF0000',
@@ -433,7 +431,7 @@ function getColorCode(colorName: string | null | undefined): string {
     'vàng': '#FFD700',
   };
 
-  return colorMap[colorName.toLowerCase()] || '#808080'; // Default to gray
+  return colorMap[colorName.toLowerCase()] || '#808080';
 }
 
 // Component hiển thị bộ sưu tập hình ảnh
@@ -444,7 +442,6 @@ interface ProductImageGalleryProps {
 const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({ thumbnails }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Reset selectedIndex when thumbnails change
   useEffect(() => {
     setSelectedIndex(0);
   }, [thumbnails]);
@@ -534,29 +531,35 @@ interface ActionButtonsProps {
     productId: string;
     productName: string;
     price: number;
-    color: string;
+    color: string | null; 
+    type: string; // Added type
   };
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   const handleAddToCart = async () => {
+    console.log(product.color)
+
     const cartItem: CartItem = {
       productId: product.productId,
-      productName: product.productName,
-      price: product.price,
       quantity: 1,
-      color: product.color,
-      isAvailable: true, // Assume available; backend will validate
+      color: product.color === 'default' ? null : product.color,
+      type: product.type, // Store type
     };
 
     try {
-      await addItemToCart(cartItem, isAuthenticated);
-      alert('Đã thêm vào giỏ hàng!');
-    } catch (error) {
+      if (isAuthenticated && user?.id) {
+        await addItemToCart(user.id, cartItem);
+        showNotification('Đã thêm vào giỏ hàng!', 'success');
+      } else {
+        useCartStore.getState().addItem(cartItem);
+        showNotification('Đã thêm vào giỏ hàng (khách)!', 'success');
+      }
+    } catch (error: any) {
       console.error('Error adding to cart:', error);
-      alert('Lỗi khi thêm vào giỏ hàng');
+      showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');
     }
   };
 

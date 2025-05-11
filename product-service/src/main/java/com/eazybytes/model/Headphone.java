@@ -30,6 +30,6 @@ public class Headphone extends BaseProduct{
     private String manufactured;
 
     public Headphone(){
-        setType("HEADPHONE");
+        setType("headphone");
     }
 }

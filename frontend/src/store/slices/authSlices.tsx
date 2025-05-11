@@ -1,73 +1,57 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { login, logout, register } from '../../services/authService';
-import { User, LoginCredentials, RegisterCredentials } from '../../types/auth';
+import { login as loginService, register as registerService, logout as logoutService } from '../../services/authService';
+import { AuthState, LoginCredentials, RegisterCredentials } from '../../types/auth';
 
-// Define the shape of the auth state
-interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  loading: boolean;
-  error: string | null;
-}
-
-// Initial state
 const initialState: AuthState = {
   user: null,
   accessToken: null,
+  refreshToken: null,
   loading: false,
   error: null,
+  isAuthenticated: false,
+  isAdmin: false,
 };
 
-// Async thunk for login
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const { user, accessToken } = await login(credentials);
-      return { user, accessToken };
+      const { user, accessToken, refreshToken } = await loginService(credentials);
+      return { user, accessToken, refreshToken };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Async thunk for register
 export const register = createAsyncThunk(
   'auth/register',
   async (credentials: RegisterCredentials, { rejectWithValue }) => {
     try {
-      const { user, accessToken } = await register(credentials);
-      return { user, accessToken };
+      const { user, accessToken, refreshToken } = await registerService(credentials);
+      return { user, accessToken, refreshToken };
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Register failed');
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Async thunk for logout
 export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await logout();
-      return null;
+      await logoutService();
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Logout failed');
+      return rejectWithValue(error.message);
     }
   }
 );
 
-// Auth slice
 const authSlice = createSlice({
   name: 'auth',
   initialState,
-  reducers: {
-    clearError: (state) => {
-      state.error = null;
-    },
-  },
+  reducers: {},
   extraReducers: (builder) => {
-    // Login
     builder
       .addCase(login.pending, (state) => {
         state.loading = true;
@@ -77,13 +61,14 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = !!action.payload.user && !!action.payload.accessToken;
+        state.isAdmin = action.payload.user?.roles?.includes('ROLE_ADMIN') || false;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
-    // Register
-    builder
+      })
       .addCase(register.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -92,21 +77,22 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = !!action.payload.user && !!action.payload.accessToken;
+        state.isAdmin = action.payload.user?.roles?.includes('ROLE_ADMIN') || false;
       })
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      });
-    // Logout
-    builder
-      .addCase(logout.pending, (state) => {
-        state.loading = true;
-        state.error = null;
       })
       .addCase(logout.fulfilled, (state) => {
-        state.loading = false;
         state.user = null;
         state.accessToken = null;
+        state.refreshToken = null;
+        state.isAuthenticated = false;
+        state.isAdmin = false;
+        state.loading = false;
+        state.error = null;
       })
       .addCase(logout.rejected, (state, action) => {
         state.loading = false;
@@ -115,5 +101,4 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError } = authSlice.actions;
 export default authSlice.reducer;

@@ -274,6 +274,33 @@ services:
       retries: 10
       start_period: 120s  # Increased for stability
 
+  cart-service:
+    image: tiendn274/kltn-cart-service:latest
+    container_name: cart-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_cart?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s  # Increased for stability
+
+
+
   api-gateway:
     image: tiendn274/kltn-api-gateway:latest
     container_name: api-gateway
@@ -289,6 +316,8 @@ services:
       product-service:
         condition: service_healthy
       inventory-service:
+        condition: service_healthy
+      cart-service:
         condition: service_healthy
       redis:
         condition: service_healthy

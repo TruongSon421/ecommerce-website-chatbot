@@ -24,6 +24,6 @@ public class BackupCharger extends BaseProduct {
     private String manufactured; // san xuat tai
 
     public BackupCharger() {
-        setType("BACKUP_CHARGER");
+        setType("backup_charger");
     }
 }

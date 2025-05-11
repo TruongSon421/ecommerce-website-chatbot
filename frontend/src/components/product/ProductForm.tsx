@@ -15,7 +15,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 interface ProductFormProps {
   index: number;
   prefixName: string;
-  type: "PHONE" | "LAPTOP" | "ACCESSORY";
+  type: "phone" | "laptop" ;
   initialData: {
     variant: string;
     description: string;
@@ -64,7 +64,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
   ) => {
     const value = e.target.value;
     setFormData((prev) => {
-      if (type === "PHONE") {
+      if (type === "phone") {
         const newConfig = { ...prev.config } as PhoneConfig;
         const arrayFields = [
           "rearVideoRecording",
@@ -113,7 +113,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
     arrayValue: string[]
   ) => {
     setFormData((prev) => {
-      if (type === "PHONE") {
+      if (type === "phone") {
         const newConfig = { ...prev.config } as PhoneConfig;
         const arrayFields = [
           "rearVideoRecording",
@@ -445,7 +445,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
             <h6 className="text-md font-medium text-gray-700 mb-2">
               Cấu hình chi tiết
             </h6>
-            {type === "PHONE" && (
+            {type === "phone" && (
               <PhoneConfigForm
                 config={formData.config as PhoneConfig}
                 onChange={handleStringChange}
