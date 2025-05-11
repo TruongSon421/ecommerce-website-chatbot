@@ -19,5 +19,4 @@ public class ProcessPaymentRequest {
     private String orderId;
     private Integer totalAmount;
     private String paymentMethod;
-    private List<CartItemResponse> items;
 }

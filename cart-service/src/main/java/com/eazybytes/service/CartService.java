@@ -15,6 +15,9 @@ public interface CartService {
     CartResponse removeItemFromCart(String userId, String productId, String color) throws CartNotFoundException;
     void clearCart(String userId) throws CartNotFoundException;
 
+    // Merge ListItem 
+    CartResponse mergeListItemToCart(String userId, List<CartItemRequest> guestCartItems) throws CartNotFoundException, InvalidItemException;
+
     // Saga Methods
     SagaInitiationResponse initiateCheckoutSaga(CheckoutRequest checkoutRequest, List<CartItemIdentifier> selectedItems) throws CartNotFoundException, InvalidItemException;
     void finalizeSuccessfulCheckout(OrderCompletedEvent event) throws CartNotFoundException;

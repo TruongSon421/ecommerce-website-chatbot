@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface Product {
   productId: string;
@@ -29,17 +29,18 @@ interface Message {
   products?: GroupProduct[];
 }
 
-interface ChatbotResponse {
-  content: string;
-  role: 'assistant' | 'user';
+interface WebSocketMessage {
+  message?: string;
   groupids?: number[];
+  turn_complete?: boolean;
+  interrupted?: boolean;
+  error?: string;
 }
 
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
   const [selectedVariants, setSelectedVariants] = useState<Record<string, Product>>({});
 
   useEffect(() => {
-    // Initialize selected variants with the first product in each group
     const initialSelected: Record<string, Product> = {};
     grouplist.forEach(group => {
       if (group.products.length > 0) {
@@ -85,7 +86,6 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                 </h4>
                 <div className="space-y-2 mb-3">
                   <div className="flex justify-between items-center text-xs">
-                    {/* <span className="text-gray-600">{displayProduct.variant}</span> */}
                     <div className="flex items-center space-x-2">
                       {displayProduct.defaultOriginalPrice && (
                         <span className="text-gray-400 line-through">
@@ -99,7 +99,6 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                   </div>
                 </div>
                 
-                {/* Variant options */}
                 <div className="mt-2">
                   <div className="text-xs text-gray-500 mb-1">Phiên bản:</div>
                   <div className="flex flex-wrap gap-1">
@@ -135,11 +134,11 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 };
 
 const ChatbotWidget: React.FC = () => {
-  const generateThreadId = (): string => {
-    return 'thread-' + Math.random().toString(36).substring(2, 11);
+  const generateSessionId = (): string => {
+    return 'session-' + Math.random().toString(36).substring(2, 11);
   };
 
-  const initializeChatSession = (): { thread_id: string; last_active: number; messages: Message[] } => {
+  const initializeChatSession = (): { session_id: string; last_active: number; messages: Message[] } => {
     const savedSession = localStorage.getItem('chatSession');
     const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
 
@@ -151,7 +150,7 @@ const ChatbotWidget: React.FC = () => {
     }
 
     return {
-      thread_id: generateThreadId(),
+      session_id: generateSessionId(),
       last_active: Date.now(),
       messages: [
         {
@@ -172,6 +171,7 @@ const ChatbotWidget: React.FC = () => {
   const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [viewAllUrl, setViewAllUrl] = useState('');
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     localStorage.setItem('chatSession', JSON.stringify(chatSession));
@@ -194,6 +194,82 @@ const ChatbotWidget: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [showHelpButton]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Kết nối WebSocket
+    wsRef.current = new WebSocket(`ws://localhost:8000/chat/${chatSession.session_id}`);
+
+    wsRef.current.onopen = () => {
+      console.log('WebSocket connected');
+      setApiError(null);
+    };
+
+    wsRef.current.onmessage = async (event) => {
+      const data: WebSocketMessage = JSON.parse(event.data);
+
+      if (data.error) {
+        setApiError(data.error);
+        setIsBotTyping(false);
+        return;
+      }
+
+      if (data.message) {
+        const botMessage: Message = {
+          id: Date.now(),
+          text: data.message,
+          sender: 'bot',
+        };
+
+        let messagesToAdd: Message[] = [botMessage];
+
+        if (data.groupids && data.groupids.length > 0) {
+          const url = generateViewAllUrl(data.groupids);
+          setViewAllUrl(url);
+
+          const products = await fetchProducts(data.groupids);
+          if (products.length > 0) {
+            messagesToAdd.push({
+              id: Date.now() + 1,
+              sender: 'bot',
+              products,
+            });
+          }
+        }
+
+        setChatSession((prev) => ({
+          ...prev,
+          messages: [...prev.messages, ...messagesToAdd],
+          last_active: Date.now(),
+        }));
+      }
+
+      if (data.turn_complete) {
+        setIsBotTyping(false);
+      }
+
+      if (data.interrupted) {
+        setApiError('Cuộc trò chuyện bị gián đoạn.');
+        setIsBotTyping(false);
+      }
+    };
+
+    wsRef.current.onerror = () => {
+      setApiError('Kết nối WebSocket thất bại. Vui lòng thử lại.');
+      setIsBotTyping(false);
+    };
+
+    wsRef.current.onclose = () => {
+      console.log('WebSocket disconnected');
+      setApiError('Kết nối WebSocket đã đóng.');
+      setIsBotTyping(false);
+    };
+
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [isOpen, chatSession.session_id]);
+
   const fetchProducts = async (groupIds: number[]): Promise<GroupProduct[]> => {
     try {
       const response = await fetch(
@@ -208,39 +284,12 @@ const ChatbotWidget: React.FC = () => {
     }
   };
 
-  const callChatbotAPI = async (message: string): Promise<ChatbotResponse> => {
-    try {
-      const response = await fetch('http://chatbot:5001/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          thread_id: chatSession.thread_id,
-          message: message,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const data: ChatbotResponse = await response.json();
-      setApiError(null);
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      setApiError('Kết nối với chatbot thất bại. Vui lòng thử lại sau.');
-      return {
-        content: 'Xin lỗi, hiện tôi không thể trả lời câu hỏi này.',
-        role: 'assistant',
-      };
-    }
-  };
-
   const generateViewAllUrl = (groupIds: number[]): string => {
     return `http://localhost:3000/products?groupIds=${groupIds.join(',')}`;
   };
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = () => {
+    if (!input.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
     const userMessage: Message = {
       id: Date.now(),
@@ -253,44 +302,21 @@ const ChatbotWidget: React.FC = () => {
       messages: [...prev.messages, userMessage],
       last_active: Date.now(),
     }));
+
+    // Gửi tin nhắn qua WebSocket
+    wsRef.current.send(JSON.stringify({
+      message: input,
+      groupids: [], // Có thể thêm groupids nếu client cần gửi
+    }));
+
     setInput('');
     setIsBotTyping(true);
-
-    const botResponse = await callChatbotAPI(input);
-
-    const messagesToAdd: Message[] = [
-      {
-        id: Date.now() + 1,
-        text: botResponse.content,
-        sender: 'bot',
-      },
-    ];
-
-    if (botResponse.groupids && botResponse.groupids.length > 0) {
-      const url = generateViewAllUrl(botResponse.groupids);
-      setViewAllUrl(url);
-      
-      const products = await fetchProducts(botResponse.groupids);
-      if (products.length > 0) {
-        messagesToAdd.push({
-          id: Date.now() + 2,
-          sender: 'bot',
-          products,
-        });
-      }
-    }
-
-    setChatSession((prev) => ({
-      ...prev,
-      messages: [...prev.messages, ...messagesToAdd],
-      last_active: Date.now(),
-    }));
-    setIsBotTyping(false);
   };
 
   const handleReset = () => {
+    wsRef.current?.close();
     setChatSession({
-      thread_id: generateThreadId(),
+      session_id: generateSessionId(),
       last_active: Date.now(),
       messages: [
         {
@@ -302,6 +328,7 @@ const ChatbotWidget: React.FC = () => {
     });
     setApiError(null);
     setViewAllUrl('');
+    setIsBotTyping(false);
   };
 
   return (

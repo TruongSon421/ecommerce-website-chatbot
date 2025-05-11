@@ -69,7 +69,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
     setProductError(null);
 
     // Validate product.type
-    const productType = product.type ? product.type.toUpperCase() : 'PRODUCT';
+    const productType = product.type ? product.type.toLocaleLowerCase() : 'product';
     const apiUrl = `${ENV.API_URL}/products/get/${productType}/${productId}`;
     console.log('Fetching product from:', apiUrl);
 

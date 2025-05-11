@@ -35,31 +35,84 @@ public class InventoryService {
     private final InventoryReservationRepository reservationRepository;
     private final InventoryHistoryRepository historyRepository;
 
+    // Phương thức helper để chuẩn hóa color
+    private String normalizeColor(String color) {
+        // Nếu đã là "default", giữ nguyên
+        if ("default".equals(color)) {
+            return color;
+        }
+        // Nếu null hoặc rỗng, chuyển thành "default"
+        return (color == null || color.trim().isEmpty()) ? "default" : color;
+    }
+
     public ProductInventory getProductInventory(String productId, String color) {
         if (productId == null || productId.isEmpty()) {
             throw new IllegalArgumentException("Mã sản phẩm không được để trống");
         }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
+        log.debug("Tìm sản phẩm với ID: {} và color: {} (chuẩn hóa: {})", productId, color, normalizedColor);
 
-        Optional<ProductInventory> inventoryOptional = productInventoryRepository
-                .findByProductIdAndColor(productId, color);
-
-        if (!inventoryOptional.isPresent()) {
-            throw new InventoryNotFoundException(
-                    "Không tìm thấy tồn kho cho sản phẩm có ID: " + productId +
-                            " và màu: " + color);
+        // "default" là giá trị tượng trưng, chỉ tìm sản phẩm có color=null hoặc rỗng
+        if (normalizedColor.equals("default")) {
+            log.debug("Tìm sản phẩm không có màu (color=null hoặc rỗng) cho productId: {}", productId);
+            // Tìm sản phẩm có color=null hoặc rỗng
+            Optional<ProductInventory> nullColorInventory = productInventoryRepository.findByProductIdAndColorIsNullOrEmpty(productId);
+            if (nullColorInventory.isPresent()) {
+                ProductInventory inventory = nullColorInventory.get();
+                log.debug("Đã tìm thấy phiên bản với color null/rỗng (color='{}') cho sản phẩm ID: {}, tồn kho: {}", 
+                        inventory.getColor(), productId, inventory.getQuantity());
+                return inventory;
+            } else {
+                log.debug("Không tìm thấy phiên bản với color null/rỗng cho productId: {}", productId);
+            }
+            
+            // Nếu không tìm thấy sản phẩm có color=null/rỗng, tìm phiên bản đầu tiên
+            List<ProductInventory> inventories = productInventoryRepository.findByProductId(productId);
+            log.debug("Tìm thấy {} phiên bản của sản phẩm ID: {}", inventories.size(), productId);
+            
+            if (!inventories.isEmpty()) {
+                ProductInventory firstInventory = inventories.get(0);
+                log.debug("Trả về phiên bản đầu tiên với color: '{}', tồn kho: {}", 
+                        firstInventory.getColor(), firstInventory.getQuantity());
+                return firstInventory;
+            } else {
+                log.error("Không tìm thấy phiên bản nào của sản phẩm ID: {}", productId);
+                throw new InventoryNotFoundException(
+                        "Không tìm thấy tồn kho cho sản phẩm có ID: " + productId);
+            }
         }
 
-        return inventoryOptional.get();
+        // Tìm kiếm thông thường theo productId và color
+        log.debug("Tìm sản phẩm với color cụ thể: '{}' cho productId: {}", normalizedColor, productId);
+        Optional<ProductInventory> inventoryOptional = productInventoryRepository
+                .findByProductIdAndColor(productId, normalizedColor);
+
+        if (inventoryOptional.isPresent()) {
+            ProductInventory inventory = inventoryOptional.get();
+            log.debug("Đã tìm thấy phiên bản với color: '{}', tồn kho: {}", 
+                    inventory.getColor(), inventory.getQuantity());
+            return inventory;
+        } else {
+            log.error("Không tìm thấy phiên bản với productId: {} và color: '{}'", productId, normalizedColor);
+            throw new InventoryNotFoundException(
+                    "Không tìm thấy tồn kho cho sản phẩm có ID: " + productId +
+                            " và màu: " + normalizedColor);
+        }
     }
 
     @Transactional
     public ProductInventory createInventory(InventoryDto request) {
         log.debug("Creating product inventory for product ID: {} and color: {}",
                 request.getProductId(), request.getColor());
+                
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(request.getColor());
 
         log.debug("Checking if inventory already exists");
         Optional<ProductInventory> existingInventory = productInventoryRepository
-                .findByProductIdAndColor(request.getProductId(), request.getColor());
+                .findByProductIdAndColor(request.getProductId(), normalizedColor);
 
         log.debug("Existing inventory found: {}", existingInventory.isPresent());
 
@@ -68,12 +121,12 @@ public class InventoryService {
             log.debug("Inventory already exists: {}", existingInventory.get());
             throw new InventoryAlreadyExistsException(
                     "Tồn kho đã tồn tại cho sản phẩm với ID: " + request.getProductId() +
-                            " và màu: " + request.getColor());
+                            " và màu: " + normalizedColor);
         } else {
             log.debug("Creating new inventory object");
             inventory = new ProductInventory();
             inventory.setProductId(request.getProductId());
-            inventory.setColor(request.getColor());
+            inventory.setColor(normalizedColor);
         }
 
         log.debug("Setting inventory properties");
@@ -92,8 +145,11 @@ public class InventoryService {
 
     @Transactional
     public ProductInventory updateInventory(InventoryDto request) {
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(request.getColor());
+        
         Optional<ProductInventory> existingInventory = productInventoryRepository
-                .findByProductIdAndColor(request.getProductId(), request.getColor());
+                .findByProductIdAndColor(request.getProductId(), normalizedColor);
 
         ProductInventory inventory;
 
@@ -102,7 +158,7 @@ public class InventoryService {
         } else {
             inventory = new ProductInventory();
             inventory.setProductId(request.getProductId());
-            inventory.setColor(request.getColor());
+            inventory.setColor(normalizedColor);
         }
         inventory.setProductName(request.getProductName());
         inventory.setQuantity(request.getQuantity());
@@ -118,12 +174,15 @@ public class InventoryService {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Số lượng giảm phải lớn hơn 0");
         }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
 
         ProductInventory inventory = productInventoryRepository
-                .findByProductIdAndColor(phoneId, color)
+                .findByProductIdAndColor(phoneId, normalizedColor)
                 .orElseThrow(() -> new InventoryNotFoundException(
                         "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
-                                " và màu: " + color));
+                                " và màu: " + normalizedColor));
 
         if (inventory.getQuantity() < quantity) {
             throw new IllegalArgumentException(
@@ -143,12 +202,15 @@ public class InventoryService {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Số lượng tăng phải lớn hơn 0");
         }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
 
         ProductInventory inventory = productInventoryRepository
-                .findByProductIdAndColor(phoneId, color)
+                .findByProductIdAndColor(phoneId, normalizedColor)
                 .orElseThrow(() -> new InventoryNotFoundException(
                         "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
-                                " và màu: " + color));
+                                " và màu: " + normalizedColor));
 
         inventory.setQuantity(inventory.getQuantity() + quantity);
         return productInventoryRepository.save(inventory);
@@ -183,7 +245,9 @@ public class InventoryService {
 
     @Transactional
     public void deleteInventory(String productId, String color){
-        productInventoryRepository.deleteByProductIdAndColor(productId,color);
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
+        productInventoryRepository.deleteByProductIdAndColor(productId, normalizedColor);
     }
 
     @Transactional(transactionManager = "transactionManager", isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED, 
@@ -194,28 +258,78 @@ public class InventoryService {
         try {
             // Kiểm tra số lượng tồn kho
             for (CartItemResponse item : request.getItems()) {
-                ProductInventory inventory = productInventoryRepository
-                        .findByProductIdAndColor(item.getProductId(), item.getColor())
-                        .orElseThrow(() -> new InventoryNotFoundException(
-                                "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId() +
-                                        " và màu: " + item.getColor()));
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(item.getColor());
+                log.debug("Kiểm tra tồn kho: productId={}, color={} (đã chuẩn hóa: {})", 
+                        item.getProductId(), item.getColor(), normalizedColor);
+                
+                ProductInventory inventory = null;
+                try {
+                    if (normalizedColor.equals("default")) {
+                        log.debug("Tìm sản phẩm color=null/empty cho productId: {}", item.getProductId());
+                        Optional<ProductInventory> nullColorInventory = productInventoryRepository.findByProductIdAndColorIsNullOrEmpty(item.getProductId());
+                        if (nullColorInventory.isPresent()) {
+                            inventory = nullColorInventory.get();
+                            log.debug("Đã tìm thấy sản phẩm với color=null/empty: {} (id: {})", inventory.getColor(), inventory.getInventoryId());
+                        } else {
+                            log.debug("Không tìm thấy sản phẩm với color=null/empty. Tìm sản phẩm đầu tiên.");
+                            inventory = productInventoryRepository.findFirstByProductId(item.getProductId())
+                                    .orElseThrow(() -> new InventoryNotFoundException(
+                                            "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId()));
+                            log.debug("Đã tìm sản phẩm đầu tiên với color: {}", inventory.getColor());
+                        }
+                    } else {
+                        log.debug("Tìm sản phẩm có color='{}'", normalizedColor);
+                        inventory = productInventoryRepository
+                                .findByProductIdAndColor(item.getProductId(), normalizedColor)
+                                .orElseThrow(() -> new InventoryNotFoundException(
+                                        "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId() +
+                                                " và màu: " + normalizedColor));
+                        log.debug("Đã tìm thấy sản phẩm với color='{}', tồn kho: {}", normalizedColor, inventory.getQuantity());
+                    }
+                } catch (InventoryNotFoundException e) {
+                    log.error("Không tìm thấy sản phẩm: {}", e.getMessage());
+                    throw e;
+                }
 
                 if (inventory.getQuantity() < item.getQuantity()) {
+                    log.error("Không đủ tồn kho: cần {} nhưng chỉ có {}", item.getQuantity(), inventory.getQuantity());
                     throw new IllegalArgumentException(
                             "Không đủ số lượng trong kho cho sản phẩm " + item.getProductId() +
                                     ". Hiện có: " + inventory.getQuantity() +
                                     ", Yêu cầu: " + item.getQuantity());
                 }
+                
+                log.debug("Đủ tồn kho cho sản phẩm {}, color: {}, yêu cầu: {}, hiện có: {}", 
+                        item.getProductId(), normalizedColor, item.getQuantity(), inventory.getQuantity());
             }
 
             // Giảm số lượng tồn kho và tạo reservation
             for (CartItemResponse item : request.getItems()) {
+                // Chuẩn hóa color
+                String normalizedColor = normalizeColor(item.getColor());
+                log.debug("Giảm tồn kho: productId={}, color={} (chuẩn hóa: {})", 
+                        item.getProductId(), item.getColor(), normalizedColor);
+                
                 // Tìm và cập nhật số lượng tồn kho
-                ProductInventory inventory = productInventoryRepository
-                        .findByProductIdAndColor(item.getProductId(), item.getColor())
-                        .orElseThrow(() -> new InventoryNotFoundException(
-                                "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId() +
-                                        " và màu: " + item.getColor()));
+                ProductInventory inventory = null;
+                
+                if (normalizedColor.equals("default")) {
+                    Optional<ProductInventory> nullColorInventory = productInventoryRepository.findByProductIdAndColorIsNullOrEmpty(item.getProductId());
+                    if (nullColorInventory.isPresent()) {
+                        inventory = nullColorInventory.get();
+                    } else {
+                        inventory = productInventoryRepository.findFirstByProductId(item.getProductId())
+                                .orElseThrow(() -> new InventoryNotFoundException(
+                                        "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId()));
+                    }
+                } else {
+                    inventory = productInventoryRepository
+                            .findByProductIdAndColor(item.getProductId(), normalizedColor)
+                            .orElseThrow(() -> new InventoryNotFoundException(
+                                    "Không tìm thấy tồn kho cho sản phẩm với ID: " + item.getProductId() +
+                                            " và màu: " + normalizedColor));
+                }
                 
                 // Cập nhật số lượng 
                 if (inventory.getQuantity() < item.getQuantity()) {
@@ -227,17 +341,29 @@ public class InventoryService {
                 
                 // Cập nhật trực tiếp thông qua native query để tránh vấn đề optimistic locking
                 Integer newQuantity = inventory.getQuantity() - item.getQuantity();
-                productInventoryRepository.updateInventoryQuantity(
+                log.debug("Cập nhật tồn kho: productId={}, color={}, newQuantity={}", 
+                        inventory.getProductId(), normalizedColor, newQuantity);
+                        
+                int updatedRows = productInventoryRepository.updateInventoryQuantity(
                     inventory.getProductId(), 
-                    inventory.getColor(),
+                    normalizedColor,
                     newQuantity
                 );
+                
+                log.debug("Kết quả cập nhật: {} dòng bị ảnh hưởng", updatedRows);
+                
+                if (updatedRows == 0) {
+                    log.error("Không cập nhật được tồn kho cho sản phẩm: {}, color: {}", 
+                            inventory.getProductId(), normalizedColor);
+                    throw new RuntimeException("Không thể cập nhật tồn kho cho sản phẩm: " + 
+                            inventory.getProductId() + ", color: " + normalizedColor);
+                }
 
                 // Tạo reservation
                 InventoryReservation reservation = InventoryReservation.builder()
                         .orderId(request.getOrderId())
                         .productId(item.getProductId())
-                        .color(item.getColor())
+                        .color(normalizedColor)
                         .quantity(item.getQuantity())
                         .status(InventoryReservation.ReservationStatus.RESERVED)
                         .expiresAt(request.getReservationExpiresAt() != null ? 
@@ -245,17 +371,24 @@ public class InventoryService {
                                   LocalDateTime.now().plusMinutes(10))
                         .build();
                 reservationRepository.save(reservation);
+                log.debug("Đã lưu reservation: orderId={}, productId={}, color={}, quantity={}", 
+                        reservation.getOrderId(), reservation.getProductId(), 
+                        reservation.getColor(), reservation.getQuantity());
 
                 // Ghi lịch sử
                 InventoryHistory history = InventoryHistory.builder()
                         .productId(item.getProductId())
-                        .color(item.getColor())
+                        .color(normalizedColor)
                         .quantityChange(-item.getQuantity())
                         .reason("RESERVED")
                         .orderId(request.getOrderId())
                         .build();
                 historyRepository.save(history);
+                log.debug("Đã lưu history: productId={}, color={}, quantityChange={}", 
+                        history.getProductId(), history.getColor(), history.getQuantityChange());
             }
+            
+            log.info("Đã hoàn thành giữ hàng cho đơn hàng: {}", request.getOrderId());
         } catch (Exception e) {
             log.error("Error reserving inventory: {}", e.getMessage(), e);
             throw e;
@@ -274,16 +407,19 @@ public class InventoryService {
 
         // Kiểm tra items trong request khớp với reservations
         for (CartItemResponse item : request.getItems()) {
+            // Chuẩn hóa color
+            String normalizedColor = normalizeColor(item.getColor());
+            
             boolean found = reservations.stream().anyMatch(reservation ->
                     reservation.getProductId().equals(item.getProductId()) &&
-                            reservation.getColor().equals(item.getColor()) &&
+                            reservation.getColor().equals(normalizedColor) &&
                             reservation.getQuantity().equals(item.getQuantity()) &&
                             reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED);
 
             if (!found) {
                 throw new IllegalArgumentException(
                         "Reservation không hợp lệ cho sản phẩm " + item.getProductId() +
-                                " với màu " + item.getColor());
+                                " với màu " + normalizedColor);
             }
         }
 
@@ -317,7 +453,8 @@ public class InventoryService {
         for (InventoryReservation reservation : reservations) {
             if (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED) {
                 // Tăng số lượng trong ProductInventory
-                increaseProductQuantity(reservation.getProductId(), reservation.getColor(), reservation.getQuantity());
+                String normalizedColor = normalizeColor(reservation.getColor());
+                increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
 
                 // Cập nhật trạng thái
                 reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
@@ -326,7 +463,7 @@ public class InventoryService {
                 // Ghi lịch sử
                 InventoryHistory history = InventoryHistory.builder()
                         .productId(reservation.getProductId())
-                        .color(reservation.getColor())
+                        .color(normalizedColor)
                         .quantityChange(reservation.getQuantity())
                         .reason("CANCELLED")
                         .orderId(reservation.getOrderId())
@@ -345,17 +482,18 @@ public class InventoryService {
         List<InventoryReservation> reservations = reservationRepository.findByOrderId(orderId);
         return reservations.stream()
                 .map(reservation -> {
+                    String normalizedColor = normalizeColor(reservation.getColor());
                     ProductInventory inventory = productInventoryRepository
-                            .findByProductIdAndColor(reservation.getProductId(), reservation.getColor())
+                            .findByProductIdAndColor(reservation.getProductId(), normalizedColor)
                             .orElseThrow(() -> new InventoryNotFoundException(
                                     "Không tìm thấy tồn kho cho sản phẩm với ID: " + reservation.getProductId() +
-                                            " và màu: " + reservation.getColor()));
+                                            " và màu: " + normalizedColor));
                     return new CartItemResponse(
                             reservation.getProductId(),
                             inventory.getProductName(),
                             inventory.getCurrentPrice(),
                             reservation.getQuantity(),
-                            reservation.getColor(),
+                            normalizedColor,
                             inventory.getQuantity() > 0
                     );
                 })
@@ -374,7 +512,8 @@ public class InventoryService {
             log.info("Cancelling expired reservation for order ID: {}", reservation.getOrderId());
 
             // Restore inventory quantity
-            increaseProductQuantity(reservation.getProductId(), reservation.getColor(), reservation.getQuantity());
+            String normalizedColor = normalizeColor(reservation.getColor());
+            increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
 
             // Update reservation status
             reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
@@ -383,7 +522,7 @@ public class InventoryService {
             // Log history
             InventoryHistory history = InventoryHistory.builder()
                     .productId(reservation.getProductId())
-                    .color(reservation.getColor())
+                    .color(normalizedColor)
                     .quantityChange(reservation.getQuantity())
                     .reason("TIMEOUT")
                     .orderId(reservation.getOrderId())
