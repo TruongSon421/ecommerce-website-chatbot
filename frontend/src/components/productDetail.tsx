@@ -6,7 +6,6 @@ import ProductSpecifications from './productSpecifications';
 import ENV from '../config/env';
 import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService';
-import { useCartStore } from '../store/cartStore';
 import { showNotification } from './common/Notification';
 import { CartItem } from '../types/cart';
 
@@ -87,7 +86,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       if (data.colors && data.colors.length > 0 && data.colors[0] != null) {
         setSelectedColor(data.colors[0]);
       } else {
-        setSelectedColor('default');
+        setSelectedColor('Không xác định');
       }
     } catch (error: any) {
       console.error('Error fetching product:', error);
@@ -115,7 +114,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       if (initialProduct.colors && initialProduct.colors.length > 0 && initialProduct.colors[0] != null) {
         setSelectedColor(initialProduct.colors[0]);
       } else {
-        setSelectedColor('default');
+        setSelectedColor('Không xác định');
       }
     }
   }, [urlProductId, initialProduct, fetchProduct]);
@@ -291,7 +290,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
                   productName: product.productName,
                   price: currentPrice,
                   color: selectedColor,
-                  type: product.type, // Pass type
+                  productType: product.type,
                 }}
               />
             </div>
@@ -530,8 +529,8 @@ interface ActionButtonsProps {
     productId: string;
     productName: string;
     price: number;
-    color: string | null; 
-    type: string; // Added type
+    color: string | null;
+    productType: string;
   };
 }
 
@@ -539,23 +538,21 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
   const { user, isAuthenticated } = useAuth();
 
   const handleAddToCart = async () => {
-    console.log(product.color)
+    console.log('Adding to cart:', { productId: product.productId, color: product.color, productType: product.productType });
 
     const cartItem: CartItem = {
       productId: product.productId,
+      productName: product.productName,
+      price: product.price,
       quantity: 1,
-      color: product.color === 'default' ? null : product.color,
-      type: product.type, // Store type
+      color: product.color === 'default' || !product.color ? 'Không xác định' : product.color,
+      available: true,
+      productType: product.productType,
     };
 
     try {
-      if (isAuthenticated && user?.id) {
-        await addItemToCart(user.id, cartItem);
-        showNotification('Đã thêm vào giỏ hàng!', 'success');
-      } else {
-        useCartStore.getState().addItem(cartItem);
-        showNotification('Đã thêm vào giỏ hàng (khách)!', 'success');
-      }
+      await addItemToCart(user?.id || 'guest', cartItem, isAuthenticated);
+      showNotification('Đã thêm vào giỏ hàng!', 'success');
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');

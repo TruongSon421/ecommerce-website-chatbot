@@ -3,6 +3,8 @@ import { RootState, AppDispatch } from '../../store';
 import { login, register, logout } from '../../store/slices/authSlices';
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
 import { useCallback, useEffect } from 'react';
+import { mergeCart, getCartItems } from '../../services/cartService';
+import { useCartStore } from '../../store/cartStore';
 
 interface UseAuth {
   user: User | null;
@@ -23,7 +25,7 @@ export const useAuth = (): UseAuth => {
   const isAuthenticated = !!user && !!accessToken;
   const isAdmin = user?.roles?.includes('ADMIN') || false;
 
-  // Initialize auth state from localStorage
+  // Initialize auth state and cart for guest or authenticated users
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     const storedAccessToken = localStorage.getItem('accessToken');
@@ -44,23 +46,32 @@ export const useAuth = (): UseAuth => {
               { username: '', password: '' }
             )
           );
+          // Fetch server cart for authenticated user
+          getCartItems(parsedUser.id)
+            .catch((err: unknown) => console.error('Failed to fetch cart on init:', err));
         } else {
           throw new Error('Invalid user data');
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Failed to parse user from localStorage:', err);
-        // Clear invalid localStorage to prevent repeated errors
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
       }
+    } else {
+      // Initialize guest cart session
+      useCartStore.getState().initializeSession();
     }
   }, [dispatch]);
 
   const loginHandler = useCallback(async (credentials: LoginCredentials) => {
     try {
-      await dispatch(login(credentials)).unwrap();
-    } catch (err) {
+      const result = await dispatch(login(credentials)).unwrap();
+      if (result.user && result.user.id) {
+        // Merge guest cart and fetch server cart
+        await mergeCart(result.user.id);
+      }
+    } catch (err: unknown) {
       console.error('Login failed:', err);
       throw err;
     }
@@ -68,8 +79,12 @@ export const useAuth = (): UseAuth => {
 
   const registerHandler = useCallback(async (credentials: RegisterCredentials) => {
     try {
-      await dispatch(register(credentials)).unwrap();
-    } catch (err) {
+      const result = await dispatch(register(credentials)).unwrap();
+      if (result.user && result.user.id) {
+        // Merge guest cart and fetch server cart
+        await mergeCart(result.user.id);
+      }
+    } catch (err: unknown) {
       console.error('Register failed:', err);
       throw err;
     }
@@ -78,7 +93,11 @@ export const useAuth = (): UseAuth => {
   const logoutHandler = useCallback(async () => {
     try {
       await dispatch(logout()).unwrap();
-    } catch (err) {
+      // Clear cart store and initialize new guest session
+      useCartStore.getState().clearCart();
+      useCartStore.getState().initializeSession();
+      console.log('Initialized new guest cart session on logout');
+    } catch (err: unknown) {
       console.error('Logout failed:', err);
       throw err;
     }
