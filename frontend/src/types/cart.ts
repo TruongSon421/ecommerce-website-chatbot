@@ -1,12 +1,15 @@
 export interface CartItem {
   productId: string;
+  productName: string;
+  price: number;
   quantity: number;
   color: string;
-  productName?: string; // Optional for display
-  price?: number; // Optional for display
-  type?: string; // Added to store product type (e.g., "PHONE", "LAPTOP")
+  available: boolean;
+  productType?: string;
 }
 
 export interface CartResponse {
+  userId: string;
+  totalPrice: number;
   items: CartItem[];
 }
