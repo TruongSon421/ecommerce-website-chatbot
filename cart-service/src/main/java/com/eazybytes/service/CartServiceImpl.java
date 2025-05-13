@@ -46,7 +46,7 @@ public class CartServiceImpl implements CartService {
     private static final long RETRY_DELAY_MS = 50;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional()
     public CartResponse getCartByUserId(String userId) throws CartNotFoundException {
         log.info("Fetching cart for user: {}", userId);
 
@@ -532,6 +532,50 @@ public class CartServiceImpl implements CartService {
         log.info("TransactionId reset for user: {} after failed checkout", event.getUserId());
     }
 
+    @Override
+    @Transactional
+    public CartResponse createCart(String userId) {
+        log.info("Explicitly creating new cart for user: {}", userId);
+        
+        // Check if cart already exists for the user
+        Optional<Cart> existingCart = cartRepository.findByUserId(userId);
+        if (existingCart.isPresent()) {
+            log.info("Cart already exists for user: {}", userId);
+            Cart cart = existingCart.get();
+            Hibernate.initialize(cart.getItems());
+            return toCartResponse(cart);
+        }
+        
+        // Create a new cart
+        try {
+            Cart cart = new Cart();
+            cart.setUserId(userId);
+            cart.setTotalPrice(0);
+            Cart savedCart = cartRepository.save(cart);
+            Hibernate.initialize(savedCart.getItems());
+            
+            // Cache the cart in Redis
+            cartRedisRepository.save(userId, savedCart);
+            log.info("New cart created and cached for user: {}", userId);
+            
+            return toCartResponse(savedCart);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Data integrity violation during cart creation for user {}, likely concurrent creation", userId, e);
+            // If there was a race condition, try to fetch the cart that was created
+            Cart newCart = cartRepository.findByUserId(userId)
+                    .orElseGet(() -> {
+                        Cart fallbackCart = new Cart();
+                        fallbackCart.setUserId(userId);
+                        fallbackCart.setTotalPrice(0);
+                        return cartRepository.save(fallbackCart);
+                    });
+            
+            Hibernate.initialize(newCart.getItems());
+            cartRedisRepository.save(userId, newCart);
+            return toCartResponse(newCart);
+        }
+    }
+
     // --- Helper Methods ---
 
     private Cart getCartForUpdate(String userId) throws CartNotFoundException {
@@ -542,16 +586,12 @@ public class CartServiceImpl implements CartService {
     private Cart createNewCart(String userId) {
         try {
             log.info("Creating new cart for user: {}", userId);
-            Cart cart = new Cart();
-            cart.setUserId(userId);
-            cart.setTotalPrice(0);
-            Cart savedCart = cartRepository.save(cart);
-            Hibernate.initialize(savedCart.getItems());
-            cartRedisRepository.save(userId, savedCart);
-            log.info("New cart created and cached for user: {}", userId);
-            return savedCart;
-        } catch (DataIntegrityViolationException e) {
-            log.warn("Data integrity violation during cart creation for user {}, likely concurrent creation. Creating new cart.", userId, e);
+            CartResponse cartResponse = createCart(userId);
+            Optional<Cart> cart = cartRepository.findByUserId(userId);
+            return cart.get(); // Safe because createCart ensures a cart exists
+        } catch (Exception e) {
+            log.error("Unexpected error in createNewCart for user {}: {}", userId, e.getMessage(), e);
+            // Fallback to original implementation if something goes wrong
             Cart newCart = new Cart();
             newCart.setUserId(userId);
             newCart.setTotalPrice(0);

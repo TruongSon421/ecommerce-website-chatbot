@@ -74,108 +74,108 @@ services:
       retries: 5
 
   # Spring Cloud services
-  config-service:
-    build:
-      context: ./config-service
-      dockerfile: Dockerfile
-    container_name: config-service
-    ports:
-      - "8888:8888"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  # config-service:
+  #   build:
+  #     context: ./config-service
+  #     dockerfile: Dockerfile
+  #   container_name: config-service
+  #   ports:
+  #     - "8888:8888"
+  #   depends_on:
+  #     mysql:
+  #       condition: service_healthy
+  #     mongodb:
+  #       condition: service_healthy
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  discovery-service:
-    build:
-      context: ./discovery-service
-      dockerfile: Dockerfile
-    container_name: discovery-service
-    ports:
-      - "8761:8761"
-    depends_on:
-      - config-service
+  # discovery-service:
+  #   build:
+  #     context: ./discovery-service
+  #     dockerfile: Dockerfile
+  #   container_name: discovery-service
+  #   ports:
+  #     - "8761:8761"
+  #   depends_on:
+  #     - config-service
     
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  # Application services
-  user-service:
-    build:
-      context: ./user-service
-      dockerfile: Dockerfile
-    container_name: user-service
-    depends_on:
-      - config-service
-      - discovery-service
-      - mysql
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  # # Application services
+  # user-service:
+  #   build:
+  #     context: ./user-service
+  #     dockerfile: Dockerfile
+  #   container_name: user-service
+  #   depends_on:
+  #     - config-service
+  #     - discovery-service
+  #     - mysql
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  product-service:
-    build:
-      context: ./product-service
-      dockerfile: Dockerfile
-    container_name: product-service
-    depends_on:
-      - config-service
-      - discovery-service
-      - mongodb
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  # product-service:
+  #   build:
+  #     context: ./product-service
+  #     dockerfile: Dockerfile
+  #   container_name: product-service
+  #   depends_on:
+  #     - config-service
+  #     - discovery-service
+  #     - mongodb
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  inventory-service:
-    build:
-      context: ./inventory-service
-      dockerfile: Dockerfile
-    container_name: inventory-service
-    depends_on:
-      - config-service
-      - discovery-service
-      - mysql
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  # inventory-service:
+  #   build:
+  #     context: ./inventory-service
+  #     dockerfile: Dockerfile
+  #   container_name: inventory-service
+  #   depends_on:
+  #     - config-service
+  #     - discovery-service
+  #     - mysql
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  api-gateway:
-    build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
-    container_name: api-gateway
-    ports:
-      - "8070:8070"
-    depends_on:
-      - config-service
-      - discovery-service
-      - user-service
-      - product-service
-      - inventory-service
-    networks:
-      - ecommerce_network
-    restart: on-failure
+  # api-gateway:
+  #   build:
+  #     context: ./api-gateway
+  #     dockerfile: Dockerfile
+  #   container_name: api-gateway
+  #   ports:
+  #     - "8070:8070"
+  #   depends_on:
+  #     - config-service
+  #     - discovery-service
+  #     - user-service
+  #     - product-service
+  #     - inventory-service
+  #   networks:
+  #     - ecommerce_network
+  #   restart: on-failure
 
-  chatbot:
-    build: 
-      context: ./chatbot/src
-      dockerfile: Dockerfile
-    ports:
-      - "5001:5001"
-    environment:
-      - FLASK_ENV=${FLASK_ENV:-production}
-      - LLAMA_INDEX_API_KEY=${LLAMA_INDEX_API_KEY}
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-    volumes:
-      - .:/app
-    command: gunicorn --bind 0.0.0.0:5001 --workers 4 --threads 2 app:app
+  # chatbot:
+  #   build: 
+  #     context: ./chatbot/src
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5001:5001"
+  #   environment:
+  #     - FLASK_ENV=${FLASK_ENV:-production}
+  #     - LLAMA_INDEX_API_KEY=${LLAMA_INDEX_API_KEY}
+  #     - REDIS_URL=redis://redis:6379/0
+  #   depends_on:
+  #     - redis
+  #   volumes:
+  #     - .:/app
+  #   command: gunicorn --bind 0.0.0.0:5001 --workers 4 --threads 2 app:app
 
   zookeeper:
       image: confluentinc/cp-zookeeper:latest

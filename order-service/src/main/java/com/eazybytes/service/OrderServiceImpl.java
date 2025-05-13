@@ -98,6 +98,14 @@ public class OrderServiceImpl implements OrderService {
         log.info("Processing InventoryReservedEvent for orderId: {}", event.getOrderId());
         Order order = orderRepository.findById(Long.parseLong(event.getOrderId()))
                 .orElseThrow(() -> new RuntimeException("Order not found: " + event.getOrderId()));
+        
+        // Skip if the order is already past the RESERVING state to prevent duplicate processing
+        if (order.getStatus() != Order.OrderStatus.RESERVING) {
+            log.warn("Order {} already processed beyond RESERVING state (current state: {}). Skipping to prevent duplicate processing.", 
+                    event.getOrderId(), order.getStatus());
+            return;
+        }
+        
         order.setStatus(Order.OrderStatus.PAYMENT_PENDING);
         orderRepository.save(order);
 
@@ -136,15 +144,24 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void processPaymentSucceeded(PaymentSucceededEvent event) {
         log.info("Processing PaymentSucceededEvent for orderId: {}", event.getOrderId());
-        Order order = orderRepository.findById(Long.parseLong(event.getOrderId()))
+        Order order = orderRepository.findById(event.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Order not found: " + event.getOrderId()));
-        order.setStatus(Order.OrderStatus.PROCESSING); // Hoặc COMPLETED tùy yêu cầu
+                
+        // Skip if the order is already in PAYMENT_COMPLETED status to prevent duplicate processing
+        if (order.getStatus() == Order.OrderStatus.PAYMENT_COMPLETED) {
+            log.warn("Order {} already processed with PAYMENT_COMPLETED status. Skipping to prevent duplicate confirmation.", event.getOrderId());
+            return;
+        }
+        
+        order.setStatus(Order.OrderStatus.PAYMENT_COMPLETED);
         order.setPaymentId(event.getPaymentId());
         orderRepository.save(order);
 
+        // Save order first to ensure status is updated before sending message
+        // This helps prevent duplicate confirmInventoryReservation requests in case of retries
         ConfirmInventoryReservationRequest confirmRequest = ConfirmInventoryReservationRequest.builder()
                 .transactionId(event.getTransactionId())
-                .orderId(event.getOrderId())
+                .orderId(event.getOrderId().toString())
                 .items(order.getItems().stream()
                         .map(item -> new CartItemResponse(
                             item.getProductId(),
@@ -157,12 +174,23 @@ public class OrderServiceImpl implements OrderService {
                 .build();
         orderEventProducer.sendConfirmInventoryReservationRequest(confirmRequest);
 
+        // Convert order items to CartItemResponse list for the completed event
+        List<CartItemResponse> cartItems = order.getItems().stream()
+                .map(item -> new CartItemResponse(
+                    item.getProductId(),
+                    item.getProductName(),
+                    item.getPrice(),
+                    item.getQuantity(),
+                    normalizeColor(item.getColor()),
+                    true))
+                .collect(Collectors.toList());
+
         OrderCompletedEvent completedEvent = OrderCompletedEvent.builder()
                 .transactionId(event.getTransactionId())
-                .userId(order.getUserId())
-                .orderId(event.getOrderId())
+                .userId(event.getUserId())
+                .orderId(event.getOrderId().toString())
                 .paymentId(event.getPaymentId())
-                .selectedItems(event.getItems())
+                .selectedItems(cartItems)
                 .build();
         orderEventProducer.sendOrderCompletedEvent(completedEvent);
         log.info("OrderCompletedEvent sent for orderId: {}", event.getOrderId());
@@ -171,25 +199,43 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void processPaymentFailed(PaymentFailedEvent event) {
         log.info("Processing PaymentFailedEvent for orderId: {}", event.getOrderId());
-        Order order = orderRepository.findById(Long.parseLong(event.getOrderId()))
+        Order order = orderRepository.findById(event.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Order not found: " + event.getOrderId()));
-        order.setStatus(Order.OrderStatus.FAILED);
+        
+        // Skip if already processed to avoid duplicate messages
+        if (order.getStatus() == Order.OrderStatus.PAYMENT_FAILED || 
+            order.getStatus() == Order.OrderStatus.FAILED) {
+            log.warn("Order {} already in {} status. Skipping to prevent duplicate processing.", 
+                    event.getOrderId(), order.getStatus());
+            return;
+        }
+        
+        // Capture current state for logging
+        Order.OrderStatus previousStatus = order.getStatus();
+        
+        // Update order status
+        order.setStatus(Order.OrderStatus.PAYMENT_FAILED);
         orderRepository.save(order);
+        log.info("Order status updated from {} to PAYMENT_FAILED for orderId: {}", 
+                previousStatus, event.getOrderId());
 
+        // Always send cancel inventory request when payment fails 
+        // (as we know inventory was previously reserved)
         CancelInventoryReservationRequest cancelRequest = CancelInventoryReservationRequest.builder()
                 .transactionId(event.getTransactionId())
-                .orderId(event.getOrderId())
+                .orderId(event.getOrderId().toString())
                 .build();
         orderEventProducer.sendCancelInventoryReservationRequest(cancelRequest);
+        log.info("CancelInventoryReservationRequest sent for orderId: {}", event.getOrderId());
 
         CheckoutFailedEvent failedEvent = CheckoutFailedEvent.builder()
                 .transactionId(event.getTransactionId())
-                .userId(order.getUserId())
-                .orderId(event.getOrderId())
+                .userId(event.getUserId())
+                .orderId(event.getOrderId().toString())
                 .productIdentifiers(order.getItems().stream()
                         .map((OrderItem item) -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
                         .collect(Collectors.toList()))
-                .reason(event.getReason())
+                .reason(event.getFailureReason())
                 .build();
         orderEventProducer.sendCheckoutFailedEvent(failedEvent);
         log.info("CheckoutFailedEvent sent for orderId: {}", event.getOrderId());
@@ -203,16 +249,31 @@ public class OrderServiceImpl implements OrderService {
         if (event.getOrderId() != null) {
             Order order = orderRepository.findById(Long.parseLong(event.getOrderId()))
                     .orElseThrow(() -> new RuntimeException("Order not found: " + event.getOrderId()));
-            if (!order.getStatus().equals(Order.OrderStatus.FAILED)) {
+            
+            // Store the current status to determine if we need to cancel inventory
+            Order.OrderStatus currentStatus = order.getStatus();
+            
+            // Check if order is not already in FAILED status to prevent duplicate processing
+            if (!currentStatus.equals(Order.OrderStatus.FAILED)) {
                 order.setStatus(Order.OrderStatus.FAILED);
                 orderRepository.save(order);
                 log.info("Order updated to FAILED for orderId: {}", order.getId());
 
-                CancelInventoryReservationRequest cancelRequest = CancelInventoryReservationRequest.builder()
-                        .transactionId(event.getTransactionId())
-                        .orderId(event.getOrderId())
-                        .build();
-                orderEventProducer.sendCancelInventoryReservationRequest(cancelRequest);
+                // Only send CancelInventoryReservationRequest if order was in states where inventory was reserved
+                if (currentStatus == Order.OrderStatus.PAYMENT_PENDING ||
+                    currentStatus == Order.OrderStatus.PAYMENT_FAILED ||
+                    currentStatus == Order.OrderStatus.RESERVING) {
+                    
+                    CancelInventoryReservationRequest cancelRequest = CancelInventoryReservationRequest.builder()
+                            .transactionId(event.getTransactionId())
+                            .orderId(event.getOrderId())
+                            .build();
+                    orderEventProducer.sendCancelInventoryReservationRequest(cancelRequest);
+                    log.info("CancelInventoryReservationRequest sent for orderId: {} with previous status: {}", 
+                            event.getOrderId(), currentStatus);
+                }
+            } else {
+                log.info("Order {} is already in FAILED status, skipping cancel inventory request", event.getOrderId());
             }
         }
     }
@@ -239,19 +300,39 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void cancelOrder(Long orderId) {
         Order order = getOrderById(orderId);
-        if (order.getStatus() == Order.OrderStatus.RESERVING || order.getStatus() == Order.OrderStatus.PAYMENT_PENDING) {
+        
+        // Check if we can cancel this order
+        if (order.getStatus() == Order.OrderStatus.FAILED || 
+            order.getStatus() == Order.OrderStatus.PAYMENT_FAILED) {
+            log.info("Order {} is already in {} status. No action needed.", orderId, order.getStatus());
+            return;
+        }
+        
+        if (order.getStatus() == Order.OrderStatus.RESERVING || 
+            order.getStatus() == Order.OrderStatus.PAYMENT_PENDING) {
+            
+            // Store previous status for logging
+            Order.OrderStatus previousStatus = order.getStatus();
+            
+            // Update order status
             order.setStatus(Order.OrderStatus.FAILED);
             orderRepository.save(order);
-            log.info("Order cancelled: {}", orderId);
+            log.info("Order status updated from {} to FAILED for orderId: {}", previousStatus, orderId);
 
+            // Generate a transaction ID for this cancellation
+            String transactionId = UUID.randomUUID().toString();
+            
+            // Send cancel inventory request
             CancelInventoryReservationRequest cancelRequest = CancelInventoryReservationRequest.builder()
-                    .transactionId(UUID.randomUUID().toString())
+                    .transactionId(transactionId)
                     .orderId(orderId.toString())
                     .build();
             orderEventProducer.sendCancelInventoryReservationRequest(cancelRequest);
+            log.info("CancelInventoryReservationRequest sent for orderId: {}", orderId);
 
+            // Send checkout failed event
             CheckoutFailedEvent failedEvent = CheckoutFailedEvent.builder()
-                    .transactionId(cancelRequest.getTransactionId())
+                    .transactionId(transactionId)
                     .userId(order.getUserId())
                     .orderId(orderId.toString())
                     .productIdentifiers(order.getItems().stream()
@@ -260,6 +341,7 @@ public class OrderServiceImpl implements OrderService {
                     .reason("Order cancelled by user")
                     .build();
             orderEventProducer.sendCheckoutFailedEvent(failedEvent);
+            log.info("CheckoutFailedEvent sent for orderId: {}", orderId);
         } else {
             throw new RuntimeException("Cannot cancel order in status: " + order.getStatus());
         }

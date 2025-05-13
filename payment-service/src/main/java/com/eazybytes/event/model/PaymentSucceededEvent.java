@@ -1,21 +1,23 @@
 package com.eazybytes.event.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-
-@Data
+@Getter
+@ToString
 @NoArgsConstructor
-@AllArgsConstructor
-public class PaymentSucceededEvent {
+@SuperBuilder(toBuilder = true)
+public class PaymentSucceededEvent extends BaseSagaEvent {
     private Long orderId;
     private String paymentId;
     private String amount;
-    private String currency;
-    private PaymentMethod paymentMethod;
-    private LocalDateTime timestamp;
-    private String transactionId;
+
+    public PaymentSucceededEvent(String transactionId, String userId, Long orderId, String paymentId, String amount) {
+        super(transactionId, userId);
+        this.orderId = orderId;
+        this.paymentId = paymentId;
+        this.amount = amount;
+    }
 }

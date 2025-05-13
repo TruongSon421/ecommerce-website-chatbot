@@ -23,15 +23,15 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    
     @Column(nullable = false)
     private Long orderId;
 
-    // Thêm transactionId để dễ truy vết và kiểm tra tính ổn định (idempotency)
+    @Column(nullable = false)
+    private String userId;
+
     @Column(nullable = false)
     private String transactionId;
 
-    // ID do hệ thống thanh toán (hoặc service này) tạo ra
     @Column(nullable = false, unique = true)
     private String paymentId;
 
@@ -46,12 +46,12 @@ public class Payment {
     @Column(nullable = false)
     private PaymentMethod paymentMethod;
 
-    private String failureReason; // Thêm lý do thất bại nếu cần
+    private String failureReason;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @Version // Thêm optimistic locking
+    @Version
     private Long version;
 
     @PrePersist
@@ -59,7 +59,7 @@ public class Payment {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         if (this.paymentId == null) {
-            this.paymentId = UUID.randomUUID().toString(); // Tự tạo nếu chưa có
+            this.paymentId = UUID.randomUUID().toString();
         }
     }
 
@@ -69,16 +69,15 @@ public class Payment {
     }
 
     public enum PaymentStatus {
-        PENDING, // Trạng thái chờ xử lý
+        PENDING,
         SUCCESS,
         FAILED
     }
 
-    // Enum này nên khớp với Enum trong OrderService
     public enum PaymentMethod {
         CREDIT_CARD,
         DEBIT_CARD,
         QR_CODE,
-        TRANSFER_BANKING // Đổi tên từ BANK_TRANSFER để khớp OrderService
+        TRANSFER_BANKING
     }
 }

@@ -18,7 +18,7 @@ spring:
 
   # MySQL Configuration (Primary Data Source)
   datasource:
-    url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3307/ecommerce_cart?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&readOnly=false
     username: tiendoan
     password: tiendoan
     driver-class-name: com.mysql.cj.jdbc.Driver

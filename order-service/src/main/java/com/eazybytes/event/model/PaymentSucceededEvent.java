@@ -5,17 +5,19 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-
-import com.eazybytes.dto.CartItemResponse;
-
 @Getter
 @ToString
 @NoArgsConstructor
 @SuperBuilder
-public class PaymentSucceededEvent {
-    private String transactionId;
-    private String orderId;
+public class PaymentSucceededEvent extends BaseSagaEvent {
+    private Long orderId;
     private String paymentId;
-    private List<CartItemResponse> items;
+    private String amount;
+    
+    public PaymentSucceededEvent(String transactionId, String userId, Long orderId, String paymentId, String amount) {
+        super(transactionId, userId);
+        this.orderId = orderId;
+        this.paymentId = paymentId;
+        this.amount = amount;
+    }
 }

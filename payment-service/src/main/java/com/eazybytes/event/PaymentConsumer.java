@@ -2,7 +2,6 @@ package com.eazybytes.event;
 
 import com.eazybytes.event.model.ProcessPaymentRequest;
 import com.eazybytes.service.PaymentService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -18,15 +17,14 @@ public class PaymentConsumer {
 
     @KafkaListener(topics = "${kafka.topics.payment.process}", groupId = "${spring.kafka.consumer.group-id}")
     public void processPaymentRequest(ProcessPaymentRequest request, Acknowledgment ack) {
-        log.info("Received ProcessPaymentRequest: {}", request);
         try {
+            log.info("Received payment request: {}", request);
             paymentService.processPayment(request);
             ack.acknowledge();
             log.info("Successfully processed payment request for orderId: {}", request.getOrderId());
         } catch (Exception e) {
-            log.error("Failed to process payment request for orderId: {}. Error: {}", 
-                request.getOrderId(), e.getMessage(), e);
-            // Không ack để Kafka retry
+            log.error("Failed to process payment request: {}. Error: {}", request, e.getMessage(), e);
+            // Don't acknowledge to let Kafka retry
         }
     }
 }

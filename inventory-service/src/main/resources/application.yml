@@ -72,9 +72,17 @@ spring:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: "*"
         spring.json.use.type.headers: false
-        spring.json.value.default.type: "com.eazybytes.dto.ReserveInventoryRequest"
+        spring.json.value.default.type: "java.util.HashMap"
+        spring.json.remove.type.headers: false
         spring.json.deserialization.fail.on.unknown.properties: false
-        spring.json.type.mapping: "reserve-inventory-request:com.eazybytes.dto.ReserveInventoryRequest,confirm-inventory-reservation:com.eazybytes.dto.ConfirmInventoryReservationRequest,cancel-inventory-reservation:com.eazybytes.dto.CancelInventoryReservationRequest"
+        spring.json.type.mapping: >-
+          reserve-inventory-request:com.eazybytes.dto.ReserveInventoryRequest,
+          confirm-inventory-reservation:com.eazybytes.dto.ConfirmInventoryReservationRequest,
+          cancel-inventory-reservation:com.eazybytes.dto.CancelInventoryReservationRequest,
+          com.eazybytes.event.model.ReserveInventoryRequest:com.eazybytes.dto.ReserveInventoryRequest,
+          com.eazybytes.event.model.ConfirmInventoryReservationRequest:com.eazybytes.dto.ConfirmInventoryReservationRequest,
+          com.eazybytes.event.model.CancelInventoryReservationRequest:com.eazybytes.dto.CancelInventoryReservationRequest,
+          CancelInventoryReservationRequest:com.eazybytes.dto.CancelInventoryReservationRequest
 
 kafka:
   topics:
@@ -85,6 +93,8 @@ kafka:
     reserve-inventory-request: reserve-inventory-request
     confirm-inventory-reservation: confirm-inventory-reservation
     cancel-inventory-reservation: cancel-inventory-reservation
+    checkout:
+      failed: checkout-failed
 
 eureka:
   client:

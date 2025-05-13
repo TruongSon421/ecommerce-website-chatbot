@@ -14,6 +14,9 @@ public interface CartService {
     CartResponse updateCartItem(String userId, String productId, Integer quantity, String color) throws CartNotFoundException, InvalidItemException;
     CartResponse removeItemFromCart(String userId, String productId, String color) throws CartNotFoundException;
     void clearCart(String userId) throws CartNotFoundException;
+    
+    // Create a new cart for a user
+    CartResponse createCart(String userId);
 
     // Merge ListItem 
     CartResponse mergeListItemToCart(String userId, List<CartItemRequest> guestCartItems) throws CartNotFoundException, InvalidItemException;
