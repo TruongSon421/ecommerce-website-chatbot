@@ -5,9 +5,9 @@ import { deleteCookie } from '../components/utils/cookie';
 
 export const addItemToCart = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
-    const { productId, quantity, color, productType } = item;
+    const { productId, quantity, color } = item;
     const apiColor = color === 'Không xác định' ? 'default' : color;
-    console.log('Adding item to cart for user:', userId, 'Item:', { productId, quantity, color: apiColor, productType });
+    console.log('Adding item to cart for user:', userId, 'Item:', { productId, quantity, color: apiColor });
     if (isAuthenticated) {
       const response = await axios.post<CartResponse>('/carts/items', { productId, quantity, color: apiColor }, {
         headers: {
@@ -17,15 +17,26 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
       console.log('Added item to cart:', response.data);
       await getCartItems(userId);
     } else {
-      useCartStore.getState().addItem({
-        ...item,
-        color: color === 'default' || !color ? 'Không xác định' : color,
-        productType,
-      });
+      const currentCartItems = useCartStore.getState().items;
+      const existingItem = currentCartItems.find(
+        (cartItem) => cartItem.productId === productId && cartItem.color === color
+      );
+
+      if (existingItem) {
+        const newQuantity = existingItem.quantity + quantity;
+        console.log('Item exists, updating quantity locally:', { productId, color, newQuantity });
+        useCartStore.getState().updateQuantity(productId, color, newQuantity);
+      } else {
+        useCartStore.getState().addItem({
+          ...item,
+          color: color === 'default' || !color ? 'Không xác định' : color,
+        });
+      }
     }
   } catch (error: any) {
-    console.error('Failed to add item to cart:', error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to add item to cart');
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to add item to cart';
+    console.error('Failed to add item to cart:', errorMessage, 'Status:', error.response?.status);
+    throw new Error(errorMessage);
   }
 };
 
@@ -44,8 +55,9 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
     useCartStore.getState().setItems(updatedItems);
     return updatedItems;
   } catch (error: any) {
-    console.error('Failed to fetch cart items:', error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to fetch cart items');
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch cart items';
+    console.error('Failed to fetch cart items:', errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
@@ -69,8 +81,9 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
       useCartStore.getState().updateQuantity(productId, color, quantity);
     }
   } catch (error: any) {
-    console.error('Failed to update cart item:', error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to update cart item');
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to update cart item';
+    console.error('Failed to update cart item:', errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
@@ -93,8 +106,9 @@ export const removeItemFromCart = async (userId: string, productId: string, colo
       useCartStore.getState().removeItem(productId, color);
     }
   } catch (error: any) {
-    console.error('Failed to remove cart item:', error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to remove cart item');
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to remove cart item';
+    console.error('Failed to remove cart item:', errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
@@ -112,8 +126,9 @@ export const clearCart = async (userId: string, isAuthenticated: boolean): Promi
       useCartStore.getState().clearCart();
     }
   } catch (error: any) {
-    console.error('Failed to clear cart:', error.response?.data?.message || error.message);
-    throw new Error(error.response?.data?.message || 'Failed to clear cart');
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to clear cart';
+    console.error('Failed to clear cart:', errorMessage);
+    throw new Error(errorMessage);
   }
 };
 
@@ -123,7 +138,6 @@ export const mergeCart = async (userId: string): Promise<void> => {
       productId: item.productId,
       quantity: item.quantity,
       color: item.color === 'Không xác định' ? 'default' : item.color,
-      productType: item.productType,
     }));
     console.log('Merging cart for user:', userId, 'Items:', guestCartItems);
 
@@ -150,13 +164,14 @@ export const mergeCart = async (userId: string): Promise<void> => {
     useCartStore.getState().clearCart();
     console.log('Guest cart cookies and store cleared after merge');
   } catch (error: any) {
-    console.error('Cart merge failed:', error.response?.data?.message || error.message);
+    const errorMessage = error.response?.data?.message || error.message || 'Cart merge failed';
+    console.error('Cart merge failed:', errorMessage);
     await getCartItems(userId);
     // Still clear guest cart cookies on failure to avoid stale data
     deleteCookie('guest_cart');
     deleteCookie('session_id');
     useCartStore.getState().clearCart();
     console.log('Guest cart cookies and store cleared despite merge failure');
-    throw new Error(error.response?.data?.message || 'Cart merge failed');
+    throw new Error(errorMessage);
   }
 };
