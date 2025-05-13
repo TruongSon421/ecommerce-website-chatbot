@@ -107,12 +107,11 @@ public class InventoryService {
         log.debug("Creating product inventory for product ID: {} and color: {}",
                 request.getProductId(), request.getColor());
                 
-        // Chuẩn hóa color
-        String normalizedColor = normalizeColor(request.getColor());
+        
 
         log.debug("Checking if inventory already exists");
         Optional<ProductInventory> existingInventory = productInventoryRepository
-                .findByProductIdAndColor(request.getProductId(), normalizedColor);
+                .findByProductIdAndColor(request.getProductId(), request.getColor());
 
         log.debug("Existing inventory found: {}", existingInventory.isPresent());
 
@@ -121,12 +120,12 @@ public class InventoryService {
             log.debug("Inventory already exists: {}", existingInventory.get());
             throw new InventoryAlreadyExistsException(
                     "Tồn kho đã tồn tại cho sản phẩm với ID: " + request.getProductId() +
-                            " và màu: " + normalizedColor);
+                            " và màu: " + request.getColor());
         } else {
             log.debug("Creating new inventory object");
             inventory = new ProductInventory();
             inventory.setProductId(request.getProductId());
-            inventory.setColor(normalizedColor);
+            inventory.setColor(request.getColor());
         }
 
         log.debug("Setting inventory properties");
