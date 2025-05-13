@@ -41,10 +41,14 @@ spring:
     consumer:
       group-id: payment-service-group
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
-        spring.json.trusted.packages: "com.eazybytes.event.model"
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.eazybytes.event.model.ProcessPaymentRequest
         spring.json.type.mapping: 
           process-payment-request:com.eazybytes.event.model.ProcessPaymentRequest,
           payment-succeeded:com.eazybytes.event.model.PaymentSucceededEvent,
