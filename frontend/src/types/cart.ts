@@ -5,8 +5,7 @@ export interface CartItem {
   quantity: number;
   color: string;
   available: boolean;
-  productType?: string;
-}
+  }
 
 export interface CartResponse {
   userId: string;
