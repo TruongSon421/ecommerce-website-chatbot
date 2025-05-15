@@ -79,6 +79,13 @@ spring:
           filters:
             - Authentication    # Thêm filter
 
+        - id: guest-cart-service
+          uri: lb://cart-service
+          predicates:
+            - Path=/api/guest-carts/**
+          filters:
+            - Authentication    # Thêm filter
+
         - id: payment-service
           uri: lb://payment-service
           predicates:
