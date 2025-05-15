@@ -599,36 +599,70 @@ public class CartServiceImpl implements CartService {
         
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
+            log.error("Guest cart not found in Redis with ID: {}", guestId);
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
         
-        return toCartResponse(cart);
+        // Log để debug
+        if (cart.getItems() != null) {
+            log.info("Retrieved guest cart from Redis with {} items for guest: {}", cart.getItems().size(), guestId);
+            
+            // In chi tiết các item để debug
+            for (CartItems item : cart.getItems()) {
+                log.info("Item in cart: productId={}, productName={}, color={}, quantity={}", 
+                         item.getProductId(), item.getProductName(), item.getColor(), item.getQuantity());
+            }
+        } else {
+            log.warn("Items collection is null in guest cart from Redis for guest: {}", guestId);
+            // Khởi tạo danh sách rỗng nếu items là null
+            cart.setItems(new ArrayList<>());
+        }
+        
+        CartResponse response = toCartResponse(cart);
+        log.info("Returning CartResponse with {} items for guest: {}", 
+                response.getItems() != null ? response.getItems().size() : 0, guestId);
+        
+        return response;
     }
     
     @Override
     public CartResponse addItemToGuestCart(String guestId, CartItemRequest cartItemRequest) throws CartNotFoundException, InvalidItemException {
-        log.info("Adding item to guest cart: {}", guestId);
+        log.info("Adding item to guest cart: {}, product: {}, color: '{}'", 
+                guestId, cartItemRequest.getProductId(), cartItemRequest.getColor());
         
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
             // Tạo giỏ hàng mới nếu chưa tồn tại
+            log.info("Guest cart not found, creating new one for guest: {}", guestId);
             cart = new Cart();
             cart.setUserId(guestId);
             cart.setItems(new ArrayList<>());
             cart.setTotalPrice(0);
+        } else {
+            log.info("Found existing guest cart for guest: {} with {} items", 
+                    guestId, cart.getItems() != null ? cart.getItems().size() : 0);
+            
+            // Đảm bảo items không null
+            if (cart.getItems() == null) {
+                log.warn("Items collection is null in existing cart, initializing empty list");
+                cart.setItems(new ArrayList<>());
+            }
         }
         
         // Chuẩn hóa color
         String normalizedColor = normalizeColor(cartItemRequest.getColor());
+        log.info("Normalized color from '{}' to '{}'", cartItemRequest.getColor(), normalizedColor);
         
         try {
             // Kiểm tra tồn kho
             InventoryDto inventory = checkInventoryWithCircuitBreaker(cartItemRequest.getProductId(), normalizedColor);
+            log.info("Inventory check passed for product: {}, color: {}, available: {}", 
+                    cartItemRequest.getProductId(), normalizedColor, inventory.getQuantity());
             
             CartItems cartItemToAdd = new CartItems();
             cartItemToAdd.setProductId(cartItemRequest.getProductId());
             cartItemToAdd.setQuantity(cartItemRequest.getQuantity());
-            cartItemToAdd.setColor(normalizedColor);
+            cartItemToAdd.setColor(cartItemRequest.getColor());
             cartItemToAdd.setProductName(inventory.getProductName());
             cartItemToAdd.setPrice(inventory.getCurrentPrice());
             cartItemToAdd.setCart(cart);
@@ -659,9 +693,13 @@ public class CartServiceImpl implements CartService {
                 }
                 
                 existingItem.setQuantity(newQuantity);
+                log.info("Updated existing item quantity to {} for product: {}, color: {}", 
+                        newQuantity, existingItem.getProductId(), existingItem.getColor());
             } else {
                 // Thêm sản phẩm mới vào giỏ hàng
                 cart.getItems().add(cartItemToAdd);
+                log.info("Added new item to cart: product: {}, color: {}, quantity: {}", 
+                        cartItemToAdd.getProductId(), cartItemToAdd.getColor(), cartItemToAdd.getQuantity());
             }
             
             // Cập nhật tổng giá
@@ -669,8 +707,28 @@ public class CartServiceImpl implements CartService {
             
             // Lưu vào Redis
             cartRedisRepository.saveGuestCart(guestId, cart);
+            log.info("Saved guest cart to Redis with {} items", cart.getItems().size());
             
-            return toCartResponse(cart);
+            // Kiểm tra lại xem cart có được lưu đúng không
+            Cart savedCart = cartRedisRepository.findByGuestId(guestId);
+            if (savedCart != null && savedCart.getItems() != null) {
+                log.info("Verified guest cart in Redis: contains {} items", savedCart.getItems().size());
+                
+                // Kiểm tra chi tiết
+                if (log.isDebugEnabled()) {
+                    savedCart.getItems().forEach(item -> {
+                        log.debug("Verified item: productId={}, color={}, quantity={}", 
+                                item.getProductId(), item.getColor(), item.getQuantity());
+                    });
+                }
+            } else {
+                log.warn("Failed to verify guest cart in Redis: {}",
+                        savedCart == null ? "cart is null" : "items collection is null");
+            }
+            
+            CartResponse response = toCartResponse(cart);
+            log.info("Returning CartResponse with {} items", response.getItems().size());
+            return response;
         } catch (InvalidItemException e) {
             throw e;
         } catch (Exception e) {
@@ -690,6 +748,18 @@ public class CartServiceImpl implements CartService {
         
         // Chuẩn hóa color
         String normalizedColor = normalizeColor(color);
+        log.info("Normalized color for update: '{}' to '{}'", color, normalizedColor);
+        
+        // Log cart items for debugging
+        if (cart.getItems() != null && !cart.getItems().isEmpty()) {
+            log.info("Guest cart {} contains {} items", guestId, cart.getItems().size());
+            for (CartItems item : cart.getItems()) {
+                log.info("Cart item: productId={}, color='{}', normalizedColor='{}'", 
+                       item.getProductId(), item.getColor(), normalizeColor(item.getColor()));
+            }
+        } else {
+            log.warn("Guest cart {} is empty or has null items", guestId);
+        }
         
         try {
             // Kiểm tra tồn kho
@@ -701,20 +771,26 @@ public class CartServiceImpl implements CartService {
                     ", requested: " + quantity);
             }
             
-            // Tìm sản phẩm trong giỏ hàng
+            // Tìm sản phẩm trong giỏ hàng - sử dụng case-insensitive matching cho color
             Optional<CartItems> itemOpt = cart.getItems().stream()
                     .filter(item -> item.getProductId().equals(productId) && 
-                            normalizeColor(item.getColor()).equals(normalizedColor))
+                            (item.getColor().equalsIgnoreCase(color) || 
+                             normalizeColor(item.getColor()).equalsIgnoreCase(normalizedColor)))
                     .findFirst();
             
             if (itemOpt.isPresent()) {
                 CartItems item = itemOpt.get();
+                log.info("Found matching item: productId={}, color='{}', quantity={}", 
+                        item.getProductId(), item.getColor(), item.getQuantity());
+                
                 if (quantity <= 0) {
                     // Xóa sản phẩm nếu số lượng <= 0
                     cart.getItems().remove(item);
+                    log.info("Removed item from cart due to quantity <= 0");
                 } else {
                     // Cập nhật số lượng
                     item.setQuantity(quantity);
+                    log.info("Updated item quantity to {}", quantity);
                 }
                 
                 // Cập nhật tổng giá
@@ -722,9 +798,12 @@ public class CartServiceImpl implements CartService {
                 
                 // Lưu vào Redis
                 cartRedisRepository.saveGuestCart(guestId, cart);
+                log.info("Saved updated cart to Redis");
                 
                 return toCartResponse(cart);
             } else {
+                log.warn("Item not found in cart: productId={}, color={}, normalizedColor={}", 
+                        productId, color, normalizedColor);
                 throw new InvalidItemException("Item not found in cart: " + productId + ", color: " + normalizedColor);
             }
         } catch (InvalidItemException e) {
@@ -904,7 +983,7 @@ public class CartServiceImpl implements CartService {
                         }
                     }
 
-                    boolean isAvailable = inventory != null && item.getQuantity() <= inventory.getQuantity();
+                    boolean available = inventory != null && item.getQuantity() <= inventory.getQuantity();
 
                     String productName = item.getProductName() != null
                             ? item.getProductName()
@@ -921,7 +1000,7 @@ public class CartServiceImpl implements CartService {
                             price,
                             item.getQuantity(),
                             normalizedColor,
-                            isAvailable
+                            available
                     );
                 })
                 .collect(Collectors.toList());
@@ -932,6 +1011,7 @@ public class CartServiceImpl implements CartService {
     }
 
     // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng
+    // Trả về color đã được chuẩn hóa để so sánh (lowercase)
     private String normalizeColor(String color) {
         return (color == null || color.trim().isEmpty()) ? "default" : color;
     }
