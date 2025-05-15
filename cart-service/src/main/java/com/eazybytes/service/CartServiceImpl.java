@@ -22,6 +22,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -574,6 +575,238 @@ public class CartServiceImpl implements CartService {
             cartRedisRepository.save(userId, newCart);
             return toCartResponse(newCart);
         }
+    }
+
+    @Override
+    @Transactional
+    public CartResponse createGuestCart(String guestId) {
+        log.info("Creating new guest cart with ID: {}", guestId);
+        
+        Cart cart = new Cart();
+        cart.setUserId(guestId);
+        cart.setItems(new ArrayList<>());
+        cart.setTotalPrice(0);
+        
+        // Chỉ lưu vào Redis, không lưu vào database
+        cartRedisRepository.saveGuestCart(guestId, cart);
+        
+        return toCartResponse(cart);
+    }
+    
+    @Override
+    public CartResponse getGuestCartById(String guestId) throws CartNotFoundException {
+        log.info("Fetching guest cart with ID: {}", guestId);
+        
+        Cart cart = cartRedisRepository.findByGuestId(guestId);
+        if (cart == null) {
+            throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
+        }
+        
+        return toCartResponse(cart);
+    }
+    
+    @Override
+    public CartResponse addItemToGuestCart(String guestId, CartItemRequest cartItemRequest) throws CartNotFoundException, InvalidItemException {
+        log.info("Adding item to guest cart: {}", guestId);
+        
+        Cart cart = cartRedisRepository.findByGuestId(guestId);
+        if (cart == null) {
+            // Tạo giỏ hàng mới nếu chưa tồn tại
+            cart = new Cart();
+            cart.setUserId(guestId);
+            cart.setItems(new ArrayList<>());
+            cart.setTotalPrice(0);
+        }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(cartItemRequest.getColor());
+        
+        try {
+            // Kiểm tra tồn kho
+            InventoryDto inventory = checkInventoryWithCircuitBreaker(cartItemRequest.getProductId(), normalizedColor);
+            
+            CartItems cartItemToAdd = new CartItems();
+            cartItemToAdd.setProductId(cartItemRequest.getProductId());
+            cartItemToAdd.setQuantity(cartItemRequest.getQuantity());
+            cartItemToAdd.setColor(normalizedColor);
+            cartItemToAdd.setProductName(inventory.getProductName());
+            cartItemToAdd.setPrice(inventory.getCurrentPrice());
+            cartItemToAdd.setCart(cart);
+            
+            // Kiểm tra số lượng tồn kho
+            if (cartItemRequest.getQuantity() > inventory.getQuantity()) {
+                throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + 
+                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                    ", requested: " + cartItemRequest.getQuantity());
+            }
+            
+            // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+            Optional<CartItems> existingItemOpt = cart.getItems().stream()
+                    .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) && 
+                            normalizeColor(item.getColor()).equals(normalizedColor))
+                    .findFirst();
+            
+            if (existingItemOpt.isPresent()) {
+                // Cập nhật số lượng nếu sản phẩm đã tồn tại
+                CartItems existingItem = existingItemOpt.get();
+                int newQuantity = existingItem.getQuantity() + cartItemRequest.getQuantity();
+                
+                // Kiểm tra lại số lượng tồn kho
+                if (newQuantity > inventory.getQuantity()) {
+                    throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + 
+                        ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                        ", requested total: " + newQuantity);
+                }
+                
+                existingItem.setQuantity(newQuantity);
+            } else {
+                // Thêm sản phẩm mới vào giỏ hàng
+                cart.getItems().add(cartItemToAdd);
+            }
+            
+            // Cập nhật tổng giá
+            cart.setTotalPrice(calculateTotalPrice(cart));
+            
+            // Lưu vào Redis
+            cartRedisRepository.saveGuestCart(guestId, cart);
+            
+            return toCartResponse(cart);
+        } catch (InvalidItemException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error adding item to guest cart: {}", guestId, e);
+            throw new RuntimeException("Failed to add item to guest cart", e);
+        }
+    }
+    
+    @Override
+    public CartResponse updateGuestCartItem(String guestId, String productId, Integer quantity, String color) throws CartNotFoundException, InvalidItemException {
+        log.info("Updating item in guest cart: {}, product: {}, color: {}, quantity: {}", guestId, productId, color, quantity);
+        
+        Cart cart = cartRedisRepository.findByGuestId(guestId);
+        if (cart == null) {
+            throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
+        }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
+        
+        try {
+            // Kiểm tra tồn kho
+            InventoryDto inventory = checkInventoryWithCircuitBreaker(productId, normalizedColor);
+            
+            if (quantity > inventory.getQuantity()) {
+                throw new InvalidItemException("Insufficient inventory for " + productId + 
+                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                    ", requested: " + quantity);
+            }
+            
+            // Tìm sản phẩm trong giỏ hàng
+            Optional<CartItems> itemOpt = cart.getItems().stream()
+                    .filter(item -> item.getProductId().equals(productId) && 
+                            normalizeColor(item.getColor()).equals(normalizedColor))
+                    .findFirst();
+            
+            if (itemOpt.isPresent()) {
+                CartItems item = itemOpt.get();
+                if (quantity <= 0) {
+                    // Xóa sản phẩm nếu số lượng <= 0
+                    cart.getItems().remove(item);
+                } else {
+                    // Cập nhật số lượng
+                    item.setQuantity(quantity);
+                }
+                
+                // Cập nhật tổng giá
+                cart.setTotalPrice(calculateTotalPrice(cart));
+                
+                // Lưu vào Redis
+                cartRedisRepository.saveGuestCart(guestId, cart);
+                
+                return toCartResponse(cart);
+            } else {
+                throw new InvalidItemException("Item not found in cart: " + productId + ", color: " + normalizedColor);
+            }
+        } catch (InvalidItemException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error updating item in guest cart: {}", guestId, e);
+            throw new RuntimeException("Failed to update item in guest cart", e);
+        }
+    }
+    
+    @Override
+    public CartResponse removeItemFromGuestCart(String guestId, String productId, String color) throws CartNotFoundException {
+        log.info("Removing item from guest cart: {}, product: {}, color: {}", guestId, productId, color);
+        
+        Cart cart = cartRedisRepository.findByGuestId(guestId);
+        if (cart == null) {
+            throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
+        }
+        
+        // Chuẩn hóa color
+        String normalizedColor = normalizeColor(color);
+        
+        // Xóa sản phẩm khỏi giỏ hàng
+        boolean removed = cart.getItems().removeIf(item -> 
+                item.getProductId().equals(productId) && 
+                normalizeColor(item.getColor()).equals(normalizedColor));
+        
+        if (removed) {
+            // Cập nhật tổng giá
+            cart.setTotalPrice(calculateTotalPrice(cart));
+            
+            // Lưu vào Redis
+            cartRedisRepository.saveGuestCart(guestId, cart);
+        }
+        
+        return toCartResponse(cart);
+    }
+    
+    @Override
+    public void clearGuestCart(String guestId) throws CartNotFoundException {
+        log.info("Clearing guest cart: {}", guestId);
+        
+        Cart cart = cartRedisRepository.findByGuestId(guestId);
+        if (cart == null) {
+            throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
+        }
+        
+        // Xóa tất cả sản phẩm
+        cart.getItems().clear();
+        cart.setTotalPrice(0);
+        
+        // Lưu vào Redis
+        cartRedisRepository.saveGuestCart(guestId, cart);
+    }
+    
+    @Override
+    @Transactional
+    public CartResponse mergeGuestCartToUserCart(String userId, String guestId) throws CartNotFoundException, InvalidItemException {
+        log.info("Merging guest cart {} into user cart {}", guestId, userId);
+        
+        // Lấy giỏ hàng của khách vãng lai
+        Cart guestCart = cartRedisRepository.findByGuestId(guestId);
+        if (guestCart == null) {
+            throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
+        }
+        
+        // Chuyển đổi các item từ giỏ hàng khách vãng lai thành CartItemRequest
+        List<CartItemRequest> guestCartItems = guestCart.getItems().stream()
+        .map(item -> new CartItemRequest(
+                item.getProductId(),
+                item.getQuantity(),
+                normalizeColor(item.getColor())
+        ))
+        .collect(Collectors.toList());
+        
+        // Hợp nhất vào giỏ hàng người dùng đã đăng nhập
+        CartResponse mergedCart = mergeListItemToCart(userId, guestCartItems);
+        
+        // Xóa giỏ hàng khách vãng lai sau khi hợp nhất thành công
+        cartRedisRepository.deleteGuestCart(guestId);
+        
+        return mergedCart;
     }
 
     // --- Helper Methods ---

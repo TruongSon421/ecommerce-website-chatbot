@@ -108,4 +108,25 @@ public class CartController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @PostMapping("/merge-guest")
+    @PreAuthorize("@roleChecker.hasRole('USER')")
+    public ResponseEntity<CartResponse> mergeGuestCartToUserCart(@RequestParam String guestId) {
+        String userId = getCurrentUserId();
+        log.info("Received request to merge guest cart {} into user cart {}", guestId, userId);
+        
+        try {
+            CartResponse mergedCart = cartService.mergeGuestCartToUserCart(userId, guestId);
+            return ResponseEntity.ok(mergedCart);
+        } catch (CartNotFoundException e) {
+            log.error("Cart merge failed. Reason: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (InvalidItemException e) {
+            log.error("Cart merge failed. Reason: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Unexpected error during cart merge. Reason: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

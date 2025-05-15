@@ -8,6 +8,7 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   console.log("Navbar render - User:", user);
   console.log("Navbar render - localStorage:", localStorage);
+  console.log("Navbar render - cart:", localStorage.getItem("cart"));
   const handleLogout = async () => {
     await logout();
     console.log("After logout - User:", user);
