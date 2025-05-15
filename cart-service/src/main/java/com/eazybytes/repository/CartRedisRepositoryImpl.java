@@ -53,13 +53,34 @@ public class CartRedisRepositoryImpl implements CartRedisRepository {
     @Override
     public Cart findByGuestId(String guestId) {
         try {
-            String json = redisTemplate.opsForValue().get(GUEST_CART_KEY_PREFIX + guestId);
+            String redisKey = GUEST_CART_KEY_PREFIX + guestId;
+            String json = redisTemplate.opsForValue().get(redisKey);
+            
+            log.info("Retrieving guest cart from Redis with key: {}", redisKey);
+            
             if (json != null) {
-                return objectMapper.readValue(json, Cart.class);
+                log.info("Found JSON in Redis for guest cart: {}, length: {}", guestId, json.length());
+                
+                // Debug JSON để xem cấu trúc
+                if (log.isDebugEnabled()) {
+                    log.debug("JSON from Redis: {}", json);
+                }
+                
+                Cart cart = objectMapper.readValue(json, Cart.class);
+                
+                if (cart != null && cart.getItems() != null) {
+                    log.info("Deserialized cart for guest {}: contains {} items", guestId, cart.getItems().size());
+                } else {
+                    log.warn("Deserialized cart for guest {} but items list is null or cart is null", guestId);
+                }
+                
+                return cart;
+            } else {
+                log.warn("No JSON found in Redis for guest cart: {}", guestId);
             }
             return null;
         } catch (Exception e) {
-            log.warn("Failed to deserialize cart from Redis for guest: {}", guestId, e);
+            log.error("Failed to deserialize cart from Redis for guest: {}", guestId, e);
             return null;
         }
     }
@@ -67,11 +88,40 @@ public class CartRedisRepositoryImpl implements CartRedisRepository {
     @Override
     public void saveGuestCart(String guestId, Cart cart) {
         try {
+            String redisKey = GUEST_CART_KEY_PREFIX + guestId;
+            
+            // In ra thông tin debug để phân tích
+            if (cart.getItems() != null) {
+                log.info("Saving cart with {} items for guest: {}", cart.getItems().size(), guestId);
+                if (log.isDebugEnabled()) {
+                    cart.getItems().forEach(item -> log.debug("Item: productId={}, color={}, quantity={}", 
+                            item.getProductId(), item.getColor(), item.getQuantity()));
+                }
+            } else {
+                log.warn("Saving cart with null items list for guest: {}", guestId);
+            }
+            
             String json = objectMapper.writeValueAsString(cart);
-            redisTemplate.opsForValue().set(GUEST_CART_KEY_PREFIX + guestId, json);
+            log.info("Serialized JSON length: {}", json.length());
+            
+            // Debug JSON để xem cấu trúc
+            if (log.isDebugEnabled()) {
+                log.debug("Serialized JSON: {}", json);
+            }
+            
+            redisTemplate.opsForValue().set(redisKey, json);
             // Đặt thời gian sống cho giỏ hàng khách vãng lai
-            redisTemplate.expire(GUEST_CART_KEY_PREFIX + guestId, GUEST_CART_TTL, java.util.concurrent.TimeUnit.SECONDS);
-            log.debug("Saved cart to Redis for guest: {} with TTL {} days", guestId, GUEST_CART_TTL / (24 * 60 * 60));
+            redisTemplate.expire(redisKey, GUEST_CART_TTL, java.util.concurrent.TimeUnit.SECONDS);
+            
+            log.info("Saved cart to Redis for guest: {} with TTL {} days", guestId, GUEST_CART_TTL / (24 * 60 * 60));
+            
+            // Kiểm tra lại dữ liệu đã lưu
+            String savedJson = redisTemplate.opsForValue().get(redisKey);
+            if (savedJson != null) {
+                log.info("Verified guest cart saved successfully: JSON length {} bytes", savedJson.length());
+            } else {
+                log.warn("Failed to verify guest cart: JSON not found after saving");
+            }
         } catch (Exception e) {
             log.error("Failed to serialize cart to Redis for guest: {}", guestId, e);
         }
@@ -79,12 +129,15 @@ public class CartRedisRepositoryImpl implements CartRedisRepository {
 
     @Override
     public void deleteGuestCart(String guestId) {
-        redisTemplate.delete(GUEST_CART_KEY_PREFIX + guestId);
+        String redisKey = GUEST_CART_KEY_PREFIX + guestId;
+        redisTemplate.delete(redisKey);
         log.debug("Deleted cart from Redis for guest: {}", guestId);
     }
     
     @Override
     public boolean existsByGuestId(String guestId) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(GUEST_CART_KEY_PREFIX + guestId));
+        String redisKey = GUEST_CART_KEY_PREFIX + guestId;
+        Boolean exists = redisTemplate.hasKey(redisKey);
+        return Boolean.TRUE.equals(exists);
     }
 }
