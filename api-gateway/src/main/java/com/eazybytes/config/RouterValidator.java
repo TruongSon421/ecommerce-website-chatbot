@@ -29,8 +29,12 @@ public class RouterValidator {
             "/api/tags/get",
 
             "/api/group-tags/get/{groupId}",
-            "/api/group-tags/groups-by-tags"
+            "/api/group-tags/groups-by-tags",
 
+            "/api/guest-carts",
+            "/api/guest-carts/{guestId}",
+            "/api/guest-carts/{guestId}/items",
+            "/api/guest-carts/{guestId}/items/{productId}"
     );
 
     public Predicate<ServerHttpRequest> isSecured =
