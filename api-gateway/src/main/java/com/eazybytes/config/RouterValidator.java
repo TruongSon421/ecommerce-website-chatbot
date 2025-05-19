@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 @Component
 public class RouterValidator {
     public static final List<String> openApiEndpoints = List.of(
+            "/api/internal/blacklist",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh-token",
@@ -29,8 +30,12 @@ public class RouterValidator {
             "/api/tags/get",
 
             "/api/group-tags/get/{groupId}",
-            "/api/group-tags/groups-by-tags"
+            "/api/group-tags/groups-by-tags",
 
+            "/api/guest-carts",
+            "/api/guest-carts/{guestId}",
+            "/api/guest-carts/{guestId}/items",
+            "/api/guest-carts/{guestId}/items/{productId}"
     );
 
     public Predicate<ServerHttpRequest> isSecured =

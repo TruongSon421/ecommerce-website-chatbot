@@ -9,6 +9,7 @@ import AdminRegister from "../pages/admin/RegisterAdmin";
 import Dashboard from "../pages/dashbroad/adminDashBroad";
 import AddProductPage from "../pages/product/addProduct";
 import ProductManagement from "../pages/admin/ProductManagement";
+
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -23,6 +24,7 @@ const PrivateRouter = () => {
   return (
     <Routes>
       <Route path="/" element={<UserLayout />}>
+        
         {/* Các route con cho user nếu có */}
       </Route>
       <Route path="/admin" element={<AdminLayout />}>

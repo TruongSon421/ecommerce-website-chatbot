@@ -1,6 +1,24 @@
 // src/api/productApi.ts
 import api from '../config/axios';
 import { ProductCreateRequest, GroupVariantRequest } from '../types/product';
+import { GroupProductDto } from '../types/product';
+
+export const searchProducts = async (query: string): Promise<GroupProductDto[]> => {
+  try {
+    if (!query.trim()) {
+      return [];
+    }
+    const response = await api.get<GroupProductDto[]>('/group-variants/search', {
+      params: { query },
+    });
+    // Lấy top 5 sản phẩm
+    return response.data.slice(0, 5);
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to search products';
+    console.error('Search products failed:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
 
 export const productApi = {
   createProduct: async (data: ProductCreateRequest) => {

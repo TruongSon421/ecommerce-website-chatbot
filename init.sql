@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS ecommerce_inventory;
 CREATE DATABASE IF NOT EXISTS ecommerce_cart;
 CREATE DATABASE IF NOT EXISTS ecommerce_order;
 CREATE DATABASE IF NOT EXISTS ecommerce_payment;
+
 -- Create user if not exists
 CREATE USER IF NOT EXISTS 'tiendoan'@'%' IDENTIFIED BY 'tiendoan';
 

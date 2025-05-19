@@ -1,13 +1,13 @@
 import axios from '../config/axios';
-import { CartItem, CartResponse } from '../types/cart';
+import { CartItem, CartResponse, CheckoutPayload } from '../types/cart';
 import { useCartStore } from '../store/cartStore';
-import { deleteCookie } from '../components/utils/cookie';
 
 export const addItemToCart = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
     const apiColor = color === 'Không xác định' ? 'default' : color;
     console.log('Adding item to cart for user:', userId, 'Item:', { productId, quantity, color: apiColor });
+
     if (isAuthenticated) {
       const response = await axios.post<CartResponse>('/carts/items', { productId, quantity, color: apiColor }, {
         headers: {
@@ -17,21 +17,20 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
       console.log('Added item to cart:', response.data);
       await getCartItems(userId);
     } else {
-      const currentCartItems = useCartStore.getState().items;
-      const existingItem = currentCartItems.find(
-        (cartItem) => cartItem.productId === productId && cartItem.color === color
-      );
-
-      if (existingItem) {
-        const newQuantity = existingItem.quantity + quantity;
-        console.log('Item exists, updating quantity locally:', { productId, color, newQuantity });
-        useCartStore.getState().updateQuantity(productId, color, newQuantity);
-      } else {
-        useCartStore.getState().addItem({
-          ...item,
-          color: color === 'default' || !color ? 'Không xác định' : color,
-        });
+      let guestId = localStorage.getItem('guestCartId');
+      if (!guestId) {
+        const response = await axios.post<CartResponse>('/guest-carts');
+        guestId = response.data.userId;
+        localStorage.setItem('guestCartId', guestId);
+        console.log('Created new guest cart:', guestId);
       }
+
+      const response = await axios.post<CartResponse>(`/guest-carts/${guestId}/items`, { productId, quantity, color: apiColor });
+      console.log('Added item to guest cart:', response.data);
+      useCartStore.getState().setItems(response.data.items.map((item) => ({
+        ...item,
+        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
+      })));
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to add item to cart';
@@ -42,11 +41,17 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
 
 export const getCartItems = async (userId: string): Promise<CartItem[]> => {
   try {
-    const response = await axios.get<CartResponse>('/carts', {
-      headers: {
-        'X-Auth-UserId': userId,
-      },
-    });
+    let response: { data: CartResponse };
+    if (userId.startsWith('guest-')) {
+      response = await axios.get<CartResponse>(`/guest-carts/${userId}`);
+    } else {
+      console.log('Fetching cart for user:', userId);
+      response = await axios.get<CartResponse>('/carts', {
+        headers: {
+          'X-Auth-UserId': userId,
+        },
+      });
+    }
     console.log('Fetched cart items:', response.data);
     const updatedItems = response.data.items.map((item) => ({
       ...item,
@@ -78,7 +83,21 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
       console.log('Updated cart item:', response.data);
       await getCartItems(userId);
     } else {
-      useCartStore.getState().updateQuantity(productId, color, quantity);
+      const guestId = localStorage.getItem('guestCartId');
+      if (!guestId) {
+        throw new Error('No guest cart found');
+      }
+      const response = await axios.put(`/guest-carts/${guestId}/items/${productId}`, {}, {
+        params: {
+          quantity,
+          color: apiColor,
+        },
+      });
+      console.log('Updated guest cart item:', response.data);
+      useCartStore.getState().setItems(response.data.items.map((item) => ({
+        ...item,
+        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
+      })));
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to update cart item';
@@ -103,7 +122,20 @@ export const removeItemFromCart = async (userId: string, productId: string, colo
       console.log('Removed cart item:', response.data);
       await getCartItems(userId);
     } else {
-      useCartStore.getState().removeItem(productId, color);
+      const guestId = localStorage.getItem('guestCartId');
+      if (!guestId) {
+        throw new Error('No guest cart found');
+      }
+      const response = await axios.delete(`/guest-carts/${guestId}/items/${productId}`, {
+        params: {
+          color: apiColor,
+        },
+      });
+      console.log('Removed guest cart item:', response.data);
+      useCartStore.getState().setItems(response.data.items.map((item) => ({
+        ...item,
+        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
+      })));
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to remove cart item';
@@ -123,6 +155,15 @@ export const clearCart = async (userId: string, isAuthenticated: boolean): Promi
       console.log('Cleared cart:', response.data);
       await getCartItems(userId);
     } else {
+      const guestId = localStorage.getItem('guestCartId');
+      if (!guestId) {
+        console.log('No guest cart to clear');
+        useCartStore.getState().clearCart();
+        return;
+      }
+      await axios.delete(`/guest-carts/${guestId}`);
+      console.log('Cleared guest cart:', guestId);
+      localStorage.removeItem('guestCartId');
       useCartStore.getState().clearCart();
     }
   } catch (error: any) {
@@ -134,44 +175,51 @@ export const clearCart = async (userId: string, isAuthenticated: boolean): Promi
 
 export const mergeCart = async (userId: string): Promise<void> => {
   try {
-    const guestCartItems = useCartStore.getState().items.map((item: CartItem) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      color: item.color === 'Không xác định' ? 'default' : item.color,
-    }));
-    console.log('Merging cart for user:', userId, 'Items:', guestCartItems);
+    const guestId = localStorage.getItem('guestCartId');
+    if (!guestId) {
+      console.log('No guest cart to merge');
+      await getCartItems(userId);
+      return;
+    }
 
-    if (guestCartItems.length > 0) {
-      const response = await axios.post<CartResponse>('/carts/merge', guestCartItems, {
+    console.log('Merging guest cart for user:', userId, 'Guest ID:', guestId);
+    const response = await axios.post<CartResponse>(
+      '/carts/merge-guest',
+      {},
+      {
         headers: {
           'X-Auth-UserId': userId,
         },
-      });
-      console.log('Cart merge successful:', response.data);
-      const updatedItems = response.data.items.map((item) => ({
-        ...item,
-        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-      }));
-      useCartStore.getState().setItems(updatedItems);
-    } else {
-      console.log('Guest cart is empty, skipping merge');
-      await getCartItems(userId);
-    }
-
-    // Clear guest cart cookies
-    deleteCookie('guest_cart');
-    deleteCookie('session_id');
-    useCartStore.getState().clearCart();
-    console.log('Guest cart cookies and store cleared after merge');
+        params: {
+          guestId,
+        },
+      }
+    );
+    console.log('Cart merge successful:', response.data);
+    const updatedItems = response.data.items.map((item) => ({
+      ...item,
+      color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
+    }));
+    useCartStore.getState().setItems(updatedItems);
+    localStorage.removeItem('guestCartId');
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Cart merge failed';
     console.error('Cart merge failed:', errorMessage);
     await getCartItems(userId);
-    // Still clear guest cart cookies on failure to avoid stale data
-    deleteCookie('guest_cart');
-    deleteCookie('session_id');
+    localStorage.removeItem('guestCartId');
+    throw new Error(errorMessage);
+  }
+};
+
+export const checkout = async (payload: CheckoutPayload): Promise<void> => {
+  try {
+    console.log('Sending checkout request:', payload);
+    await axios.post('/carts/checkout', payload);
+    console.log('Checkout successful');
     useCartStore.getState().clearCart();
-    console.log('Guest cart cookies and store cleared despite merge failure');
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Checkout failed';
+    console.error('Checkout failed:', errorMessage);
     throw new Error(errorMessage);
   }
 };

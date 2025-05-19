@@ -23,6 +23,26 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=tiendoan
+      - POSTGRES_PASSWORD=tiendoan
+      - POSTGRES_DB=sessions
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce_network
+
   mongodb:
     image: mongo:4.4.6
     container_name: mongodb
@@ -106,6 +126,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.12.0
+  #   container_name: logstash
+  #   volumes:
+  #     - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+  #     - /path/to/your/spring-boot.log:/logs/spring-boot.log:ro
+  #   ports:
+  #     - 5000:5000
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - elk-network
+      
   kibana:
     image: docker.elastic.co/kibana/kibana:8.12.0
     container_name: kibana
@@ -333,24 +366,24 @@ services:
       retries: 5
       start_period: 30s
 
-  chatbot:
-    build:
-      context: ./chatbot/src
-      dockerfile: Dockerfile
-    container_name: chatbot
-    ports:
-      - "5001:5001"
-    depends_on:
-      redis:
-        condition: service_healthy
-    volumes:
-      - ./chatbot/src:/app
-      - /home/kltn2025/.cache/huggingface:/root/.cache/huggingface
-    environment:
-      - LANGUAGE_MODEL_PATH=/root/.cache/huggingface/hub/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
-    command: python app.py
-    networks:
-      - ecommerce_network
+  # chatbot:
+  #   build:
+  #     context: ./chatbot/src
+  #     dockerfile: Dockerfile
+  #   container_name: chatbot
+  #   ports:
+  #     - "5001:5001"
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./chatbot/src:/app
+  #     - /home/kltn2025/.cache/huggingface:/root/.cache/huggingface
+  #   environment:
+  #     - LANGUAGE_MODEL_PATH=/root/.cache/huggingface/hub/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
+  #   command: python app.py
+  #   networks:
+  #     - ecommerce_network
 
   frontend:
     build:
@@ -384,7 +417,7 @@ volumes:
     external: true
   rag_elasticsearch-data:
     external: true  
-
+  postgres_data:
 networks:
   ecommerce_network:
     driver: bridge
