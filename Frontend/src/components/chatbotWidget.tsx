@@ -35,6 +35,11 @@ interface WebSocketMessage {
   turn_complete?: boolean;
   interrupted?: boolean;
   error?: string;
+  auth_required?: boolean;
+  auth_request_id?: string;
+  connection_status?: string;
+  login_success?: boolean;
+  session_transferred?: boolean;
 }
 
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
@@ -171,6 +176,8 @@ const ChatbotWidget: React.FC = () => {
   const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [viewAllUrl, setViewAllUrl] = useState('');
+  const [pendingAuthRequestId, setPendingAuthRequestId] = useState<string | null>(null);
+  const [isAuthRequired, setIsAuthRequired] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -194,19 +201,115 @@ const ChatbotWidget: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [showHelpButton]);
 
+  // Lấy thông tin xác thực từ localStorage
+  const getAuthInfo = (): { token: string | null; userId: string } => {
+    let userId: string = 'guest-eb9b679f-f89c-4eda-b65e-be3695d5d9d6';
+    const guestId = localStorage.getItem('guest_id');
+    const userStr = localStorage.getItem('user');
+    
+    if (userStr) {
+      try {
+        const userObj = JSON.parse(userStr);
+        if (userObj && userObj.id) {
+          userId = userObj.id;
+        }
+      } catch (error) {
+        console.error('Error parsing user from localStorage:', error);
+      }
+    }
+    
+    // If we couldn't get the ID from the user object, use the guest ID
+    if (!userId && guestId) {
+      userId = guestId;
+    }
+    
+    return {
+      token: localStorage.getItem('accessToken'),
+      userId: userId
+    };
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
     // Kết nối WebSocket
-    wsRef.current = new WebSocket(`ws://localhost:8000/chat/${chatSession.session_id}`);
+    const { userId } = getAuthInfo();
+    wsRef.current = new WebSocket(`ws://localhost:8000/chat/${userId}/${chatSession.session_id}`);
 
     wsRef.current.onopen = () => {
       console.log('WebSocket connected');
       setApiError(null);
+      
+      // Gửi thông tin xác thực ngay sau khi kết nối để cập nhật session state
+      sendAuthInfo();
+      
+      // Kiểm tra nếu có session_id cũ cần chuyển lịch sử
+      const previousSessionId = localStorage.getItem('previous_session_id');
+      if (previousSessionId && previousSessionId !== chatSession.session_id) {
+        setTimeout(() => {
+          wsRef.current?.send(JSON.stringify({
+            transfer_from_session: previousSessionId,
+            user_id: getAuthInfo().userId
+          }));
+          console.log('Requested session transfer from', previousSessionId);
+          
+          // Xóa session_id cũ sau khi đã yêu cầu chuyển
+          localStorage.removeItem('previous_session_id');
+        }, 1000); // Delay 1s để đảm bảo sendAuthInfo đã hoàn tất
+      }
     };
 
     wsRef.current.onmessage = async (event) => {
       const data: WebSocketMessage = JSON.parse(event.data);
+
+      // Xử lý thông báo đăng nhập thành công
+      if (data.login_success) {
+        setChatSession((prev) => ({
+          ...prev,
+          messages: [...prev.messages, {
+            id: Date.now(),
+            text: data.message || "Đăng nhập thành công!",
+            sender: 'bot'
+          }],
+          last_active: Date.now(),
+        }));
+        return;
+      }
+      
+      // Xử lý thông báo chuyển lịch sử hội thoại thành công
+      if (data.session_transferred) {
+        setChatSession((prev) => ({
+          ...prev,
+          messages: [...prev.messages, {
+            id: Date.now(),
+            text: data.message || "Lịch sử hội thoại đã được khôi phục.",
+            sender: 'bot'
+          }],
+          last_active: Date.now(),
+        }));
+        return;
+      }
+
+      // Xử lý yêu cầu xác thực
+      if (data.auth_required) {
+        console.log('Authentication required:', data);
+        setPendingAuthRequestId(data.auth_request_id || null);
+        setIsAuthRequired(true);
+        
+        // Thêm thông báo cần đăng nhập
+        setChatSession((prev) => ({
+          ...prev,
+          messages: [...prev.messages, {
+            id: Date.now(),
+            text: "Bạn cần đăng nhập để tiếp tục. Vui lòng nhấn nút đăng nhập bên dưới.",
+            sender: 'bot'
+          }],
+          last_active: Date.now(),
+        }));
+        
+        setIsBotTyping(false);
+        return;
+      }
 
       if (data.error) {
         setApiError(data.error);
@@ -270,6 +373,57 @@ const ChatbotWidget: React.FC = () => {
     };
   }, [isOpen, chatSession.session_id]);
 
+  // Hàm gửi thông tin xác thực hiện tại
+  const sendAuthInfo = () => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    
+    const { token, userId } = getAuthInfo();
+    const authData: any = { user_id: userId };
+    
+    if (token) {
+      authData.access_token = token;
+    }
+    
+    // Gửi message chỉ chứa thông tin xác thực
+    wsRef.current.send(JSON.stringify(authData));
+    console.log('Sent auth info to server:', authData);
+  };
+
+  // Kiểm tra và cập nhật thông tin xác thực sau khi đăng nhập
+  useEffect(() => {
+    // Nếu có pending auth request và vừa mới đăng nhập xong
+    const { token } = getAuthInfo();
+    if (pendingAuthRequestId && token && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "auth_response",
+        token: token,
+        auth_request_id: pendingAuthRequestId,
+        user_id: getAuthInfo().userId
+      }));
+      setPendingAuthRequestId(null);
+      setIsAuthRequired(false);
+    }
+  }, [pendingAuthRequestId, getAuthInfo]);
+
+  // Xử lý khi người dùng đã đăng nhập và quay lại
+  useEffect(() => {
+    // Kiểm tra nếu quay lại từ trang đăng nhập với pending_auth
+    const params = new URLSearchParams(window.location.search);
+    const pendingAuth = params.get('pending_auth');
+    
+    if (pendingAuth && getAuthInfo().token) {
+      // Mở lại chat widget
+      setIsOpen(true);
+      
+      // Xóa tham số khỏi URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Lưu session_id cũ để khôi phục lịch sử cuộc hội thoại
+      localStorage.setItem('previous_session_id', pendingAuth);
+    }
+  }, []);
+
   const fetchProducts = async (groupIds: number[]): Promise<GroupProduct[]> => {
     try {
       const response = await fetch(
@@ -303,10 +457,13 @@ const ChatbotWidget: React.FC = () => {
       last_active: Date.now(),
     }));
 
-    // Gửi tin nhắn qua WebSocket
+    // Gửi tin nhắn qua WebSocket, luôn kèm theo thông tin xác thực
+    const { token, userId } = getAuthInfo();
     wsRef.current.send(JSON.stringify({
       message: input,
       groupids: [], // Có thể thêm groupids nếu client cần gửi
+      user_id: userId,
+      access_token: token
     }));
 
     setInput('');
@@ -329,6 +486,14 @@ const ChatbotWidget: React.FC = () => {
     setApiError(null);
     setViewAllUrl('');
     setIsBotTyping(false);
+    setPendingAuthRequestId(null);
+    setIsAuthRequired(false);
+  };
+
+  // Xử lý đăng nhập
+  const handleLogin = async () => {
+    // Chuyển hướng đến trang đăng nhập
+    window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + '?pending_auth=' + chatSession.session_id);
   };
 
   return (
@@ -464,6 +629,18 @@ const ChatbotWidget: React.FC = () => {
                 {apiError}
               </div>
             )}
+            
+            {/* Hiển thị nút đăng nhập khi cần xác thực */}
+            {isAuthRequired && (
+              <div className="flex justify-center mt-2">
+                <button
+                  onClick={handleLogin}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600 transition"
+                >
+                  Đăng nhập để tiếp tục
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="p-3 border-t border-gray-200">
@@ -475,11 +652,11 @@ const ChatbotWidget: React.FC = () => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                 placeholder="Nhập tin nhắn..."
-                disabled={isBotTyping}
+                disabled={isBotTyping || isAuthRequired}
               />
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || isBotTyping}
+                disabled={!input.trim() || isBotTyping || isAuthRequired}
                 className="absolute right-2 text-gray-400 hover:text-blue-500 disabled:hover:text-gray-400"
               >
                 <svg 

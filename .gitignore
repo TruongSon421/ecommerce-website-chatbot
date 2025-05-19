@@ -40,3 +40,4 @@ build/
 ### .env ###
 *.env
 
+/demo/agent/.env
