@@ -1,68 +1,65 @@
 import { create } from 'zustand';
 import { CartItem } from '../types/cart';
-import { getCookie, setCookie, generateSessionId } from '../components/utils/cookie';
 
 interface CartState {
   items: CartItem[];
-  sessionId: string | null;
+  selectedItems: string[];
   addItem: (item: CartItem) => void;
   updateQuantity: (productId: string, color: string, quantity: number) => void;
   removeItem: (productId: string, color: string) => void;
+  toggleSelectItem: (productId: string) => void;
   clearCart: () => void;
   setItems: (items: CartItem[]) => void;
-  initializeSession: () => void;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
+export const useCartStore = create<CartState>((set) => ({
   items: [],
-  sessionId: null,
+  selectedItems: [],
 
-  initializeSession: () => {
-    let sessionId = getCookie('session_id');
-    if (!sessionId) {
-      sessionId = generateSessionId();
-      setCookie('session_id', sessionId);
-    }
-    const guestCart = getCookie('guest_cart');
-    const items = guestCart ? JSON.parse(guestCart) : [];
-    set({ sessionId, items });
-    console.log('Initialized guest session:', { sessionId, items }); // Log để debug
-  },
-
-  addItem: (item: CartItem) => {
+  addItem: (item: CartItem) =>
     set((state) => {
-      const newItems = [...state.items, item];
-      setCookie('guest_cart', JSON.stringify(newItems));
-      return { items: newItems };
-    });
-  },
-
-  updateQuantity: (productId: string, color: string, quantity: number) => {
-    set((state) => {
-      const newItems = state.items.map((item) =>
-        item.productId === productId && item.color === color ? { ...item, quantity } : item
+      const existingItem = state.items.find(
+        (i) => i.productId === item.productId && i.color === item.color
       );
-      setCookie('guest_cart', JSON.stringify(newItems));
-      return { items: newItems };
-    });
-  },
+      if (existingItem) {
+        return {
+          items: state.items.map((i) =>
+            i.productId === item.productId && i.color === item.color
+              ? { ...i, quantity: i.quantity + item.quantity }
+              : i
+          ),
+        };
+      }
+      return { items: [...state.items, item] };
+    }),
 
-  removeItem: (productId: string, color: string) => {
-    set((state) => {
-      const newItems = state.items.filter(
+  updateQuantity: (productId: string, color: string, quantity: number) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.productId === productId && item.color === color
+          ? { ...item, quantity: quantity > 0 ? quantity : 1 }
+          : item
+      ),
+    })),
+
+  removeItem: (productId: string, color: string) =>
+    set((state) => ({
+      items: state.items.filter(
         (item) => !(item.productId === productId && item.color === color)
-      );
-      setCookie('guest_cart', JSON.stringify(newItems));
-      return { items: newItems };
-    });
-  },
+      ),
+      selectedItems: state.selectedItems.filter((id) => id !== productId),
+    })),
 
-  clearCart: () => {
-    setCookie('guest_cart', JSON.stringify([]));
-    set({ items: [], sessionId: null });
-  },
+  toggleSelectItem: (productId: string) =>
+    set((state) => {
+      const isSelected = state.selectedItems.includes(productId);
+      if (isSelected) {
+        return { selectedItems: state.selectedItems.filter((id) => id !== productId) };
+      }
+      return { selectedItems: [...state.selectedItems, productId] };
+    }),
 
-  setItems: (items: CartItem[]) => {
-    set({ items });
-  },
+  clearCart: () => set({ items: [], selectedItems: [] }),
+
+  setItems: (items: CartItem[]) => set({ items }),
 }));

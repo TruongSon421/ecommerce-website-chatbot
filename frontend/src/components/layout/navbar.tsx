@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../../store/cartStore';
 import { showNotification } from '../common/Notification';
+import SearchBar from '../SearchBar';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -52,6 +53,9 @@ const Navbar: React.FC = () => {
         <Link to="/" className="text-2xl font-bold">
           Ecommerce
         </Link>
+        <div className="flex-1 mx-4">
+          <SearchBar />
+        </div>
         <div className="flex items-center space-x-4">
           <Link to="/products" className="hover:text-gray-300">
             Sản phẩm

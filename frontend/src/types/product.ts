@@ -168,3 +168,12 @@ export interface GroupVariant {
     defaultOriginalPrices: (string | null)[];
     defaultCurrentPrices: (string | null)[];
 }
+
+export interface GroupProductDto {
+  productId: string;
+  variant?: string;
+  orderNumber?: number;
+  productName: string;
+  defaultOriginalPrice: number;
+  defaultCurrentPrice: number;
+}

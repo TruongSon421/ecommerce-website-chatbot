@@ -1,25 +1,32 @@
 import axios from 'axios';
-import ENV from './env';
 
-const api = axios.create({
-  baseURL: ENV.API_URL,
+const instance = axios.create({
+  baseURL: 'http://localhost:8070/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-api.interceptors.request.use(
+// Interceptor để thêm Authorization header
+instance.interceptors.request.use(
   (config) => {
     const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
+    if (accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+      console.log('Added Authorization header:', config.headers.Authorization);
+    } else {
+      console.log('No accessToken found in localStorage');
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
 );
 
-api.interceptors.response.use(
+// Interceptor để xử lý lỗi 401 và làm mới token
+instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
@@ -27,38 +34,33 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        const response = await axios.post(`${ENV.API_URL}/auth/refresh-token`, { 
-          refreshToken 
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+        console.log('Attempting to refresh token with:', refreshToken);
+        const response = await axios.post('http://localhost:8070/api/auth/refresh-token', {
+          refreshToken,
         });
-        
-        // Cập nhật cả access token và refresh token mới
-        const { accessToken, refreshToken: newRefreshToken } = response.data;
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-        
-        // Cập nhật header cho request tiếp theo
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
+        const { token, refreshToken: newRefreshToken } = response.data;
+        console.log('Refresh token successful:', { token, newRefreshToken });
+        localStorage.setItem('accessToken', token);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return instance(originalRequest);
       } catch (refreshError) {
-        // Xóa toàn bộ thông tin authentication khi refresh thất bại
-        localStorage.clear();
+        console.error('Failed to refresh token:', refreshError);
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }
+    console.error('Response error:', error.response?.data);
     return Promise.reject(error);
   }
 );
 
-api.interceptors.request.use(
-  (config) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
-      config.headers['Authorization'] = `Bearer ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-export default api;
+export default instance;

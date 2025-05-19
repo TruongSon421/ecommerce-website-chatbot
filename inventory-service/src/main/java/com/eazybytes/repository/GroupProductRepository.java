@@ -18,10 +18,21 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
 
     List<GroupProduct> findAllByGroupIdInOrderByOrderNumberAsc(List<Integer> groupIds);
 
-    @Query("SELECT gp FROM GroupProduct gp " +
-            "WHERE gp.productName LIKE %:query% " +
-            "GROUP BY gp.groupId " +
-            "ORDER BY MIN(gp.orderNumber)")
+    @Query(value = "SELECT " +
+    "ANY_VALUE(gp.group_product_id) as group_product_id, " +
+    "ANY_VALUE(gp.created_at) as created_at, " +
+    "ANY_VALUE(gp.default_current_price) as default_current_price, " +
+    "ANY_VALUE(gp.default_original_price) as default_original_price, " +
+    "gp.group_id, " +
+    "MIN(gp.order_number) as order_number, " +
+    "ANY_VALUE(gp.product_id) as product_id, " +
+    "ANY_VALUE(gp.product_name) as product_name, " +
+    "ANY_VALUE(gp.updated_at) as updated_at, " +
+    "ANY_VALUE(gp.variant) as variant " +
+    "FROM group_product_junction gp " +
+    "WHERE gp.product_name LIKE CONCAT('%', :query, '%') " +
+    "GROUP BY gp.group_id " +
+    "ORDER BY MIN(gp.order_number)", nativeQuery = true)
     List<GroupProduct> findUniqueProductsByNameGrouped(@Param("query") String query);
 
     @Query("SELECT g.productId FROM GroupProduct g WHERE g.groupId = :groupId ORDER BY g.orderNumber")

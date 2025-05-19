@@ -3,8 +3,6 @@ export interface User {
   username: string;
   email: string;
   roles: string[];
-  phone?: string;
-  address?: string;
 }
 
 export interface LoginCredentials {
@@ -14,16 +12,15 @@ export interface LoginCredentials {
 
 export interface RegisterCredentials {
   username: string;
-  email: string;
   password: string;
+  email: string;
 }
 
-export interface AuthState {
-  user: User | null;
-  accessToken: string | null;
-  refreshToken: string | null;
-  loading: boolean;
-  error: string | null;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
+export interface AuthResponse {
+  token: string;
+  refreshToken: string;
+  id: string;
+  username: string;
+  email: string;
+  roles: string[];
 }

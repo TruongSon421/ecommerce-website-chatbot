@@ -107,12 +107,11 @@ public class InventoryService {
         log.debug("Creating product inventory for product ID: {} and color: {}",
                 request.getProductId(), request.getColor());
                 
-        // Chuẩn hóa color
-        String normalizedColor = normalizeColor(request.getColor());
+        
 
         log.debug("Checking if inventory already exists");
         Optional<ProductInventory> existingInventory = productInventoryRepository
-                .findByProductIdAndColor(request.getProductId(), normalizedColor);
+                .findByProductIdAndColor(request.getProductId(), request.getColor());
 
         log.debug("Existing inventory found: {}", existingInventory.isPresent());
 
@@ -121,12 +120,12 @@ public class InventoryService {
             log.debug("Inventory already exists: {}", existingInventory.get());
             throw new InventoryAlreadyExistsException(
                     "Tồn kho đã tồn tại cho sản phẩm với ID: " + request.getProductId() +
-                            " và màu: " + normalizedColor);
+                            " và màu: " + request.getColor());
         } else {
             log.debug("Creating new inventory object");
             inventory = new ProductInventory();
             inventory.setProductId(request.getProductId());
-            inventory.setColor(normalizedColor);
+            inventory.setColor(request.getColor());
         }
 
         log.debug("Setting inventory properties");
@@ -402,10 +401,14 @@ public class InventoryService {
         // Tìm các reservation cho order
         List<InventoryReservation> reservations = reservationRepository.findByOrderId(request.getOrderId());
         if (reservations.isEmpty()) {
-            throw new IllegalArgumentException("Không tìm thấy reservation cho order ID: " + request.getOrderId());
+            log.warn("Không tìm thấy reservation cho order ID: {}. Có thể đã bị hủy hoặc xử lý trước đó.", request.getOrderId());
+            return; // Chỉ return thay vì throw exception để tránh lỗi khi không tìm thấy reservation
         }
 
         // Kiểm tra items trong request khớp với reservations
+        boolean allItemsValid = true;
+        StringBuilder invalidItems = new StringBuilder();
+        
         for (CartItemResponse item : request.getItems()) {
             // Chuẩn hóa color
             String normalizedColor = normalizeColor(item.getColor());
@@ -414,19 +417,37 @@ public class InventoryService {
                     reservation.getProductId().equals(item.getProductId()) &&
                             reservation.getColor().equals(normalizedColor) &&
                             reservation.getQuantity().equals(item.getQuantity()) &&
-                            reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED);
+                            (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED ||
+                             reservation.getStatus() == InventoryReservation.ReservationStatus.CONFIRMED));
 
             if (!found) {
-                throw new IllegalArgumentException(
-                        "Reservation không hợp lệ cho sản phẩm " + item.getProductId() +
-                                " với màu " + normalizedColor);
+                allItemsValid = false;
+                invalidItems.append("ProductId: ").append(item.getProductId())
+                        .append(", Color: ").append(normalizedColor)
+                        .append(", Quantity: ").append(item.getQuantity())
+                        .append("; ");
             }
+        }
+
+        if (!allItemsValid) {
+            log.warn("Một số sản phẩm không khớp với reservation cho order ID: {}. Chi tiết: {}", 
+                    request.getOrderId(), invalidItems.toString());
+            // Vẫn tiếp tục xử lý các sản phẩm hợp lệ thay vì throw exception
         }
 
         // Cập nhật trạng thái reservation và ghi lịch sử
         for (InventoryReservation reservation : reservations) {
+            // Skip if already confirmed
+            if (reservation.getStatus() == InventoryReservation.ReservationStatus.CONFIRMED) {
+                log.debug("Reservation already confirmed for productId={}, color={}, orderId={}", 
+                    reservation.getProductId(), reservation.getColor(), reservation.getOrderId());
+                continue;
+            }
+            
             reservation.setStatus(InventoryReservation.ReservationStatus.CONFIRMED);
             reservationRepository.save(reservation);
+            log.info("Updated reservation status to CONFIRMED for productId={}, orderId={}", 
+                    reservation.getProductId(), reservation.getOrderId());
 
             InventoryHistory history = InventoryHistory.builder()
                     .productId(reservation.getProductId())
@@ -436,7 +457,10 @@ public class InventoryService {
                     .orderId(reservation.getOrderId())
                     .build();
             historyRepository.save(history);
+            log.info("Created inventory history record for confirmation");
         }
+        
+        log.info("Successfully completed confirmation of all reservations for order ID: {}", request.getOrderId());
     }
 
     @Transactional(transactionManager = "transactionManager")
@@ -446,31 +470,64 @@ public class InventoryService {
         // Tìm các reservation cho order
         List<InventoryReservation> reservations = reservationRepository.findByOrderId(request.getOrderId());
         if (reservations.isEmpty()) {
-            throw new IllegalArgumentException("Không tìm thấy reservation cho order ID: " + request.getOrderId());
+            log.warn("Không tìm thấy reservation cho order ID: {}. Có thể đã được hủy trước đó.", request.getOrderId());
+            return; // Chỉ return thay vì throw exception để tránh lỗi khi có nhiều request hủy cùng lúc
         }
 
+        log.info("Found {} reservations for order: {}", reservations.size(), request.getOrderId());
+        
         // Cập nhật trạng thái và khôi phục số lượng tồn kho
         for (InventoryReservation reservation : reservations) {
-            if (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED) {
-                // Tăng số lượng trong ProductInventory
-                String normalizedColor = normalizeColor(reservation.getColor());
-                increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
+            try {
+                // Chỉ cần khôi phục tồn kho cho các reservation có status là RESERVED
+                // Không cần khôi phục cho CONFIRMED (đã được xác nhận và thuộc đơn hàng hoàn thành)
+                // Không cần khôi phục cho CANCELLED (đã được khôi phục trước đó)
+                if (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED) {
+                    // Tăng số lượng trong ProductInventory
+                    String normalizedColor = normalizeColor(reservation.getColor());
+                    
+                    try {
+                        log.info("Returning {} units of product {} (color: {}) to inventory", 
+                               reservation.getQuantity(), reservation.getProductId(), normalizedColor);
+                        
+                        increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
+                        log.info("Đã hoàn trả {} sản phẩm {} màu {} cho đơn hàng {}", 
+                                reservation.getQuantity(), reservation.getProductId(), normalizedColor, reservation.getOrderId());
+                        
+                        // Cập nhật trạng thái
+                        reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
+                        reservationRepository.save(reservation);
+                        log.info("Updated reservation status to CANCELLED for productId={}, orderId={}", 
+                                reservation.getProductId(), reservation.getOrderId());
 
-                // Cập nhật trạng thái
-                reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
-                reservationRepository.save(reservation);
-
-                // Ghi lịch sử
-                InventoryHistory history = InventoryHistory.builder()
-                        .productId(reservation.getProductId())
-                        .color(normalizedColor)
-                        .quantityChange(reservation.getQuantity())
-                        .reason("CANCELLED")
-                        .orderId(reservation.getOrderId())
-                        .build();
-                historyRepository.save(history);
+                        // Ghi lịch sử
+                        InventoryHistory history = InventoryHistory.builder()
+                                .productId(reservation.getProductId())
+                                .color(normalizedColor)
+                                .quantityChange(reservation.getQuantity())
+                                .reason("CANCELLED")
+                                .orderId(reservation.getOrderId())
+                                .build();
+                        historyRepository.save(history);
+                        log.info("Created inventory history record for cancellation");
+                    } catch (Exception e) {
+                        log.error("Lỗi khi hoàn trả sản phẩm {} màu {} cho đơn hàng {}: {}", 
+                                  reservation.getProductId(), normalizedColor, reservation.getOrderId(), e.getMessage(), e);
+                        throw e; // Re-throw to roll back transaction
+                    }
+                } else {
+                    log.info("Reservation cho đơn hàng {} với sản phẩm {} đã ở trạng thái {}, không cần hoàn trả tồn kho", 
+                            reservation.getOrderId(), reservation.getProductId(), reservation.getStatus());
+                }
+            } catch (Exception e) {
+                log.error("Error processing cancellation for productId={} in order {}: {}", 
+                        reservation.getProductId(), request.getOrderId(), e.getMessage(), e);
+                throw new RuntimeException("Failed to cancel reservation for productId=" + 
+                        reservation.getProductId() + " in order " + request.getOrderId(), e);
             }
         }
+        
+        log.info("Successfully completed cancellation of all reservations for order ID: {}", request.getOrderId());
     }
 
     @Transactional
@@ -507,29 +564,50 @@ public class InventoryService {
 
         List<InventoryReservation> expiredReservations = reservationRepository.findByStatusAndExpiresAtBefore(
                 InventoryReservation.ReservationStatus.RESERVED, LocalDateTime.now());
+                
+        if (!expiredReservations.isEmpty()) {
+            log.info("Found {} expired reservations to process", expiredReservations.size());
+        }
 
         for (InventoryReservation reservation : expiredReservations) {
-            log.info("Cancelling expired reservation for order ID: {}", reservation.getOrderId());
+            log.info("Cancelling expired reservation for order ID: {}, product: {}, color: {}, quantity: {}, expired at: {}", 
+                    reservation.getOrderId(), reservation.getProductId(), 
+                    reservation.getColor(), reservation.getQuantity(), 
+                    reservation.getExpiresAt());
 
-            // Restore inventory quantity
-            String normalizedColor = normalizeColor(reservation.getColor());
-            increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
-
-            // Update reservation status
-            reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
-            reservationRepository.save(reservation);
-
-            // Log history
-            InventoryHistory history = InventoryHistory.builder()
-                    .productId(reservation.getProductId())
-                    .color(normalizedColor)
-                    .quantityChange(reservation.getQuantity())
-                    .reason("TIMEOUT")
-                    .orderId(reservation.getOrderId())
-                    .build();
-            historyRepository.save(history);
+            try {
+                // Restore inventory quantity
+                String normalizedColor = normalizeColor(reservation.getColor());
+                increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
+    
+                // Update reservation status
+                reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
+                reservationRepository.save(reservation);
+    
+                // Log history
+                InventoryHistory history = InventoryHistory.builder()
+                        .productId(reservation.getProductId())
+                        .color(normalizedColor)
+                        .quantityChange(reservation.getQuantity())
+                        .reason("TIMEOUT")
+                        .orderId(reservation.getOrderId())
+                        .build();
+                historyRepository.save(history);
+                
+                log.info("Successfully restored {} units of product {} with color {} for expired order {}", 
+                        reservation.getQuantity(), reservation.getProductId(), 
+                        normalizedColor, reservation.getOrderId());
+            } catch (Exception e) {
+                log.error("Error restoring inventory for expired reservation (orderId: {}, productId: {}): {}", 
+                          reservation.getOrderId(), reservation.getProductId(), e.getMessage(), e);
+            }
         }
 
         log.debug("Processed {} expired reservations", expiredReservations.size());
+    }
+
+    public List<InventoryReservation> getReservationsByOrderId(String orderId) {
+        log.debug("Finding reservations for order ID: {}", orderId);
+        return reservationRepository.findByOrderId(orderId);
     }
 }

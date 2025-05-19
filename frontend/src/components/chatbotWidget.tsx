@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from './hooks/useAuth';
 
 interface Product {
   productId: string;
@@ -29,12 +31,10 @@ interface Message {
   products?: GroupProduct[];
 }
 
-interface WebSocketMessage {
-  message?: string;
-  groupids?: number[];
-  turn_complete?: boolean;
-  interrupted?: boolean;
-  error?: string;
+interface QueryResponse {
+  filter_params: Record<string, any>;
+  group_ids: number[];
+  response: string;
 }
 
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
@@ -42,7 +42,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 
   useEffect(() => {
     const initialSelected: Record<string, Product> = {};
-    grouplist.forEach(group => {
+    grouplist.forEach((group) => {
       if (group.products.length > 0) {
         initialSelected[group.groupDto.groupId.toString()] = group.products[0];
       }
@@ -51,9 +51,9 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
   }, [grouplist]);
 
   const handleVariantClick = (groupId: number, product: Product) => {
-    setSelectedVariants(prev => ({
+    setSelectedVariants((prev) => ({
       ...prev,
-      [groupId.toString()]: product
+      [groupId.toString()]: product,
     }));
   };
 
@@ -62,17 +62,19 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
       {grouplist.map((group) => {
         const selectedVariant = selectedVariants[group.groupDto.groupId.toString()];
         const displayProduct = selectedVariant || group.products[0];
-        
+
         return (
           <div key={group.groupDto.groupId} className="border rounded-lg overflow-hidden bg-white shadow-sm">
             <div className="flex">
               {group.groupDto.image && (
                 <div className="w-1/3 flex-shrink-0">
-                  <img 
-                    src={displayProduct.productId === group.products[0].productId 
-                      ? group.groupDto.image 
-                      : `https://cdn.tgdd.vn/Products/Images/42/${displayProduct.productId.substring(0, 6)}/thumb-600x600.jpg`}
-                    alt={displayProduct.productName} 
+                  <img
+                    src={
+                      displayProduct.productId === group.products[0].productId
+                        ? group.groupDto.image
+                        : `https://cdn.tgdd.vn/Products/Images/42/${displayProduct.productId.substring(0, 6)}/thumb-600x600.jpg`
+                    }
+                    alt={displayProduct.productName}
                     className="w-full h-full object-contain bg-gray-100 p-2"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = group.groupDto.image || '';
@@ -81,9 +83,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                 </div>
               )}
               <div className="w-2/3 p-3">
-                <h4 className="font-medium text-sm mb-2">
-                  {displayProduct.productName}
-                </h4>
+                <h4 className="font-medium text-sm mb-2">{displayProduct.productName}</h4>
                 <div className="space-y-2 mb-3">
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center space-x-2">
@@ -98,7 +98,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-2">
                   <div className="text-xs text-gray-500 mb-1">Phiên bản:</div>
                   <div className="flex flex-wrap gap-1">
@@ -118,7 +118,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                   </div>
                 </div>
 
-                <a 
+                <a
                   href={`/products/${group.groupDto.groupId}`}
                   className="block mt-3 text-center text-xs bg-blue-500 text-white py-1 rounded hover:bg-blue-600 transition"
                 >
@@ -134,6 +134,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 };
 
 const ChatbotWidget: React.FC = () => {
+  const { user } = useAuth();
   const generateSessionId = (): string => {
     return 'session-' + Math.random().toString(36).substring(2, 11);
   };
@@ -171,7 +172,6 @@ const ChatbotWidget: React.FC = () => {
   const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [viewAllUrl, setViewAllUrl] = useState('');
-  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     localStorage.setItem('chatSession', JSON.stringify(chatSession));
@@ -194,89 +194,12 @@ const ChatbotWidget: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [showHelpButton]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // Kết nối WebSocket
-    wsRef.current = new WebSocket(`ws://localhost:8000/chat/${chatSession.session_id}`);
-
-    wsRef.current.onopen = () => {
-      console.log('WebSocket connected');
-      setApiError(null);
-    };
-
-    wsRef.current.onmessage = async (event) => {
-      const data: WebSocketMessage = JSON.parse(event.data);
-
-      if (data.error) {
-        setApiError(data.error);
-        setIsBotTyping(false);
-        return;
-      }
-
-      if (data.message) {
-        const botMessage: Message = {
-          id: Date.now(),
-          text: data.message,
-          sender: 'bot',
-        };
-
-        let messagesToAdd: Message[] = [botMessage];
-
-        if (data.groupids && data.groupids.length > 0) {
-          const url = generateViewAllUrl(data.groupids);
-          setViewAllUrl(url);
-
-          const products = await fetchProducts(data.groupids);
-          if (products.length > 0) {
-            messagesToAdd.push({
-              id: Date.now() + 1,
-              sender: 'bot',
-              products,
-            });
-          }
-        }
-
-        setChatSession((prev) => ({
-          ...prev,
-          messages: [...prev.messages, ...messagesToAdd],
-          last_active: Date.now(),
-        }));
-      }
-
-      if (data.turn_complete) {
-        setIsBotTyping(false);
-      }
-
-      if (data.interrupted) {
-        setApiError('Cuộc trò chuyện bị gián đoạn.');
-        setIsBotTyping(false);
-      }
-    };
-
-    wsRef.current.onerror = () => {
-      setApiError('Kết nối WebSocket thất bại. Vui lòng thử lại.');
-      setIsBotTyping(false);
-    };
-
-    wsRef.current.onclose = () => {
-      console.log('WebSocket disconnected');
-      setApiError('Kết nối WebSocket đã đóng.');
-      setIsBotTyping(false);
-    };
-
-    return () => {
-      wsRef.current?.close();
-    };
-  }, [isOpen, chatSession.session_id]);
-
   const fetchProducts = async (groupIds: number[]): Promise<GroupProduct[]> => {
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `http://localhost:8070/api/group-variants/get?groupIds=${groupIds.join(',')}`
       );
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('Fetch Products Error:', error);
       setApiError('Không thể tải sản phẩm. Vui lòng thử lại sau.');
@@ -288,8 +211,8 @@ const ChatbotWidget: React.FC = () => {
     return `http://localhost:3000/products?groupIds=${groupIds.join(',')}`;
   };
 
-  const handleSend = () => {
-    if (!input.trim() || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+  const handleSend = async () => {
+    if (!input.trim()) return;
 
     const userMessage: Message = {
       id: Date.now(),
@@ -303,18 +226,56 @@ const ChatbotWidget: React.FC = () => {
       last_active: Date.now(),
     }));
 
-    // Gửi tin nhắn qua WebSocket
-    wsRef.current.send(JSON.stringify({
-      message: input,
-      groupids: [], // Có thể thêm groupids nếu client cần gửi
-    }));
+    setIsBotTyping(true);
+    setApiError(null);
+
+    try {
+      const response = await axios.post<QueryResponse>('http://localhost:5000/api/query', {
+        user_id: user?.id || 'guest',
+        session_id: chatSession.session_id,
+        query: input,
+      });
+
+      const { group_ids, response: botResponse } = response.data;
+
+      const botMessage: Message = {
+        id: Date.now(),
+        text: botResponse,
+        sender: 'bot',
+      };
+
+      let messagesToAdd: Message[] = [botMessage];
+
+      if (group_ids && group_ids.length > 0) {
+        const url = generateViewAllUrl(group_ids);
+        setViewAllUrl(url);
+
+        const products = await fetchProducts(group_ids);
+        if (products.length > 0) {
+          messagesToAdd.push({
+            id: Date.now() + 1,
+            sender: 'bot',
+            products,
+          });
+        }
+      }
+
+      setChatSession((prev) => ({
+        ...prev,
+        messages: [...prev.messages, ...messagesToAdd],
+        last_active: Date.now(),
+      }));
+    } catch (error) {
+      console.error('Query API Error:', error);
+      setApiError('Không thể xử lý yêu cầu. Vui lòng thử lại.');
+    } finally {
+      setIsBotTyping(false);
+    }
 
     setInput('');
-    setIsBotTyping(true);
   };
 
   const handleReset = () => {
-    wsRef.current?.close();
     setChatSession({
       session_id: generateSessionId(),
       last_active: Date.now(),
@@ -352,8 +313,8 @@ const ChatbotWidget: React.FC = () => {
               </svg>
             </button>
           )}
-          <button 
-            onClick={() => setIsOpen(true)} 
+          <button
+            onClick={() => setIsOpen(true)}
             className="rounded-full hover:scale-105 transition-transform"
           >
             <img src="/images/chatbot.gif" alt="Chatbot Icon" className="w-16 h-16" />
@@ -366,21 +327,38 @@ const ChatbotWidget: React.FC = () => {
           <div className="bg-blue-500 text-white p-3 rounded-t-lg flex justify-between items-center">
             <h3 className="font-semibold">NEXUS Assistant</h3>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={handleReset}
                 className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
                 title="Bắt đầu hội thoại mới"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
               </button>
-              <button 
+              <button
                 onClick={() => setIsOpen(false)}
                 className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
                 title="Thu nhỏ"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                 </svg>
               </button>
@@ -394,9 +372,7 @@ const ChatbotWidget: React.FC = () => {
                 className={`mb-3 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {msg.sender === 'user' ? (
-                  <div className="max-w-[80%] p-2 rounded-lg bg-blue-500 text-white">
-                    {msg.text}
-                  </div>
+                  <div className="max-w-[80%] p-2 rounded-lg bg-blue-500 text-white">{msg.text}</div>
                 ) : msg.products ? (
                   <div className="w-full relative">
                     {msg.text && (
@@ -407,25 +383,29 @@ const ChatbotWidget: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    
                     <div className="relative border rounded-lg p-2 bg-gray-50">
                       {viewAllUrl && (
                         <div className="absolute top-2 right-2 z-10">
-                          <a 
-                            href={viewAllUrl} 
-                            target="_blank" 
+                          <a
+                            href={viewAllUrl}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white rounded-lg shadow-sm hover:bg-blue-50 transition border border-gray-200"
                           >
                             Xem toàn bộ
-                            <svg 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              className="h-3 w-3 ml-1" 
-                              fill="none" 
-                              viewBox="0 0 24 24" 
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-3 w-3 ml-1"
+                              fill="none"
+                              viewBox="0 0 24 24"
                               stroke="currentColor"
                             >
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
                             </svg>
                           </a>
                         </div>
@@ -438,14 +418,12 @@ const ChatbotWidget: React.FC = () => {
                 ) : (
                   <div className="flex">
                     <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                    <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">
-                      {msg.text}
-                    </div>
+                    <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">{msg.text}</div>
                   </div>
                 )}
               </div>
             ))}
-            
+
             {isBotTyping && (
               <div className="flex justify-start mb-2">
                 <div className="flex items-center">
@@ -458,7 +436,7 @@ const ChatbotWidget: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
             {apiError && (
               <div className="text-red-500 text-xs text-center mt-2 p-1 bg-red-50 rounded">
                 {apiError}
@@ -482,15 +460,15 @@ const ChatbotWidget: React.FC = () => {
                 disabled={!input.trim() || isBotTyping}
                 className="absolute right-2 text-gray-400 hover:text-blue-500 disabled:hover:text-gray-400"
               >
-                <svg 
-                  fill="none" 
-                  height="20" 
-                  viewBox="0 0 24 24" 
-                  width="20" 
+                <svg
+                  fill="none"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  width="20"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path 
-                    d="M12.8147 12.1974L5.28344 13.4526C5.10705 13.482 4.95979 13.6034 4.89723 13.7709L2.29933 20.7283C2.05066 21.3678 2.72008 21.9778 3.33375 21.671L21.3337 12.671C21.8865 12.3946 21.8865 11.6057 21.3337 11.3293L3.33375 2.32933C2.72008 2.0225 2.05066 2.63254 2.29933 3.27199L4.89723 10.2294C4.95979 10.3969 5.10705 10.5183 5.28344 10.5477L12.8147 11.8029C12.9236 11.821 12.9972 11.9241 12.9791 12.033C12.965 12.1173 12.899 12.1834 12.8147 12.1974Z" 
+                  <path
+                    d="M12.8147 12.1974L5.28344 13.4526C5.10705 13.482 4.95979 13.6034 4.89723 13.7709L2.29933 20.7283C2.05066 21.3678 2.72008 21.9778 3.33375 21.671L21.3337 12.671C21.8865 12.3946 21.8865 11.6057 21.3337 11.3293L3.33375 2.32933C2.72008 2.0225 2.05066 2.63254 2.29933 3.27199L4.89723 10.2294C4.95979 10.3969 5.10705 10.5183 5.28344 10.5477L12.8147 11.8029C12.9236 11.821 12.9972 11.9241 12.9791 12.033C12.965 12.1173 12.899 12.1834 12.8147 12.1974Z"
                     fill="currentColor"
                   />
                 </svg>
