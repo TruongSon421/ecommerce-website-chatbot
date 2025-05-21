@@ -12,6 +12,7 @@ function PageCategory() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
   const [sortByPrice, setSortByPrice] = useState<string>('desc');
+  const [pageSize] = useState<number>(20); // Define a consistent page size
   
   // Get page from URL params or default to 0
   const page = Number(searchParams.get('page')) || 0;
@@ -34,7 +35,7 @@ function PageCategory() {
   ) => {
     const queryParams: string[] = [
       `page=${currentPage}`,
-      `size=20`,
+      `size=${pageSize}`, // Use the defined page size
       `sortByPrice=${sortByPrice}`
     ];
 
@@ -66,26 +67,35 @@ function PageCategory() {
     }
 
     return queryParams.join('&');
-  }, [type, sortByPrice]);
+  }, [type, sortByPrice, pageSize]);
 
   // Fetch products when dependencies change
   useEffect(() => {
     const queryString = createQueryParams(page, filters);
+    console.log(`Fetching products for page ${page} with size ${pageSize}`);
     fetchProducts(queryString, page === 0);
-  }, [fetchProducts, page, filters, createQueryParams]);
+  }, [fetchProducts, page, filters, createQueryParams, pageSize]);
 
-  // Save filters to URL
+  // Save filters to URL without replacing the current page
   useEffect(() => {
-    const currentParams = Object.fromEntries(searchParams.entries());
-    setSearchParams({
-      ...currentParams,
-      filters: JSON.stringify(filters),
-      sort: sortByPrice,
-      page: page.toString()
-    }, { replace: true }); // Use replace to avoid adding multiple history entries
-  }, [filters, sortByPrice, page, setSearchParams, searchParams]);
+    // We need to update URL without triggering a new fetch
+    const updatedParams = new URLSearchParams(searchParams);
+    
+    // Update filters in URL
+    updatedParams.set('filters', JSON.stringify(filters));
+    
+    // Update sort in URL
+    updatedParams.set('sort', sortByPrice);
+    
+    // Only set page if it's not already in the URL to avoid conflicts
+    if (!updatedParams.has('page')) {
+      updatedParams.set('page', '0');
+    }
+    
+    setSearchParams(updatedParams, { replace: true });
+  }, [filters, sortByPrice, setSearchParams]);
 
-  // Restore state from URL on mount
+  // Restore state from URL on mount only
   useEffect(() => {
     const filtersFromUrl = searchParams.get('filters');
     const sortFromUrl = searchParams.get('sort');
@@ -101,9 +111,11 @@ function PageCategory() {
     if (sortFromUrl) {
       setSortByPrice(sortFromUrl);
     }
-  }, [searchParams]); // Only run on mount
+  }, []); // Only run on mount, not when searchParams changes
 
   const handleLoadMore = () => {
+    if (loading) return; // Prevent multiple clicks while loading
+    
     const nextPage = page + 1;
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);

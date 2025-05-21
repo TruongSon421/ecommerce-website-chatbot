@@ -47,7 +47,7 @@ const Navbar: React.FC = () => {
           <a href="#" className="search-btn"> 
             <img src="/images/navbar/search-solid.svg" alt="search" />
           </a>
-          <a href="#" className="cart-btn"> 
+          <a href="/cart" className="cart-btn"> 
             <img src="/images/navbar/shopping-bag-outline.svg" alt="cart" />
           </a>
           {/*  Nếu user đã đăng nhập, hiển thị thông tin tài khoản */}
