@@ -1,16 +1,24 @@
 package com.eazybytes.event.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import com.eazybytes.model.Payment.PaymentMethod;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import lombok.experimental.SuperBuilder;
 
-@Data
+@Getter
+@ToString
 @NoArgsConstructor
-@AllArgsConstructor
-public class ProcessPaymentRequest {
-    private String orderId;
-    private String transactionId;
-    private String userId;
+@SuperBuilder(toBuilder = true)
+public class ProcessPaymentRequest extends BaseSagaEvent {
+    private Long orderId;
     private Integer totalAmount;
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
+
+    public ProcessPaymentRequest(String transactionId, String userId, Long orderId, Integer totalAmount, PaymentMethod paymentMethod) {
+        super(transactionId, userId);
+        this.orderId = orderId;
+        this.totalAmount = totalAmount;
+        this.paymentMethod = paymentMethod;
+    }
 }

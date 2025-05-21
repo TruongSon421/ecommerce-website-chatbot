@@ -67,18 +67,19 @@ public class KafkaConfig {
         // Chỉ định các cấu hình cơ bản cho JsonDeserializer
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
-        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.eazybytes.dto.ReserveInventoryRequest");
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "java.util.HashMap");
         props.put(JsonDeserializer.REMOVE_TYPE_INFO_HEADERS, false);
         props.put("spring.json.deserialization.fail.on.unknown.properties", false);
         
-        // Type mappings để deserialize các đối tượng khác nhau
+        // Type mappings để deserialize các đối tượng khác nhau - mở rộng để bao gồm nhiều định dạng hơn
         props.put(JsonDeserializer.TYPE_MAPPINGS, 
                 "reserve-inventory-request:com.eazybytes.dto.ReserveInventoryRequest," +
                 "confirm-inventory-reservation:com.eazybytes.dto.ConfirmInventoryReservationRequest," +
                 "cancel-inventory-reservation:com.eazybytes.dto.CancelInventoryReservationRequest," +
                 "com.eazybytes.event.model.ReserveInventoryRequest:com.eazybytes.dto.ReserveInventoryRequest," +
                 "com.eazybytes.event.model.ConfirmInventoryReservationRequest:com.eazybytes.dto.ConfirmInventoryReservationRequest," +
-                "com.eazybytes.event.model.CancelInventoryReservationRequest:com.eazybytes.dto.CancelInventoryReservationRequest");
+                "com.eazybytes.event.model.CancelInventoryReservationRequest:com.eazybytes.dto.CancelInventoryReservationRequest," +
+                "CancelInventoryReservationRequest:com.eazybytes.dto.CancelInventoryReservationRequest");
         
         return new DefaultKafkaConsumerFactory<>(props);
     }

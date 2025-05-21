@@ -1,0 +1,107 @@
+,present_products,all_products,all_variants
+0,Điện thoại iPhone 16e 128GB,"['Điện thoại iPhone 16e 128GB', 'Điện thoại iPhone 16e 256GB', 'Điện thoại iPhone 16e 512GB']","['128GB', '256GB', '512GB']"
+1,Điện thoại iPhone 16 Pro Max 256GB,"['Điện thoại iPhone 16 Pro Max 256GB', 'Điện thoại iPhone 16 Pro Max 512GB', 'Điện thoại iPhone 16 Pro Max 1TB']","['256GB', '512GB', '1TB']"
+2,Điện thoại iPhone 16 Pro 128GB,"['Điện thoại iPhone 16 Pro 128GB', 'Điện thoại iPhone 16 Pro 256GB', 'Điện thoại iPhone 16 Pro 512GB', 'Điện thoại iPhone 16 Pro 1TB']","['128GB', '256GB', '512GB', '1TB']"
+3,Điện thoại Samsung Galaxy S25 5G 12GB/256GB,"['Điện thoại Samsung Galaxy S25 5G 12GB/256GB', 'Điện thoại Samsung Galaxy S25 5G 12GB/512GB']","['256GB', '512GB']"
+4,Điện thoại Samsung Galaxy S25 Ultra 5G 12GB/256GB,"['Điện thoại Samsung Galaxy S25 Ultra 5G 12GB/256GB', 'Điện thoại Samsung Galaxy S25 Ultra 5G 12GB/512GB', 'Điện thoại Samsung Galaxy S25 Ultra 5G 12GB/1TB']","['256GB', '512GB', '1TB']"
+5,Điện thoại Xiaomi Redmi Note 14 6GB/128GB,"['Điện thoại Xiaomi Redmi Note 14 6GB/128GB', 'Điện thoại Xiaomi Redmi Note 14 8GB/128GB', 'Điện thoại Xiaomi Redmi Note 14 8GB/256GB']","['6GB - 128GB', '8GB - 128GB', '8GB - 256GB']"
+6,Điện thoại Xiaomi Redmi Note 14 Pro 8GB/256GB,['Điện thoại Xiaomi Redmi Note 14 Pro 8GB/256GB'],[None]
+7,Điện thoại OPPO Reno13 F 5G 8GB/256GB,"['Điện thoại OPPO Reno13 F 5G 8GB/256GB', 'Điện thoại OPPO Reno13 F 5G 12GB/512GB', 'Điện thoại OPPO Reno13 F 5G 12GB/256GB']","['8GB - 256GB', '12GB - 512GB', '12GB - 256GB']"
+8,Điện thoại OPPO Reno13 5G 12GB/256GB,"['Điện thoại OPPO Reno13 5G 12GB/256GB', 'Điện thoại OPPO Reno13 5G 12GB/512GB']","['256GB', '512GB']"
+9,Điện thoại realme C75 8GB/128GB,"['Điện thoại realme C75 8GB/128GB', 'Điện thoại realme C75 8GB/256GB', 'Điện thoại realme C75 8GB/512GB']","['128GB', '256GB', '512GB']"
+10,Điện thoại vivo V40 Lite 8GB/256GB,['Điện thoại vivo V40 Lite 8GB/256GB'],[None]
+11,Điện thoại HONOR X9c 5G 12GB/256GB,"['Điện thoại HONOR X9c 5G 12GB/256GB', 'Điện thoại HONOR X9c Smart 5G 12GB/256GB']","['X9c', 'X9c Smart']"
+12,Điện thoại TCL 406s 4GB/64GB,['Điện thoại TCL 406s 4GB/64GB'],[None]
+13,Điện thoại iPhone 16 Plus 128GB,"['Điện thoại iPhone 16 Plus 128GB', 'Điện thoại iPhone 16 Plus 256GB', 'Điện thoại iPhone 16 Plus 512GB']","['128GB', '256GB', '512GB']"
+14,Điện thoại iPhone 16 128GB,"['Điện thoại iPhone 16 128GB', 'Điện thoại iPhone 16 256GB', 'Điện thoại iPhone 16 512GB']","['128GB', '256GB', '512GB']"
+15,Điện thoại Samsung Galaxy S24 Ultra 5G 12GB/256GB,"['Điện thoại Samsung Galaxy S24 Ultra 5G 12GB/256GB', 'Điện thoại Samsung Galaxy S24 Ultra 5G 12GB/512GB']","['256GB', '512GB']"
+16,Điện thoại Samsung Galaxy A16 5G 8GB/128GB,"['Điện thoại Samsung Galaxy A16 5G 8GB/128GB', 'Điện thoại Samsung Galaxy A16 5G 8GB/256GB']","['128GB', '256GB']"
+17,Điện thoại Xiaomi Redmi Note 14 Pro 5G 8GB/256GB,['Điện thoại Xiaomi Redmi Note 14 Pro 5G 8GB/256GB'],[None]
+18,Điện thoại Xiaomi Redmi Note 14 Pro+ 5G 8GB/256GB,['Điện thoại Xiaomi Redmi Note 14 Pro+ 5G 8GB/256GB'],[None]
+19,Điện thoại OPPO Reno13 Pro 5G 12GB/512GB,['Điện thoại OPPO Reno13 Pro 5G 12GB/512GB'],[None]
+20,Điện thoại OPPO Reno13 F 8GB/256GB,['Điện thoại OPPO Reno13 F 8GB/256GB'],[None]
+21,Điện thoại realme Note 60x 3GB/64GB,"['Điện thoại realme Note 60x 3GB/64GB', 'Điện thoại realme Note 60x 4GB/64GB']","['3GB', '4GB']"
+22,Điện thoại vivo Y28 8GB/128GB,"['Điện thoại vivo Y28 8GB/128GB', 'Điện thoại vivo Y28 8GB/256GB']","['128GB', '256GB']"
+23,Điện thoại HONOR X5b 4GB/64GB,"['Điện thoại HONOR X5b 4GB/64GB', 'Điện thoại HONOR X5b Plus 4GB/128GB']","['X5b', 'X5b Plus']"
+24,Điện thoại Samsung Galaxy Z Fold6 5G 12GB/256GB,"['Điện thoại Samsung Galaxy Z Fold6 5G 12GB/256GB', 'Điện thoại Samsung Galaxy Z Fold6 5G 12GB/512GB']","['256GB', '512GB']"
+25,Điện thoại iPhone 15 Pro Max 256GB,"['Điện thoại iPhone 15 Pro Max 256GB', 'Điện thoại iPhone 15 Pro Max 512GB', 'Điện thoại iPhone 15 Pro Max 1TB']","['256GB', '512GB', '1TB']"
+26,Điện thoại Samsung Galaxy A06 4GB/128GB,"['Điện thoại Samsung Galaxy A06 4GB/128GB', 'Điện thoại Samsung Galaxy A06 4GB/64GB', 'Điện thoại Samsung Galaxy A06 6GB/128GB']","['4GB - 128GB', '4GB - 64GB', '6GB - 128GB']"
+27,Điện thoại iPhone 15 Plus 128GB,"['Điện thoại iPhone 15 Plus 128GB', 'Điện thoại iPhone 15 Plus 256GB', 'Điện thoại iPhone 15 Plus 512GB']","['128GB', '256GB', '512GB']"
+28,Điện thoại Samsung Galaxy A35 5G 8GB/256GB,['Điện thoại Samsung Galaxy A35 5G 8GB/256GB'],[None]
+29,Điện thoại Xiaomi 15 5G 12GB/256GB,"['Điện thoại Xiaomi 15 5G 12GB/256GB', 'Điện thoại Xiaomi 15 5G 12GB/512GB']","['256GB', '512GB']"
+30,Điện thoại Xiaomi 15 Ultra 5G 16GB/512GB,"['Điện thoại Xiaomi 15 Ultra 5G 16GB/512GB', 'Điện thoại Xiaomi 15 Ultra 5G 16GB/512GB Trắng']","['Bạc/Đen', 'Trắng']"
+31,Điện thoại OPPO A60 8GB/128GB,"['Điện thoại OPPO A60 8GB/128GB', 'Điện thoại OPPO A60 8GB/256GB']","['128GB', '256GB']"
+32,Điện thoại OPPO A3x 4GB/128GB,"['Điện thoại OPPO A3x 4GB/128GB', 'Điện thoại OPPO A3x 4GB/64GB', 'Điện thoại OPPO A3x 6GB/128GB']","['4GB - 128GB', '4GB - 64GB', '6GB - 128GB']"
+33,Điện thoại realme 13+ 5G 8GB/256GB,"['Điện thoại realme 13+ 5G 8GB/256GB', 'Điện thoại realme 13+ 5G 12GB/256GB']","['8GB', '12GB']"
+34,Điện thoại vivo V40 5G 12GB/256GB,['Điện thoại vivo V40 5G 12GB/256GB'],[None]
+35,Điện thoại HONOR X5 Plus 4GB/64GB,['Điện thoại HONOR X5 Plus 4GB/64GB'],[None]
+36,Điện thoại Samsung Galaxy A05s 6GB/128GB,['Điện thoại Samsung Galaxy A05s 6GB/128GB'],[None]
+37,Điện thoại iPhone 15 128GB,"['Điện thoại iPhone 15 128GB', 'Điện thoại iPhone 15 256GB']","['128GB', '256GB']"
+38,Điện thoại iPhone 14 Plus 512GB,['Điện thoại iPhone 14 Plus 512GB'],[None]
+39,Điện thoại iPhone 14 128GB,['Điện thoại iPhone 14 128GB'],[None]
+40,Điện thoại Samsung Galaxy S24 FE 5G 8GB/128GB,"['Điện thoại Samsung Galaxy S24 FE 5G 8GB/128GB', 'Điện thoại Samsung Galaxy S24 FE 5G 8GB/256GB']","['128GB', '256GB']"
+41,Điện thoại Samsung Galaxy A25 5G 8GB/128GB,['Điện thoại Samsung Galaxy A25 5G 8GB/128GB'],[None]
+42,Điện thoại Samsung Galaxy S24 5G 8GB/256GB,['Điện thoại Samsung Galaxy S24 5G 8GB/256GB'],[None]
+43,Điện thoại Xiaomi 14T 5G 12GB/512GB Xanh,"['Điện thoại Xiaomi 14T 5G 12GB/512GB Xanh', 'Điện thoại Xiaomi 14T 5G 12GB/256GB', 'Điện thoại Xiaomi 14T 5G 12GB/512GB']","['512GB Xanh', '256GB', '512GB']"
+44,Điện thoại Xiaomi 14T Pro 5G 12GB/256GB,['Điện thoại Xiaomi 14T Pro 5G 12GB/256GB'],[None]
+45,Điện thoại OPPO A3 6GB/128GB,"['Điện thoại OPPO A3 6GB/128GB', 'Điện thoại OPPO A3 8GB/128GB', 'Điện thoại OPPO A3 8GB/256GB']","['6GB - 128GB', '8GB - 128GB', '8GB - 256GB']"
+46,Điện thoại Tecno Spark GO 1 3GB/64GB,['Điện thoại Tecno Spark GO 1 3GB/64GB'],[None]
+47,Điện thoại OPPO Reno12 F 8GB/256GB,['Điện thoại OPPO Reno12 F 8GB/256GB'],[None]
+48,Điện thoại realme C65s 6GB/128GB,"['Điện thoại realme C65s 6GB/128GB', 'Điện thoại realme C65s 8GB/256GB', 'Điện thoại realme C65s 8GB/128GB']","['6GB - 128GB', '8GB - 256GB', '8GB - 128GB']"
+49,Điện thoại vivo Y19s 4GB/128GB,"['Điện thoại vivo Y19s 4GB/128GB', 'Điện thoại vivo Y19s 6GB/128GB', 'Điện thoại vivo Y19s 8GB/128GB']","['4GB', '6GB', '8GB']"
+50,Điện thoại HONOR X8b 8GB/512GB,['Điện thoại HONOR X8b 8GB/512GB'],[None]
+51,Điện thoại HONOR X6b 6GB/128GB Đen/Xanh lá,"['Điện thoại HONOR X6b 6GB/128GB Đen/Xanh lá', 'Điện thoại HONOR X6b 6GB/128GB Tím']","['Đen/Xanh lá', 'Tím']"
+52,Điện thoại Samsung Galaxy S24+ 5G 12GB/256GB,['Điện thoại Samsung Galaxy S24+ 5G 12GB/256GB'],[None]
+53,Điện thoại iPhone 13 128GB,"['Điện thoại iPhone 13 128GB', 'Điện thoại iPhone 13 512GB']","['128GB', '512GB']"
+54,Điện thoại iPhone 12 64GB,"['Điện thoại iPhone 12 64GB', 'Điện thoại iPhone 12 128GB']","['64GB', '128GB']"
+55,Điện thoại Xiaomi Redmi 13 6GB/128GB,"['Điện thoại Xiaomi Redmi 13 6GB/128GB', 'Điện thoại Xiaomi Redmi 13 8GB/128GB']","['6GB', '8GB']"
+56,Điện thoại Xiaomi Redmi A3 3GB/64GB,['Điện thoại Xiaomi Redmi A3 3GB/64GB'],[None]
+57,Điện thoại Xiaomi Redmi 14C 4GB/128GB,"['Điện thoại Xiaomi Redmi 14C 4GB/128GB', 'Điện thoại Xiaomi Redmi 14C 6GB/128GB']","['4GB', '6GB']"
+58,Điện thoại OPPO Find X8 5G 16GB/512GB,"['Điện thoại OPPO Find X8 5G 16GB/512GB', 'Điện thoại OPPO Find X8 5G 16GB/512GB Hồng']","['Tiêu Chuẩn', 'Đặc Biệt']"
+59,Điện thoại realme 12 8GB/256GB,"['Điện thoại realme 12 8GB/256GB', 'Điện thoại realme 12 8GB/512GB']","['256GB', '512GB']"
+60,Điện thoại vivo Y03 4GB/64GB,"['Điện thoại vivo Y03 4GB/64GB', 'Điện thoại vivo Y03 4GB/128GB']","['64GB', '128GB']"
+61,Điện thoại realme Note 60 4GB/128GB,"['Điện thoại realme Note 60 4GB/128GB', 'Điện thoại realme Note 60 4GB/64GB', 'Điện thoại realme Note 60 6GB/128GB']","['4GB - 128GB', '4GB - 64GB', '6GB - 128GB']"
+62,Điện thoại vivo V30e 5G 8GB/256GB,"['Điện thoại vivo V30e 5G 8GB/256GB', 'Điện thoại vivo V30e 5G 12GB/256GB']","['8GB', '12GB']"
+63,Điện thoại realme Note 50 3GB/64GB,"['Điện thoại realme Note 50 3GB/64GB', 'Điện thoại realme Note 50 4GB/128GB']","['3GB - 64GB', '4GB - 128GB']"
+64,Điện thoại vivo V30 5G 12GB/512GB,['Điện thoại vivo V30 5G 12GB/512GB'],[None]
+65,Điện thoại realme C61 4GB/128GB,['Điện thoại realme C61 4GB/128GB'],[None]
+66,Điện thoại Viettel Sumo 4G T2,['Điện thoại Viettel Sumo 4G T2'],[None]
+67,Điện thoại Nokia 105 4G Pro,['Điện thoại Nokia 105 4G Pro'],[None]
+68,Điện thoại Benco 4G G3,['Điện thoại Benco 4G G3'],[None]
+69,Điện thoại Samsung Galaxy A55 5G 8GB/256GB,"['Điện thoại Samsung Galaxy A55 5G 8GB/256GB', 'Điện thoại Samsung Galaxy A55 5G 12GB/256GB']","['8GB - 256GB', '12GB - 256GB']"
+70,Điện thoại Masstel IZI T6 4G,['Điện thoại Masstel IZI T6 4G'],[None]
+71,Điện thoại Mobell M239 4G,['Điện thoại Mobell M239 4G'],[None]
+72,Điện thoại Nokia HMD 105 4G,['Điện thoại Nokia HMD 105 4G'],[None]
+73,Điện thoại Nokia 220 4G,['Điện thoại Nokia 220 4G'],[None]
+74,Điện thoại Masstel IZI 10,['Điện thoại Masstel IZI 10'],[None]
+75,Điện thoại Samsung Galaxy M35 5G 8GB/256GB,['Điện thoại Samsung Galaxy M35 5G 8GB/256GB'],[None]
+76,Điện thoại Nokia 110 4G Pro,['Điện thoại Nokia 110 4G Pro'],[None]
+77,Điện thoại Masstel Fami 50 4G,['Điện thoại Masstel Fami 50 4G'],[None]
+78,Điện thoại Mobell F309 4G,['Điện thoại Mobell F309 4G'],[None]
+79,Điện thoại OPPO Reno12 5G 12GB/256GB,"['Điện thoại OPPO Reno12 5G 12GB/256GB', 'Điện thoại OPPO Reno12 5G 12GB/512GB']","['256GB', '512GB']"
+80,Điện thoại Samsung Galaxy S25 Plus 5G 12GB/256GB,"['Điện thoại Samsung Galaxy S25 Plus 5G 12GB/256GB', 'Điện thoại Samsung Galaxy S25 Plus 5G 12GB/512GB']","['256GB', '512GB']"
+81,Điện thoại HONOR X7c 8GB/256GB,['Điện thoại HONOR X7c 8GB/256GB'],[None]
+82,Điện thoại Samsung Galaxy A16 4GB/128GB,"['Điện thoại Samsung Galaxy A16 4GB/128GB', 'Điện thoại Samsung Galaxy A16 8GB/256GB', 'Điện thoại Samsung Galaxy A16 8GB/128GB']","['4GB - 128GB', '8GB - 256GB', '8GB - 128GB']"
+83,Điện thoại Samsung Galaxy M15 5G 4GB/128GB,"['Điện thoại Samsung Galaxy M15 5G 4GB/128GB', 'Điện thoại Samsung Galaxy M15 5G 6GB/128GB']","['4GB', '6GB']"
+84,Điện thoại Mobell M539,['Điện thoại Mobell M539'],[None]
+85,Điện thoại Mobell M331 4G,['Điện thoại Mobell M331 4G'],[None]
+86,Điện thoại Mobell F209,['Điện thoại Mobell F209'],[None]
+87,Điện thoại Masstel Fami 60S 4G,['Điện thoại Masstel Fami 60S 4G'],[None]
+88,Điện thoại vivo Y18 4GB/128GB,"['Điện thoại vivo Y18 4GB/128GB', 'Điện thoại vivo Y18 8GB/128GB']","['4GB', '8GB']"
+89,Điện thoại OPPO Reno12 5G 12GB/256GB Hồng,['Điện thoại OPPO Reno12 5G 12GB/256GB Hồng'],[None]
+90,Điện thoại Nokia 3210 4G,['Điện thoại Nokia 3210 4G'],[None]
+91,Điện thoại Samsung Galaxy Z Flip6 5G 12GB/256GB,"['Điện thoại Samsung Galaxy Z Flip6 5G 12GB/256GB', 'Điện thoại Samsung Galaxy Z Flip6 5G 12GB/512GB']","['256GB', '512GB']"
+92,Điện thoại OPPO Reno12 Pro 5G 12GB/512GB,['Điện thoại OPPO Reno12 Pro 5G 12GB/512GB'],[None]
+93,Điện thoại Samsung Galaxy M54 5G 8GB/256GB,['Điện thoại Samsung Galaxy M54 5G 8GB/256GB'],[None]
+94,Điện thoại Itel it9211,['Điện thoại Itel it9211'],[None]
+95,Điện thoại Itel it9310,['Điện thoại Itel it9310'],[None]
+96,Điện thoại OPPO Reno12 F 5G 8GB/256GB,"['Điện thoại OPPO Reno12 F 5G 8GB/256GB', 'Điện thoại OPPO Reno12 F 5G 12GB/256GB']","['8GB', '12GB']"
+97,Điện thoại OPPO A38 6GB/128GB,['Điện thoại OPPO A38 6GB/128GB'],[None]
+98,Điện thoại Samsung Galaxy S23 FE 5G 8GB/128GB Xanh mint/Trắng,['Điện thoại Samsung Galaxy S23 FE 5G 8GB/128GB Xanh mint/Trắng'],[None]
+99,Điện thoại OPPO Find N3 Flip 5G 12GB/256GB Hồng,"['Điện thoại OPPO Find N3 Flip 5G 12GB/256GB Hồng', 'Điện thoại OPPO Find N3 Flip 5G 12GB/256GB Đen/Vàng đồng']","['Hồng', 'Đen + Vàng đồng']"
+100,Điện thoại HONOR 200 5G 12GB/256GB,"['Điện thoại HONOR 200 5G 12GB/256GB', 'Điện thoại HONOR 200 5G 12GB/512GB']","['256GB', '512GB']"
+101,Điện thoại vivo Y100 8GB/128GB,"['Điện thoại vivo Y100 8GB/128GB', 'Điện thoại vivo Y100 8GB/256GB']","['128GB', '256GB']"
+102,Điện thoại HONOR Magic V3 5G 12GB/512GB,['Điện thoại HONOR Magic V3 5G 12GB/512GB'],[None]
+103,Điện thoại OPPO Find N3 5G 16GB/512GB,['Điện thoại OPPO Find N3 5G 16GB/512GB'],[None]
+104,Điện thoại OPPO A58 8GB/128GB,['Điện thoại OPPO A58 8GB/128GB'],[None]
+105,Điện thoại Itel it2600,['Điện thoại Itel it2600'],[None]

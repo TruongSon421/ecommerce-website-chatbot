@@ -93,7 +93,18 @@ async def handle_query():
         return jsonify({"error": "Missing user_id, session_id, or query"}), 400
     
     response = await call_agent_async(user_id, session_id, query)
-    return jsonify({"response": response, "group_ids": CURRENT_REQUEST_GROUP_IDS, "filter_params": CURRENT_FILTERS_PARAMS})
+    temp1 = CURRENT_REQUEST_GROUP_IDS.copy()
+    temp2 = CURRENT_FILTERS_PARAMS.copy()
+
+    # Dọn dẹp sau khi dùng
+    CURRENT_REQUEST_GROUP_IDS.clear()
+    CURRENT_FILTERS_PARAMS.clear()
+
+    return jsonify({
+        "response": response,
+        "group_ids": temp1,
+        "filter_params": temp2
+    })
 
 @app.route('/api/test_session', methods=['POST'])
 async def test_session():

@@ -18,6 +18,8 @@ public class CartRedisRepositoryImpl implements CartRedisRepository {
     private static final String CART_KEY_PREFIX = "cart:";
     private static final String GUEST_CART_KEY_PREFIX = "guest-cart:";
     private static final long GUEST_CART_TTL = 7 * 24 * 60 * 60; // 7 ngày (tính bằng giây)
+    private static final String GUEST_CART_KEY_PREFIX = "guest-cart:";
+    private static final long GUEST_CART_TTL = 7 * 24 * 60 * 60; // 7 ngày (tính bằng giây)
 
     @Override
     public Cart findByUserId(String userId) {
