@@ -6,6 +6,7 @@ import Home from "../pages/home";
 import PageCategory from "../pages/categories";
 import ProductGH from "../pages/productDetail";
 import UserLayout from "../layouts/userLayouts";
+import CartPage from "../pages/CartPage";
 
 const PublicRouter = () => {
   return (
@@ -14,6 +15,7 @@ const PublicRouter = () => {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route index element={<Home />} /> {/* Dùng index cho path="/" */}
+        <Route path="cart" element={<CartPage />} />
         <Route path=":type" element={<PageCategory />} />
         <Route path=":type/:product_id" element={<ProductGH />} />
       </Route>

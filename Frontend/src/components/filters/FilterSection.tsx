@@ -6,6 +6,7 @@ interface FilterSectionProps {
   currentFilterData: any;
   selectedFilters: { [key: string]: string[] };
   onFilterChange: (key: string, value: string) => void;
+  onPriceRangeChange?: (newValue: number[]) => void;
   isNeeds?: boolean;
 }
 
@@ -14,9 +15,23 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   currentFilterData,
   selectedFilters,
   onFilterChange,
+  onPriceRangeChange,
   isNeeds = false
 }) => {
   const filters = currentFilterData[section] || [];
+  
+  // Check if this is a price filter section
+  const isPriceFilter = section === 'priceRanges';
+
+  // Handle filter change with special case for price ranges
+  const handleFilterChange = (key: string, value: string) => {
+    // If selecting a predefined price range, reset the custom price range to default
+    if (key === 'priceRanges' && onPriceRangeChange) {
+      onPriceRangeChange([300000, 45000000]);
+    }
+    
+    onFilterChange(key, value);
+  };
 
   return (
     <>
@@ -32,10 +47,11 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 }`}
               >
                 <input
-                  type="checkbox"
+                  type={isPriceFilter || filter.multiSelect === false ? "radio" : "checkbox"}
                   checked={(selectedFilters[filter.key] || []).includes(option.value)}
-                  onChange={() => onFilterChange(filter.key, option.value)}
+                  onChange={() => handleFilterChange(filter.key, option.value)}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  name={isPriceFilter || filter.multiSelect === false ? filter.key : undefined}
                 />
                 <span className={`text-sm ${isNeeds ? 'truncate' : ''}`}>
                   {option.label}
