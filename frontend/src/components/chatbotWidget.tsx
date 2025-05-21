@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './hooks/useAuth';
+import { showNotification } from './common/Notification';
+import { addItemToCart } from '../services/cartService';
 
 interface Product {
   productId: string;
-  variant: string;
+  color: string
   orderNumber: number;
   productName: string;
   defaultOriginalPrice: number | null;
@@ -37,7 +39,17 @@ interface QueryResponse {
   response: string;
 }
 
+interface CartItem {
+  productId: string;
+  productName: string;
+  price: number | null;
+  quantity: number;
+  color: string;
+  available: boolean;
+}
+
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
+  const { user } = useAuth();
   const [selectedVariants, setSelectedVariants] = useState<Record<string, Product>>({});
 
   useEffect(() => {
@@ -55,6 +67,27 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
       ...prev,
       [groupId.toString()]: product,
     }));
+  };
+
+  const handleAddToCart = async (product: Product, group: GroupDto) => {
+    console.log('Adding to cart:', { productId: product.productId, color: product.variant, productType: group.type });
+
+    const cartItem: CartItem = {
+      productId: product.productId,
+      productName: product.productName,
+      price: product.defaultCurrentPrice,
+      quantity: 1,
+      color: product.color === '' || !product.color ? 'Không xác định' : product.color,
+      available: true,
+    };
+
+    try {
+      await addItemToCart(user?.id || 'guest', cartItem, user !== null);
+      showNotification('Đã thêm vào giỏ hàng!', 'success');
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');
+    }
   };
 
   return (
@@ -83,7 +116,12 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                 </div>
               )}
               <div className="w-2/3 p-3">
-                <h4 className="font-medium text-sm mb-2">{displayProduct.productName}</h4>
+                <a
+                  href={`/${group.groupDto.type}/${group.products[0].productId}`}
+                  className="font-medium text-sm mb-2 text-blue-600 hover:underline"
+                >
+                  {displayProduct.productName}
+                </a>
                 <div className="space-y-2 mb-3">
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center space-x-2">
@@ -99,31 +137,32 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                   </div>
                 </div>
 
-                <div className="mt-2">
-                  <div className="text-xs text-gray-500 mb-1">Phiên bản:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {group.products.map((product) => (
-                      <button
-                        key={`${group.groupDto.groupId}-${product.productId}`}
-                        onClick={() => handleVariantClick(group.groupDto.groupId, product)}
-                        className={`px-2 py-1 text-xs rounded border ${
-                          selectedVariant?.productId === product.productId
-                            ? 'bg-blue-100 border-blue-500 text-blue-700'
-                            : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {product.variant}
-                      </button>
-                    ))}
+                {group.products.length > 1 && (
+                  <div className="mt-2">
+                    <div className="text-xs text-gray-500 mb-1">Phiên bản:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {group.products.map((product) => (
+                        <button
+                          key={`${group.groupDto.groupId}-${product.productId}`}
+                          onClick={() => handleVariantClick(group.groupDto.groupId, product)}
+                          className={`px-2 py-1 text-xs rounded border ${
+                            selectedVariant?.productId === product.productId
+                              ? 'bg-blue-100 border-blue-500 text-blue-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          {product.variant}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <a
-                  href={`/products/${group.groupDto.groupId}`}
-                  className="block mt-3 text-center text-xs bg-blue-500 text-white py-1 rounded hover:bg-blue-600 transition"
-                >
-                  Xem chi tiết
-                </a>
+                <button
+                  onClick={() => handleAddToCart(displayProduct, group.groupDto)}
+                  className="block mt-3 text-center text-xs bg-blue-500 text-white py-1 rounded hover:bg-blue-600 transition w-full">
+                  <span className="mr-2">🛒</span> Thêm Vào Giỏ Hàng
+                </button>
               </div>
             </div>
           </div>
@@ -228,14 +267,14 @@ const ChatbotWidget: React.FC = () => {
 
     setIsBotTyping(true);
     setApiError(null);
-
     try {
       const response = await axios.post<QueryResponse>('http://localhost:5000/api/query', {
-        user_id: user?.id || 'guest',
+        user_id: user?.id || (localStorage.getItem('guestCartId')),
         session_id: chatSession.session_id,
         query: input,
+        access_token: localStorage.getItem('accessToken') 
       });
-
+      console.log(response)
       const { group_ids, response: botResponse } = response.data;
 
       const botMessage: Message = {

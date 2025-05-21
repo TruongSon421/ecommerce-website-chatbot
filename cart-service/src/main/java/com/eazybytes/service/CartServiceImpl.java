@@ -354,8 +354,12 @@ public class CartServiceImpl implements CartService {
             }
         }
         
-        // Return the final cart state
-        return result != null ? result : getCartByUserId(userId);
+        // Invalidate Redis cache to ensure next fetch gets fresh data
+        cartRedisRepository.delete(userId);
+        log.info("Invalidated Redis cache for user: {} after cart merge to ensure data consistency", userId);
+        
+        // Return the final cart state from database
+        return getCartByUserId(userId);
     }
 
     @Override
