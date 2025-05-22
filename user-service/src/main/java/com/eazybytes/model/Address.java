@@ -1,4 +1,3 @@
-// src/main/java/com/eazybytes/model/Address.java
 package com.eazybytes.model;
 
 import jakarta.persistence.*;
@@ -21,25 +20,22 @@ public class Address {
     private Long id;
 
     @Column(nullable = false)
-    private String street;
+    private String province; // Tỉnh/Thành phố, e.g., "Hà Nội"
 
     @Column(nullable = false)
-    private String city;
+    private String district; // Quận/Huyện, e.g., "Quận 1"
 
     @Column(nullable = false)
-    private String state;
+    private String ward; // Phường/Xã, e.g., "Phường Bến Nghé"
 
     @Column(nullable = false)
-    private String country;
-
-    @Column(name = "postal_code", nullable = false)
-    private String postalCode;
+    private String street; // Đường/Địa chỉ chi tiết, e.g., "123 Lê Lợi"
 
     @Column(nullable = false)
     private Boolean isDefault;
 
     @Column(name = "address_type")
-    private String addressType; // Ví dụ: "HOME", "WORK", "SHIPPING", "BILLING"
+    private String addressType; // e.g., "HOME", "WORK", "SHIPPING", "BILLING"
 
     @Column(nullable = false)
     private String receiverName;

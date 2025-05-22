@@ -64,28 +64,46 @@ public class GroupService {
         return query;
     }
 
-    public List<GroupProductDto> searchProducts(String query) {
-
+    public List<GroupDto> searchProducts(String query) {
         String processedQuery = normalizeSearchQuery(query);
 
-        List<GroupProduct> products = groupProductRepository
-                .findUniqueProductsByNameGrouped(processedQuery);
+        // Join Group với GroupProduct đầu tiên
+        List<Object[]> results = groupRepository.findByGroupNameContainingWithFirstProduct(processedQuery);
 
-        return products.stream()
+        return results.stream()
                 .map(this::convertToSearchDTO)
-                .sorted(Comparator.comparingInt(dto ->
-                        calculateSimilarity(dto.getProductName(), processedQuery)
-                ))
+                .sorted(Comparator.comparingInt(dto -> 
+                        calculateSimilarity(dto.getGroupName(), processedQuery)))
                 .collect(Collectors.toList());
     }
 
-    private GroupProductDto convertToSearchDTO(GroupProduct product) {
-        GroupProductDto dto = new GroupProductDto();
-        dto.setProductId(product.getProductId());
-        dto.setProductName(product.getProductName());
-        dto.setDefaultOriginalPrice(product.getDefaultOriginalPrice());
-        dto.setDefaultCurrentPrice(product.getDefaultCurrentPrice());
-        return dto;
+    private GroupDto convertToSearchDTO(Object[] result) {
+        Group group = (Group) result[0];
+        GroupProduct firstProduct = result.length > 1 && result[1] != null ? (GroupProduct) result[1] : null;
+
+        // Chuyển đổi Integer sang Double cho giá
+        Double originalPrice = null;
+        Double currentPrice = null;
+        
+        if (firstProduct != null && firstProduct.getDefaultOriginalPrice() != null) {
+            originalPrice = firstProduct.getDefaultOriginalPrice().doubleValue();
+        }
+        
+        if (firstProduct != null && firstProduct.getDefaultCurrentPrice() != null) {
+            currentPrice = firstProduct.getDefaultCurrentPrice().doubleValue();
+        }
+
+        return GroupDto.builder()
+                .groupId(group.getGroupId())
+                .groupName(group.getGroupName())
+                .brand(group.getBrand())
+                .type(group.getType())
+                .image(group.getImage())
+                .orderNumber(group.getOrderNumber())
+                .productId(firstProduct != null ? firstProduct.getProductId() : null)
+                .defaultOriginalPrice(originalPrice)
+                .defaultCurrentPrice(currentPrice)
+                .build();
     }
 
     @Transactional(readOnly = true)

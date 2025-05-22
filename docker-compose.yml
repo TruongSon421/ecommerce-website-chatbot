@@ -368,13 +368,13 @@ services:
 
   # chatbot:
   #   build:
-  #     context: ./chatbot/src
+  #     context: ./chatbot
   #     dockerfile: Dockerfile
   #   container_name: chatbot
   #   ports:
-  #     - "5001:5001"
+  #     - "5000:5000"
   #   depends_on:
-  #     redis:
+  #     postgres:
   #       condition: service_healthy
   #   volumes:
   #     - ./chatbot/src:/app

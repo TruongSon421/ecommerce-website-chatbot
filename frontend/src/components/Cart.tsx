@@ -14,7 +14,7 @@ const Cart: React.FC = () => {
 
   // Tính tổng giá của các sản phẩm được chọn
   const totalPrice = items
-    .filter((item) => selectedItems.includes(item.productId))
+    .filter((item) => selectedItems.includes(`${item.productId}-${item.color}`))
     .reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const handleUpdateQuantity = async (productId: string, color: string, quantity: number) => {
@@ -74,31 +74,31 @@ const Cart: React.FC = () => {
       return;
     }
     navigate('/checkout', {
-      state: { selectedItems: items.filter((item) => selectedItems.includes(item.productId)) },
+      state: { selectedItems: items.filter((item) => selectedItems.includes(`${item.productId}-${item.color}`)) },
     });
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
+    <div className="container mx-auto p-4 md:p-8 bg-gray-50">
       <h1 className="text-3xl font-bold mb-6">Giỏ hàng</h1>
       {error && <p className="text-red-500 mb-4">{error}</p>}
       {items.length === 0 ? (
         <p className="text-gray-500">Giỏ hàng của bạn đang trống.</p>
       ) : (
-        <div>
+        <div className="bg-white rounded-lg shadow-md p-6">
           <div className="space-y-4">
             {items.map((item) => (
-              <div key={`${item.productId}-${item.color}`} className="flex items-center border-b py-4">
+              <div key={`${item.productId}-${item.color}`} className="flex items-center border-b py-4 bg-gray-50 rounded-md p-3">
                 <input
                   type="checkbox"
-                  checked={selectedItems.includes(item.productId)}
-                  onChange={() => toggleSelectItem(item.productId)}
+                  checked={selectedItems.includes(`${item.productId}-${item.color}`)}
+                  onChange={() => toggleSelectItem(item.productId,item.color)}
                   className="mr-4 h-5 w-5"
                   disabled={isLoading}
                 />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{item.productName}</h3>
-                  <p className="text-gray-500">Màu: {item.color}</p>
+                  {item.color!=="Không xác định" && <p className="text-gray-500">Màu: {item.color}</p>}
                   <p className="text-gray-500">
                     Giá: {(item.price * item.quantity).toLocaleString('vi-VN')} ₫
                   </p>

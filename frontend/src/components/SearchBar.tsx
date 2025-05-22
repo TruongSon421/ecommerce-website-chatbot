@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
-import { GroupProductDto } from '../types/product';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { GroupDto } from '../types/group';
 import { searchProducts } from '../services/productService';
 import { debounce } from 'lodash';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GroupProductDto[]>([]);
+  const [results, setResults] = useState<GroupDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastQuery, setLastQuery] = useState('');
+  const searchRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const fetchResults = useCallback(
     debounce(async (searchQuery: string) => {
@@ -17,8 +20,8 @@ const SearchBar = () => {
       if (searchQuery.trim()) {
         try {
           setIsLoading(true);
-          const products = await searchProducts(searchQuery);
-          setResults(products);
+          const groups = await searchProducts(searchQuery);
+          setResults(groups);
           setLastQuery(searchQuery);
         } catch (error) {
           console.error('Failed to fetch search results:', error);
@@ -41,17 +44,40 @@ const SearchBar = () => {
     };
   }, [query, fetchResults]);
 
+  // Handle clicks outside the search bar to close results
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setResults([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value);
   };
 
+  // Handle group click to navigate to first product's detail page
+  const handleGroupClick = (group: GroupDto) => {
+    if (group.productId) {
+      const groupType = group.type || 'default';
+      navigate(`/${groupType}/${group.productId}`);
+      setResults([]);
+    }
+  };
+
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full max-w-md" ref={searchRef}>
       <input
         type="text"
         value={query}
         onChange={handleInputChange}
-        placeholder="Tìm kiếm sản phẩm (VD: iPhone)..."
+        placeholder="Tìm kiếm nhóm sản phẩm (VD: Điện thoại)..."
         className="w-full p-2 border rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       {isLoading && (
@@ -68,23 +94,39 @@ const SearchBar = () => {
       )}
       {results.length > 0 && (
         <ul className="absolute z-10 w-full bg-white border rounded-md shadow-lg mt-1 max-h-60 overflow-auto text-gray-900">
-          {results.map((product) => (
+          {results.map((group) => (
             <li
-              key={`${product.productId}-${product.variant || 'default'}`}
-              className="p-2 hover:bg-gray-100 cursor-pointer text-gray-900"
+              key={`${group.groupId}`}
+              className="p-2 hover:bg-gray-100 cursor-pointer text-gray-900 flex items-center"
+              onClick={() => handleGroupClick(group)}
             >
-              <div className="flex justify-between items-center">
-                <span>{product.productName}</span>
-                <div className="flex items-center space-x-2">
-                  {product.defaultOriginalPrice && product.defaultOriginalPrice > product.defaultCurrentPrice ? (
-                    <span className="text-gray-500 line-through">
-                      {product.defaultOriginalPrice.toLocaleString('vi-VN')} ₫
-                    </span>
-                  ) : null}
-                  <span className="text-green-600">
-                    {product.defaultCurrentPrice.toLocaleString('vi-VN')} ₫
-                  </span>
-                </div>
+              {group.image && (
+                <img
+                  src={group.image}
+                  alt={group.groupName}
+                  className="w-12 h-12 object-cover rounded-md mr-3"
+                />
+              )}
+              <div className="flex-1">
+                <span className="font-medium">{group.groupName}</span>
+                {group.brand && (
+                  <span className="text-sm text-gray-500 block">{group.brand}</span>
+                )}
+                {(group.defaultOriginalPrice || group.defaultCurrentPrice) && (
+                  <div className="flex items-center space-x-2 mt-1">
+                    {group.defaultOriginalPrice &&
+                    group.defaultOriginalPrice > group.defaultCurrentPrice ? (
+                      <span className="text-gray-500 line-through">
+                        {group.defaultOriginalPrice.toLocaleString('vi-VN')} ₫
+                      </span>
+                    ) : null}
+                    {group.defaultCurrentPrice && (
+                      <span className="text-green-600">
+                        {group.defaultCurrentPrice.toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </li>
           ))}

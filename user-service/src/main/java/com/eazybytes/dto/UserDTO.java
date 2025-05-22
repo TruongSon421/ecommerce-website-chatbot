@@ -1,25 +1,20 @@
-// src/main/java/com/eazybytes/dto/UserDTO.java
 package com.eazybytes.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 
 @Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class UserDTO {
     private Long id;
     private String username;
-    private String password;
+    @Email(message = "Email should be valid")
     private String email;
     private String firstName;
     private String lastName;
     private String phoneNumber;
-    private List<String> roles;
     private Boolean isActive;
+    private List<AddressDTO> addresses;
 }
