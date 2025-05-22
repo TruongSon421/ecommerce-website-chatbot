@@ -39,10 +39,10 @@ public class GroupController {
     private EntityManager entityManager;
 
     @GetMapping("/search")
-    public ResponseEntity<List<GroupProductDto>> searchProducts(
+    public ResponseEntity<List<GroupDto>> searchProducts(
             @RequestParam("query") String query
     ) {
-        List<GroupProductDto> results = groupService.searchProducts(query);
+        List<GroupDto> results = groupService.searchProducts(query);
         return ResponseEntity.ok(results);
     }
 

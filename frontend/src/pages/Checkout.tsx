@@ -150,38 +150,45 @@ const Checkout = () => {
 
   if (success) {
     return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Đặt hàng thành công</h1>
-        <p>Cảm ơn bạn đã đặt hàng! Chúng tôi sẽ liên hệ sớm.</p>
-        <button
-          onClick={() => navigate('/')}
-          className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-        >
-          Về trang chủ
-        </button>
+      <div className="container mx-auto p-4 md:p-8 bg-gray-50">
+        <div className="bg-white rounded-lg shadow-md p-6 text-center">
+          <h1 className="text-2xl font-bold mb-4">Đặt hàng thành công</h1>
+          <p>Cảm ơn bạn đã đặt hàng! Chúng tôi sẽ liên hệ sớm.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Về trang chủ
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-4 md:p-8 bg-gray-50">
       <h1 className="text-2xl font-bold mb-4">Thanh toán</h1>
       {checkoutItems.length === 0 ? (
-        <p>Không có sản phẩm để thanh toán</p>
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <p>Không có sản phẩm để thanh toán</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Danh sách sản phẩm */}
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Sản phẩm đã chọn</h2>
-            {checkoutItems.map((item) => (
-              <div key={`${item.productId}-${item.color}`} className="p-4 border-b">
-                <h3 className="font-semibold">{item.productName}</h3>
-                <p>Màu: {item.color}</p>
-                <p>Số lượng: {item.quantity}</p>
-                <p>Giá: {(item.price * item.quantity).toLocaleString('vi-VN')} ₫</p>
-              </div>
-            ))}
-            <p className="text-xl font-bold mt-4">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Sản phẩm đã chọn</h2>
+            <div className="space-y-4">
+              {checkoutItems.map((item) => (
+                <div key={`${item.productId}-${item.color}`} className="p-4 border-b bg-gray-50 rounded-md">
+
+                  <h3 className="font-semibold">{item.productName}</h3>
+                  {item.color!=="Không xác định" && <p>Màu: {item.color}</p>}
+                  <p>Số lượng: {item.quantity}</p>
+                  <p>Giá: {(item.price * item.quantity).toLocaleString('vi-VN')} ₫</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xl font-bold mt-6">
               Tổng giá: {checkoutItems
                 .reduce((sum, item) => sum + item.price * item.quantity, 0)
                 .toLocaleString('vi-VN')} ₫
@@ -189,9 +196,9 @@ const Checkout = () => {
           </div>
 
           {/* Form thông tin */}
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Thông tin thanh toán</h2>
-            {error && <p className="text-red-500 mb-4">{error}</p>}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">Thông tin thanh toán</h2>
+            {error && <p className="text-red-500 mb-4 p-2 bg-red-50 rounded-md">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block font-medium">Họ tên</label>
@@ -293,7 +300,7 @@ const Checkout = () => {
                 </select>
               </div>
               {form.paymentMethod !== 'COD' && (
-                <div className="text-red-500">
+                <div className="text-red-500 p-2 bg-red-50 rounded-md">
                   Vui lòng hoàn tất thanh toán trong: {formatCountdown(countdown)}
                 </div>
               )}

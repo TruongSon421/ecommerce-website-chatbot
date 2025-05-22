@@ -48,6 +48,11 @@ public interface GroupRepository extends JpaRepository<Group, Integer> {
     @Query("SELECT g FROM Group g JOIN g.groupTags gt WHERE g.type = :type AND g.brand IN :brand AND gt.tag.tagName IN :tags GROUP BY g HAVING COUNT(DISTINCT gt.tag) = :tagCount")
     List<Group> findByTypeAndAllTagsAndBrands(@Param("type") String type, @Param("tags") List<String> tags, @Param("tagCount") Long tagCount, @Param("brand") List<String> brand);
 
+    @Query("SELECT g, gp FROM Group g LEFT JOIN GroupProduct gp ON g.groupId = gp.groupId " +
+           "WHERE LOWER(g.groupName) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "AND (gp IS NULL OR gp.orderNumber = (SELECT MIN(gp2.orderNumber) FROM GroupProduct gp2 WHERE gp2.groupId = g.groupId))")
+    List<Object[]> findByGroupNameContainingWithFirstProduct(@Param("query") String query);
+
     @Query("SELECT g FROM Group g JOIN g.groupTags gt WHERE g.brand IN :brand AND gt.tag.tagName IN :tags GROUP BY g HAVING COUNT(DISTINCT gt.tag) = :tagCount")
     List<Group> findByAllTagsAndBrands(@Param("tags") List<String> tags, @Param("tagCount") Long tagCount, @Param("brand") List<String> brand);
 }

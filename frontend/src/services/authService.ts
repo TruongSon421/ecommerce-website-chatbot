@@ -1,6 +1,7 @@
 import axios from '../config/axios';
 import { mergeCart } from './cartService';
 import { LoginCredentials, RegisterCredentials, User } from '../types/auth';
+import { initializeGuestCart } from './cartService';
 
 const API_URL = 'http://localhost:8070/api/auth';
 const USER_API_URL = 'http://localhost:8070/api/users';
@@ -20,7 +21,7 @@ export const login = async (credentials: LoginCredentials) => {
     if (user.id) {
       try {
         await mergeCart(user.id);
-        localStorage.removeItem('cart-storage');
+        localStorage.removeItem('guestCartId');
       } catch (cartError) {
         console.warn('Failed to merge cart, continuing login:', cartError);
       }
@@ -49,6 +50,7 @@ export const register = async (credentials: RegisterCredentials) => {
     if (user.id) {
       try {
         await mergeCart(user.id);
+        localStorage.removeItem('guestCartId');
       } catch (cartError) {
         console.warn('Failed to merge cart, continuing register:', cartError);
         // Continue register even if cart merge fails
@@ -78,6 +80,7 @@ export const adminLogin = async (credentials: LoginCredentials) => {
     if (user.id) {
       try {
         await mergeCart(user.id);
+        localStorage.removeItem('guestCartId');
       } catch (cartError) {
         console.warn('Failed to merge cart, continuing admin login:', cartError);
         // Continue admin login even if cart merge fails
@@ -131,24 +134,6 @@ export const logout = async () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     localStorage.removeItem('refreshToken');
-  }
-};
-
-export const getProfile = async (): Promise<User> => {
-  try {
-    const response = await axios.get(`${USER_API_URL}/profile`);
-    return response.data;
-  } catch (error: any) {
-    console.error('Failed to fetch profile:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch profile');
-  }
-};
-
-export const updateProfile = async (profile: Partial<User>): Promise<void> => {
-  try {
-    await axios.put(`${USER_API_URL}/profile`, profile);
-  } catch (error: any) {
-    console.error('Failed to update profile:', error);
-    throw new Error(error.response?.data?.message || 'Failed to update profile');
+    await initializeGuestCart();
   }
 };

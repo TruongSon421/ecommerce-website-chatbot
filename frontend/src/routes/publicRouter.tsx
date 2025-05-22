@@ -8,6 +8,7 @@ import ProductGH from "../pages/productDetail";
 import UserLayout from "../layouts/userLayouts";
 import Cart from '../components/Cart';
 import Checkout from '../pages/Checkout';
+import Profile from '../components/user/profile';
 
 const PublicRouter = () => {
   return (
@@ -15,11 +16,12 @@ const PublicRouter = () => {
       <Route path="/" element={<UserLayout />}>
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
-        <Route index element={<Home />} /> {/* Dùng index cho path="/" */}
+        <Route path="/home" element={<Home />} /> {/* Dùng index cho path="/" */}
         <Route path=":type" element={<PageCategory />} />
         <Route path=":type/:product_id" element={<ProductGH />} />
         <Route path="cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
     </Routes>
   );

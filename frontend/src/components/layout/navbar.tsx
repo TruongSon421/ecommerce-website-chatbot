@@ -4,30 +4,62 @@ import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../../store/cartStore';
 import { showNotification } from '../common/Notification';
 import SearchBar from '../SearchBar';
+import { getCartItems, initializeGuestCart } from '../../services/cartService';
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, userId } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Get unique item count (distinct by productId and color)
-  const uniqueItemCount = useCartStore((state) => {
-    const uniqueItems = new Set(
-      state.items.map((item) => `${item.productId}-${item.color}`)
-    );
-    return uniqueItems.size;
-  });
+  const uniqueItemCount = useCartStore((state) => state.uniqueItemCount);
+
+
+  // Load cart items when component mounts
+  useEffect(() => {
+    const loadCart = async () => {
+      try {
+        if (isAuthenticated && userId) {
+          await getCartItems(userId);
+        } else {
+          const guestId = await initializeGuestCart();
+          await getCartItems(guestId);
+        }
+      } catch (error) {
+        console.error('Failed to load cart items:', error);
+        showNotification('Không thể tải giỏ hàng', 'error');
+      }
+    };
+
+    loadCart();
+  }, [isAuthenticated, userId]);
 
   // Toggle dropdown on click
   const toggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
   };
 
-  // Close dropdown when clicking outside
+  // Toggle search bar on click
+  const toggleSearch = () => {
+    setIsSearchOpen((prev) => !prev);
+  };
+
+  // Close dropdown and search when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsDropdownOpen(false);
+      }
+      if (
+        searchButtonRef.current &&
+        !searchButtonRef.current.contains(event.target as Node) &&
+        !event.target.closest('.search-bar-container')
+      ) {
+        setIsSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -50,19 +82,34 @@ const Navbar: React.FC = () => {
   return (
     <nav className="bg-gray-800 text-white p-4">
       <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">
+        {/* Logo */}
+        <Link to="/home" className="text-2xl font-bold">
           Ecommerce
         </Link>
-        <div className="flex-1 mx-4">
-          <SearchBar />
-        </div>
+
+        {/* Centered Categories and Search Button */}
         <div className="flex items-center space-x-4">
-          <Link to="/products" className="hover:text-gray-300">
-            Sản phẩm
+          <Link to="/phone" className="hover:text-gray-300">
+            Phone
           </Link>
-          <Link to="/categories" className="hover:text-gray-300">
-            Danh mục
+          <Link to="/laptop" className="hover:text-gray-300">
+            Laptop
           </Link>
+          
+          
+        </div>
+
+        {/* Account Options */}
+        <div className="flex items-center space-x-4">
+          <button
+            ref={searchButtonRef}
+            onClick={toggleSearch}
+            className="hover:text-gray-300 focus:outline-none"
+            aria-expanded={isSearchOpen}
+            aria-label="Toggle search"
+          >
+            🔍
+          </button>
           <Link to="/cart" className="relative hover:text-gray-300">
             <span className="mr-2">🛒</span>
             {uniqueItemCount > 0 && (
@@ -111,6 +158,15 @@ const Navbar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Centered Search Bar */}
+      {isSearchOpen && (
+        <div className="search-bar-container bg-gray-800 p-4 border-t border-gray-700 flex justify-center">
+          <div className="w-full max-w-md">
+            <SearchBar />
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

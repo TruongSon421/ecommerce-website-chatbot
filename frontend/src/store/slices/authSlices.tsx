@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from '../../config/axios';
 import { LoginCredentials, RegisterCredentials, User, AuthResponse } from '../../types/auth';
+import { initializeGuestCart } from '../../services/cartService';
 
 interface AuthState {
   user: User | null;
@@ -81,6 +82,7 @@ export const logout = createAsyncThunk(
       localStorage.removeItem('user');
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      await initializeGuestCart();
       return {};
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Logout failed';

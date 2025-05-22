@@ -1,0 +1,24 @@
+package com.eazybytes.dto;
+
+import lombok.Data;
+
+import jakarta.validation.constraints.NotBlank;
+
+@Data
+public class AddressDTO {
+    private Long id;
+    @NotBlank(message = "Province is required")
+    private String province;
+    @NotBlank(message = "District is required")
+    private String district;
+    @NotBlank(message = "Ward is required")
+    private String ward;
+    @NotBlank(message = "Street is required")
+    private String street;
+    private String addressType;
+    @NotBlank(message = "Receiver name is required")
+    private String receiverName;
+    @NotBlank(message = "Receiver phone is required")
+    private String receiverPhone;
+    private Boolean isDefault;
+}

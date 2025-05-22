@@ -1,8 +1,8 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
 import { login, register, logout } from '../../store/slices/authSlices';
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
-import { useCallback, useEffect } from 'react';
 import { mergeCart, getCartItems } from '../../services/cartService';
 import { useCartStore } from '../../store/cartStore';
 
@@ -20,46 +20,59 @@ interface UseAuth {
 
 export const useAuth = (): UseAuth => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, accessToken, loading, error } = useSelector((state: RootState) => state.auth);
+  const { user, accessToken, loading: reduxLoading, error } = useSelector((state: RootState) => state.auth);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  const isAuthenticated = !!user && !!accessToken;
-  const isAdmin = user?.roles?.includes('ADMIN') || false;
+  // Synchronously check localStorage for initial state
+  let initialUser: User | null = null;
+  let initialAccessToken: string | null = null;
+  let initialRefreshToken: string | null = null;
 
-  useEffect(() => {
+  try {
     const storedUser = localStorage.getItem('user');
     const storedAccessToken = localStorage.getItem('accessToken');
     const storedRefreshToken = localStorage.getItem('refreshToken');
 
     if (storedUser && storedAccessToken && storedUser !== 'undefined') {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        if (parsedUser && typeof parsedUser === 'object' && parsedUser.id && parsedUser.username) {
-          console.log('Loaded user from localStorage:', parsedUser);
-          dispatch(
-            login.fulfilled(
-              {
-                user: parsedUser,
-                accessToken: storedAccessToken,
-                refreshToken: storedRefreshToken || null,
-              },
-              'auth/login',
-              { username: '', password: '' }
-            )
-          );
-          getCartItems(parsedUser.id).catch((err: unknown) =>
-            console.error('Failed to fetch cart on init:', err)
-          );
-        } else {
-          throw new Error('Invalid user data');
-        }
-      } catch (err: unknown) {
-        console.error('Failed to parse user from localStorage:', err);
-        localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+      const parsedUser = JSON.parse(storedUser);
+      if (parsedUser && typeof parsedUser === 'object' && parsedUser.id && parsedUser.username) {
+        initialUser = parsedUser;
+        initialAccessToken = storedAccessToken;
+        initialRefreshToken = storedRefreshToken || null;
       }
     }
-  }, [dispatch]);
+  } catch (err) {
+    console.error('Failed to parse user from localStorage:', err);
+    localStorage.removeItem('user');
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+  }
+
+  // Use initial state if available, otherwise fall back to Redux
+  const currentUser = user || initialUser;
+  const currentAccessToken = accessToken || initialAccessToken;
+  const isAuthenticated = !!currentUser && !!currentAccessToken;
+  const isAdmin = currentUser?.roles?.includes('ADMIN') || false;
+
+  useEffect(() => {
+    if (initialUser && initialAccessToken && !user) {
+      dispatch(
+        login.fulfilled(
+          {
+            user: initialUser,
+            accessToken: initialAccessToken,
+            refreshToken: initialRefreshToken,
+          },
+          'auth/login',
+          { username: '', password: '' }
+        )
+      );
+      getCartItems(initialUser.id).catch((err: unknown) =>
+        console.error('Failed to fetch cart on init:', err)
+      );
+    }
+    setInitialLoading(false);
+  }, [dispatch, initialUser, initialAccessToken, initialRefreshToken, user]);
 
   const loginHandler = useCallback(async (credentials: LoginCredentials) => {
     try {
@@ -67,6 +80,8 @@ export const useAuth = (): UseAuth => {
       if (result.user && result.user.id && result.accessToken) {
         console.log('Login successful, saving accessToken:', result.accessToken);
         localStorage.setItem('accessToken', result.accessToken);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        localStorage.setItem('refreshToken', result.refreshToken || '');
         await mergeCart(result.user.id);
       }
     } catch (err: unknown) {
@@ -81,6 +96,8 @@ export const useAuth = (): UseAuth => {
       if (result.user && result.user.id && result.accessToken) {
         console.log('Register successful, saving accessToken:', result.accessToken);
         localStorage.setItem('accessToken', result.accessToken);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        localStorage.setItem('refreshToken', result.refreshToken || '');
         await mergeCart(result.user.id);
       }
     } catch (err: unknown) {
@@ -93,7 +110,10 @@ export const useAuth = (): UseAuth => {
     try {
       await dispatch(logout()).unwrap();
       useCartStore.getState().clearCart();
-      console.log('Cleared cart for new guest session on logout');
+      localStorage.removeItem('user');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      console.log('Cleared cart and localStorage on logout');
     } catch (err: unknown) {
       console.error('Logout failed:', err);
       throw err;
@@ -101,9 +121,9 @@ export const useAuth = (): UseAuth => {
   }, [dispatch]);
 
   return {
-    user,
-    accessToken,
-    loading,
+    user: currentUser,
+    accessToken: currentAccessToken,
+    loading: reduxLoading || initialLoading,
     error,
     isAuthenticated,
     isAdmin,

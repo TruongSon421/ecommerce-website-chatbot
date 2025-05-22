@@ -2,6 +2,30 @@ import axios from '../config/axios';
 import { CartItem, CartResponse, CheckoutPayload } from '../types/cart';
 import { useCartStore } from '../store/cartStore';
 
+// This new function creates a guest cart ID immediately when needed
+export const initializeGuestCart = async (): Promise<string> => {
+  try {
+    // Check if a guest cart ID already exists
+    let guestId = localStorage.getItem('guestCartId');
+    
+    // If no guest cart ID exists, create a new one
+    if (!guestId) {
+      const response = await axios.post<CartResponse>('/guest-carts');
+      guestId = response.data.userId;
+      localStorage.setItem('guestCartId', guestId);
+      console.log('Created new guest cart:', guestId);
+    } else {
+      console.log('Using existing guest cart:', guestId);
+    }
+    
+    return guestId;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to initialize guest cart';
+    console.error('Failed to initialize guest cart:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
 export const addItemToCart = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
@@ -17,13 +41,8 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
       console.log('Added item to cart:', response.data);
       await getCartItems(userId);
     } else {
-      let guestId = localStorage.getItem('guestCartId');
-      if (!guestId) {
-        const response = await axios.post<CartResponse>('/guest-carts');
-        guestId = response.data.userId;
-        localStorage.setItem('guestCartId', guestId);
-        console.log('Created new guest cart:', guestId);
-      }
+      // Use the initializeGuestCart function instead of creating a guest cart here
+      const guestId = await initializeGuestCart();
 
       const response = await axios.post<CartResponse>(`/guest-carts/${guestId}/items`, { productId, quantity, color: apiColor });
       console.log('Added item to guest cart:', response.data);
@@ -83,10 +102,9 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
       console.log('Updated cart item:', response.data);
       await getCartItems(userId);
     } else {
-      const guestId = localStorage.getItem('guestCartId');
-      if (!guestId) {
-        throw new Error('No guest cart found');
-      }
+      // Use initializeGuestCart to ensure guestId exists
+      const guestId = await initializeGuestCart();
+      
       const response = await axios.put(`/guest-carts/${guestId}/items/${productId}`, {}, {
         params: {
           quantity,
@@ -122,10 +140,9 @@ export const removeItemFromCart = async (userId: string, productId: string, colo
       console.log('Removed cart item:', response.data);
       await getCartItems(userId);
     } else {
-      const guestId = localStorage.getItem('guestCartId');
-      if (!guestId) {
-        throw new Error('No guest cart found');
-      }
+      // Use initializeGuestCart to ensure guestId exists
+      const guestId = await initializeGuestCart();
+      
       const response = await axios.delete(`/guest-carts/${guestId}/items/${productId}`, {
         params: {
           color: apiColor,

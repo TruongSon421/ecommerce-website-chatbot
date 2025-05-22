@@ -547,7 +547,6 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
       quantity: 1,
       color: product.color === 'default' || !product.color ? 'Không xác định' : product.color,
       available: true,
-      productType: product.productType,
     };
 
     try {
