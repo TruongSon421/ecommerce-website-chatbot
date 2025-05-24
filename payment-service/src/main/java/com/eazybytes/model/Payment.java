@@ -26,7 +26,7 @@ public class Payment {
     @Column(nullable = false)
     private Long orderId;
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private String userId;
 
     @Column(nullable = false)
@@ -47,6 +47,8 @@ public class Payment {
     private PaymentMethod paymentMethod;
 
     private String failureReason;
+    
+    
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -68,16 +70,26 @@ public class Payment {
         this.updatedAt = LocalDateTime.now();
     }
 
+    // Override setUserId để đảm bảo không lưu null
+    public void setUserId(String userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId không thể null");
+        }
+        this.userId = userId;
+    }
+
     public enum PaymentStatus {
         PENDING,
+        PROCESSING,
         SUCCESS,
-        FAILED
+        FAILED,
+        EXPIRED
     }
 
     public enum PaymentMethod {
         CREDIT_CARD,
         DEBIT_CARD,
         QR_CODE,
-        TRANSFER_BANKING
+        TRANSFER_BANKING,
     }
 }

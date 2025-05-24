@@ -145,15 +145,50 @@ public class InventoryConsumerEvent {
     public void consumeCheckoutFailedEvent(
                               @Payload Object payload,
                               Acknowledgment acknowledgment) {
+        String messageId = UUID.randomUUID().toString().substring(0, 8);
         try {
-            logger.info("Received checkout failed event: {}", payload);
+            logger.info("[{}] Received checkout failed event payload type: {}", messageId, payload.getClass().getName());
+            
+            Object actualPayload = payload;
+            
+            // Extract actual payload from ConsumerRecord if needed
+            if (payload instanceof org.apache.kafka.clients.consumer.ConsumerRecord) {
+                org.apache.kafka.clients.consumer.ConsumerRecord<?, ?> record = 
+                        (org.apache.kafka.clients.consumer.ConsumerRecord<?, ?>) payload;
+                actualPayload = record.value();
+                logger.info("[{}] Extracted actual payload from ConsumerRecord: {}", messageId, actualPayload);
+            }
             
             // Convert to Map since we may not have the exact event class
             Map<String, Object> eventMap;
-            if (payload instanceof Map) {
-                eventMap = (Map<String, Object>) payload;
+            if (actualPayload instanceof Map) {
+                eventMap = (Map<String, Object>) actualPayload;
+                logger.debug("[{}] Payload is already a Map: {}", messageId, eventMap);
+            } else if (actualPayload instanceof String) {
+                try {
+                    eventMap = objectMapper.readValue((String) actualPayload, new TypeReference<Map<String, Object>>() {});
+                    logger.debug("[{}] Converted String payload to Map: {}", messageId, eventMap);
+                } catch (Exception e) {
+                    logger.error("[{}] Failed to parse String payload as JSON: {}", messageId, e.getMessage());
+                    throw e;
+                }
             } else {
-                eventMap = objectMapper.convertValue(payload, new TypeReference<Map<String, Object>>() {});
+                try {
+                    eventMap = objectMapper.convertValue(actualPayload, new TypeReference<Map<String, Object>>() {});
+                    logger.debug("[{}] Converted Object payload to Map: {}", messageId, eventMap);
+                } catch (Exception e) {
+                    logger.error("[{}] Failed to convert payload to Map. Payload type: {}, error: {}", 
+                               messageId, actualPayload.getClass().getName(), e.getMessage());
+                    // Try to extract as JSON string representation
+                    try {
+                        String jsonStr = objectMapper.writeValueAsString(actualPayload);
+                        eventMap = objectMapper.readValue(jsonStr, new TypeReference<Map<String, Object>>() {});
+                        logger.info("[{}] Successfully converted via JSON string: {}", messageId, eventMap);
+                    } catch (Exception e2) {
+                        logger.error("[{}] All conversion attempts failed: {}", messageId, e2.getMessage(), e2);
+                        throw new RuntimeException("Cannot process checkout failed event - unable to extract event data", e2);
+                    }
+                }
             }
             
             // Extract orderId from the event
@@ -170,16 +205,16 @@ public class InventoryConsumerEvent {
                         .orderId(orderId)
                         .build();
                 
-                logger.info("Processing inventory cancellation for failed checkout, orderId: {}", orderId);
+                logger.info("[{}] Processing inventory cancellation for failed checkout, orderId: {}", messageId, orderId);
                 inventoryService.cancelReservation(cancelRequest);
-                logger.info("Successfully cancelled inventory for failed order {}", orderId);
+                logger.info("[{}] Successfully cancelled inventory for failed order {}", messageId, orderId);
             } else {
-                logger.warn("Received checkout failed event without orderId");
+                logger.warn("[{}] Received checkout failed event without orderId: {}", messageId, eventMap);
             }
             
             acknowledgment.acknowledge();
         } catch (Exception e) {
-            logger.error("Error processing checkout failed event: {}", e.getMessage(), e);
+            logger.error("[{}] Error processing checkout failed event: {}", messageId, e.getMessage(), e);
             acknowledgment.acknowledge(); // Still acknowledge to avoid getting stuck
         }
     }
@@ -484,52 +519,22 @@ public class InventoryConsumerEvent {
             boolean alreadyCancelled = reservations.stream()
                 .allMatch(res -> res.getStatus() == InventoryReservation.ReservationStatus.CANCELLED);
                 
-            if (alreadyCancelled) {
+            if (alreadyCancelled && !reservations.isEmpty()) {
                 logger.warn("Inventory for order {} was already cancelled. Skipping duplicate cancellation.", 
                     request.getOrderId());
                 return;
             }
             
-            // Process the cancellation with retries
-            int maxRetries = 3;
-            int retryCount = 0;
-            boolean success = false;
-            Exception lastException = null;
+            // Process the cancellation - service layer now handles retries
+            inventoryService.cancelReservation(request);
+            logger.info("Successfully cancelled inventory reservation for order {}", request.getOrderId());
             
-            while (retryCount < maxRetries && !success) {
-                try {
-                    inventoryService.cancelReservation(request);
-                    success = true;
-                    logger.info("Successfully cancelled inventory reservation for order {}, attempt {}/{}", 
-                              request.getOrderId(), retryCount + 1, maxRetries);
-                } catch (Exception e) {
-                    lastException = e;
-                    logger.warn("Error cancelling reservation on attempt {}/{} for order {}: {}", 
-                              retryCount + 1, maxRetries, request.getOrderId(), e.getMessage());
-                    retryCount++;
-                    
-                    if (retryCount < maxRetries) {
-                        try {
-                            // Delay tăng dần theo số lần retry
-                            Thread.sleep(1000 * retryCount);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-                }
-            }
-            
-            if (!success && lastException != null) {
-                logger.error("Failed to cancel inventory for order {} after {} attempts: {}", 
-                          request.getOrderId(), retryCount, lastException.getMessage(), lastException);
-                throw new RuntimeException("Failed to process cancel inventory request after " + 
-                                         retryCount + " attempts", lastException);
-            }
         } catch (Exception e) {
             logger.error("Failed to cancel inventory for order {}: {}", request.getOrderId(), e.getMessage(), e);
             
             // Still acknowledge message (done at caller level) but log the error
             // We don't want to lose the error but also don't want to block the Kafka consumer
+            // The service layer will handle retries and proper error reporting
         }
     }
 

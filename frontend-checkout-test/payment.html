@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Page</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
+    <div class="container">
+        <h1>Payment Processing</h1>
+        <p>You are being redirected to the payment gateway...</p>
+        
+        <div id="paymentDetails" style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px;">
+            <h2>Order Summary (Mock)</h2>
+            <!-- Details will be populated by script if data is passed -->
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const paymentDetailsDiv = document.getElementById('paymentDetails');
+                try {
+                    const checkoutDataString = sessionStorage.getItem('checkoutData');
+                    if (checkoutDataString) {
+                        const checkoutData = JSON.parse(checkoutDataString);
+                        
+                        let itemsHtml = '<ul>';
+                        checkoutData.selectedItems.forEach(item => {
+                            itemsHtml += `<li>${item.name} - $${item.price.toFixed(2)}</li>`;
+                        });
+                        itemsHtml += '</ul>';
+
+                        paymentDetailsDiv.innerHTML = `
+                            <h2>Order Summary</h2>
+                            <p><strong>Full Name:</strong> ${checkoutData.fullName}</p>
+                            <p><strong>Address:</strong> ${checkoutData.address}, ${checkoutData.city}, ${checkoutData.postalCode}, ${checkoutData.country}</p>
+                            <p><strong>Payment Method:</strong> ${checkoutData.paymentMethod.replace('_', ' ').toUpperCase()}</p>
+                            <h3>Items:</h3>
+                            ${itemsHtml}
+                            <p><strong>Total Amount: $${checkoutData.totalAmount.toFixed(2)}</strong></p>
+                            <p style="margin-top: 20px; font-weight: bold;">This is a demo. In a real application, you would be interacting with a payment gateway here.</p>
+                        `;
+                        // sessionStorage.removeItem('checkoutData'); // Optional: clear data after displaying
+                    } else {
+                        paymentDetailsDiv.innerHTML = '<p>No checkout data found. Please start the checkout process again.</p>';
+                    }
+                } catch (e) {
+                    console.error('Error reading from sessionStorage:', e);
+                    paymentDetailsDiv.innerHTML = '<p>Error loading order summary.</p>';
+                }
+            });
+        </script>
+        
+        <p style="margin-top: 30px;"><a href="index.html">Return to Checkout</a></p>
+    </div>
+</body>
+</html> 

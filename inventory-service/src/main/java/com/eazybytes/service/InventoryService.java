@@ -168,7 +168,8 @@ public class InventoryService {
     }
 
     
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED, 
+                   propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public ProductInventory decreaseProductQuantity(String phoneId, String color, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Số lượng giảm phải lớn hơn 0");
@@ -176,27 +177,65 @@ public class InventoryService {
         
         // Chuẩn hóa color
         String normalizedColor = normalizeColor(color);
+        
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                ProductInventory inventory = productInventoryRepository
+                        .findByProductIdAndColor(phoneId, normalizedColor)
+                        .orElseThrow(() -> new InventoryNotFoundException(
+                                "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
+                                        " và màu: " + normalizedColor));
 
-        ProductInventory inventory = productInventoryRepository
-                .findByProductIdAndColor(phoneId, normalizedColor)
-                .orElseThrow(() -> new InventoryNotFoundException(
-                        "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
-                                " và màu: " + normalizedColor));
+                if (inventory.getQuantity() < quantity) {
+                    throw new IllegalArgumentException(
+                            "Không đủ số lượng trong kho. Hiện có: " + inventory.getQuantity() +
+                                    ", Yêu cầu: " + quantity);
+                }
 
-        if (inventory.getQuantity() < quantity) {
-            throw new IllegalArgumentException(
-                    "Không đủ số lượng trong kho. Hiện có: " + inventory.getQuantity() +
-                            ", Yêu cầu: " + quantity);
+                inventory.setQuantity(inventory.getQuantity() - quantity);
+                ProductInventory savedInventory = productInventoryRepository.save(inventory);
+                
+                log.info("Successfully decreased inventory for productId: {}, color: {}, quantity: -{}", 
+                        phoneId, normalizedColor, quantity);
+                
+                return savedInventory;
+                
+            } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                retryCount++;
+                log.warn("Optimistic locking failure on attempt {} for decreasing inventory productId: {}, color: {}. Retrying...", 
+                        retryCount, phoneId, normalizedColor);
+                
+                if (retryCount >= maxRetries) {
+                    log.error("Max retry attempts ({}) reached for decreasing inventory productId: {}, color: {}", 
+                            maxRetries, phoneId, normalizedColor);
+                    throw new RuntimeException("Không thể cập nhật tồn kho do xung đột đồng thời. Vui lòng thử lại.", e);
+                }
+                
+                // Delay tăng dần theo số lần retry
+                try {
+                    Thread.sleep(100 * retryCount);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Thread interrupted during retry", ie);
+                }
+            } catch (Exception e) {
+                log.error("Error decreasing inventory for productId: {}, color: {}, quantity: {}: {}", 
+                        phoneId, normalizedColor, quantity, e.getMessage(), e);
+                throw e;
+            }
         }
-
-        inventory.setQuantity(inventory.getQuantity() - quantity);
-        return productInventoryRepository.save(inventory);
+        
+        throw new RuntimeException("Unexpected error: exceeded retry loop without success or exception");
     }
 
     /**
-     * Tăng số lượng điện thoại
+     * Tăng số lượng điện thoại với retry logic để xử lý optimistic locking
      */
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED, 
+                   propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public ProductInventory increaseProductQuantity(String phoneId, String color, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Số lượng tăng phải lớn hơn 0");
@@ -204,15 +243,58 @@ public class InventoryService {
         
         // Chuẩn hóa color
         String normalizedColor = normalizeColor(color);
-
-        ProductInventory inventory = productInventoryRepository
-                .findByProductIdAndColor(phoneId, normalizedColor)
-                .orElseThrow(() -> new InventoryNotFoundException(
-                        "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
-                                " và màu: " + normalizedColor));
-
-        inventory.setQuantity(inventory.getQuantity() + quantity);
-        return productInventoryRepository.save(inventory);
+        
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                // Sử dụng native query để tránh optimistic locking conflicts
+                int updatedRows = productInventoryRepository.increaseInventoryQuantity(phoneId, normalizedColor, quantity);
+                
+                if (updatedRows == 0) {
+                    // Nếu không cập nhật được, có thể sản phẩm không tồn tại
+                    throw new InventoryNotFoundException(
+                            "Không tìm thấy tồn kho cho điện thoại với ID: " + phoneId +
+                                    " và màu: " + normalizedColor);
+                }
+                
+                log.info("Successfully increased inventory for productId: {}, color: {}, quantity: +{}", 
+                        phoneId, normalizedColor, quantity);
+                
+                // Trả về entity đã được cập nhật
+                return productInventoryRepository
+                        .findByProductIdAndColor(phoneId, normalizedColor)
+                        .orElseThrow(() -> new InventoryNotFoundException(
+                                "Không tìm thấy tồn kho sau khi cập nhật cho điện thoại với ID: " + phoneId +
+                                        " và màu: " + normalizedColor));
+                        
+            } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                retryCount++;
+                log.warn("Optimistic locking failure on attempt {} for productId: {}, color: {}. Retrying...", 
+                        retryCount, phoneId, normalizedColor);
+                
+                if (retryCount >= maxRetries) {
+                    log.error("Max retry attempts ({}) reached for increasing inventory productId: {}, color: {}", 
+                            maxRetries, phoneId, normalizedColor);
+                    throw new RuntimeException("Không thể cập nhật tồn kho do xung đột đồng thời. Vui lòng thử lại.", e);
+                }
+                
+                // Delay tăng dần theo số lần retry
+                try {
+                    Thread.sleep(100 * retryCount);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Thread interrupted during retry", ie);
+                }
+            } catch (Exception e) {
+                log.error("Error increasing inventory for productId: {}, color: {}, quantity: {}: {}", 
+                        phoneId, normalizedColor, quantity, e.getMessage(), e);
+                throw e;
+            }
+        }
+        
+        throw new RuntimeException("Unexpected error: exceeded retry loop without success or exception");
     }
 
     public List<InventoryDto> findAllColorVariantsByProductId(String productId) {
@@ -463,7 +545,9 @@ public class InventoryService {
         log.info("Successfully completed confirmation of all reservations for order ID: {}", request.getOrderId());
     }
 
-    @Transactional(transactionManager = "transactionManager")
+    @Transactional(transactionManager = "transactionManager", 
+                   isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED,
+                   propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public void cancelReservation(CancelInventoryReservationRequest request) {
         log.debug("Cancelling inventory reservation for order ID: {}", request.getOrderId());
 
@@ -478,21 +562,26 @@ public class InventoryService {
         
         // Cập nhật trạng thái và khôi phục số lượng tồn kho
         for (InventoryReservation reservation : reservations) {
-            try {
-                // Chỉ cần khôi phục tồn kho cho các reservation có status là RESERVED
-                // Không cần khôi phục cho CONFIRMED (đã được xác nhận và thuộc đơn hàng hoàn thành)
-                // Không cần khôi phục cho CANCELLED (đã được khôi phục trước đó)
-                if (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED) {
-                    // Tăng số lượng trong ProductInventory
-                    String normalizedColor = normalizeColor(reservation.getColor());
-                    
-                    try {
-                        log.info("Returning {} units of product {} (color: {}) to inventory", 
-                               reservation.getQuantity(), reservation.getProductId(), normalizedColor);
+            int maxRetries = 3;
+            int retryCount = 0;
+            boolean success = false;
+            
+            while (retryCount < maxRetries && !success) {
+                try {
+                    // Chỉ cần khôi phục tồn kho cho các reservation có status là RESERVED
+                    // Không cần khôi phục cho CONFIRMED (đã được xác nhận và thuộc đơn hàng hoàn thành)
+                    // Không cần khôi phục cho CANCELLED (đã được khôi phục trước đó)
+                    if (reservation.getStatus() == InventoryReservation.ReservationStatus.RESERVED) {
+                        // Tăng số lượng trong ProductInventory
+                        String normalizedColor = normalizeColor(reservation.getColor());
+                        
+                        log.info("Returning {} units of product {} (color: {}) to inventory on attempt {}/{}", 
+                               reservation.getQuantity(), reservation.getProductId(), normalizedColor, retryCount + 1, maxRetries);
                         
                         increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
-                        log.info("Đã hoàn trả {} sản phẩm {} màu {} cho đơn hàng {}", 
-                                reservation.getQuantity(), reservation.getProductId(), normalizedColor, reservation.getOrderId());
+                        log.info("Đã hoàn trả {} sản phẩm {} màu {} cho đơn hàng {} on attempt {}/{}", 
+                                reservation.getQuantity(), reservation.getProductId(), normalizedColor, 
+                                reservation.getOrderId(), retryCount + 1, maxRetries);
                         
                         // Cập nhật trạng thái
                         reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
@@ -510,20 +599,46 @@ public class InventoryService {
                                 .build();
                         historyRepository.save(history);
                         log.info("Created inventory history record for cancellation");
-                    } catch (Exception e) {
-                        log.error("Lỗi khi hoàn trả sản phẩm {} màu {} cho đơn hàng {}: {}", 
-                                  reservation.getProductId(), normalizedColor, reservation.getOrderId(), e.getMessage(), e);
-                        throw e; // Re-throw to roll back transaction
+                        
+                        success = true;
+                    } else {
+                        log.info("Reservation cho đơn hàng {} với sản phẩm {} đã ở trạng thái {}, không cần hoàn trả tồn kho", 
+                                reservation.getOrderId(), reservation.getProductId(), reservation.getStatus());
+                        success = true; // Không cần retry cho trường hợp này
                     }
-                } else {
-                    log.info("Reservation cho đơn hàng {} với sản phẩm {} đã ở trạng thái {}, không cần hoàn trả tồn kho", 
-                            reservation.getOrderId(), reservation.getProductId(), reservation.getStatus());
+                } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                    retryCount++;
+                    log.warn("Optimistic locking failure on attempt {} for cancelling reservation productId={} in order {}: {}", 
+                            retryCount, reservation.getProductId(), request.getOrderId(), e.getMessage());
+                    
+                    if (retryCount >= maxRetries) {
+                        log.error("Max retry attempts ({}) reached for cancelling reservation productId={} in order {}", 
+                                maxRetries, reservation.getProductId(), request.getOrderId());
+                        throw new RuntimeException("Failed to cancel reservation for productId=" + 
+                                reservation.getProductId() + " in order " + request.getOrderId() + 
+                                " after " + maxRetries + " attempts due to concurrent modifications", e);
+                    }
+                    
+                    // Delay tăng dần theo số lần retry
+                    try {
+                        Thread.sleep(200 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Thread interrupted during retry", ie);
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing cancellation for productId={} in order {} on attempt {}/{}: {}", 
+                            reservation.getProductId(), request.getOrderId(), retryCount + 1, maxRetries, e.getMessage(), e);
+                    // Không retry cho các lỗi khác, throw ngay
+                    throw new RuntimeException("Failed to cancel reservation for productId=" + 
+                            reservation.getProductId() + " in order " + request.getOrderId(), e);
                 }
-            } catch (Exception e) {
-                log.error("Error processing cancellation for productId={} in order {}: {}", 
-                        reservation.getProductId(), request.getOrderId(), e.getMessage(), e);
+            }
+            
+            if (!success) {
                 throw new RuntimeException("Failed to cancel reservation for productId=" + 
-                        reservation.getProductId() + " in order " + request.getOrderId(), e);
+                        reservation.getProductId() + " in order " + request.getOrderId() + 
+                        " after " + maxRetries + " attempts");
             }
         }
         
@@ -558,7 +673,7 @@ public class InventoryService {
     }
 
     @Scheduled(fixedRate = 60000) // Run every 60 seconds (1 minute)
-    @Transactional
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void cancelExpiredReservations() {
         log.debug("Checking for expired reservations");
 
@@ -575,31 +690,62 @@ public class InventoryService {
                     reservation.getColor(), reservation.getQuantity(), 
                     reservation.getExpiresAt());
 
-            try {
-                // Restore inventory quantity
-                String normalizedColor = normalizeColor(reservation.getColor());
-                increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
-    
-                // Update reservation status
-                reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
-                reservationRepository.save(reservation);
-    
-                // Log history
-                InventoryHistory history = InventoryHistory.builder()
-                        .productId(reservation.getProductId())
-                        .color(normalizedColor)
-                        .quantityChange(reservation.getQuantity())
-                        .reason("TIMEOUT")
-                        .orderId(reservation.getOrderId())
-                        .build();
-                historyRepository.save(history);
-                
-                log.info("Successfully restored {} units of product {} with color {} for expired order {}", 
-                        reservation.getQuantity(), reservation.getProductId(), 
-                        normalizedColor, reservation.getOrderId());
-            } catch (Exception e) {
-                log.error("Error restoring inventory for expired reservation (orderId: {}, productId: {}): {}", 
-                          reservation.getOrderId(), reservation.getProductId(), e.getMessage(), e);
+            int maxRetries = 3;
+            int retryCount = 0;
+            boolean success = false;
+            
+            while (retryCount < maxRetries && !success) {
+                try {
+                    // Restore inventory quantity
+                    String normalizedColor = normalizeColor(reservation.getColor());
+                    increaseProductQuantity(reservation.getProductId(), normalizedColor, reservation.getQuantity());
+        
+                    // Update reservation status
+                    reservation.setStatus(InventoryReservation.ReservationStatus.CANCELLED);
+                    reservationRepository.save(reservation);
+        
+                    // Log history
+                    InventoryHistory history = InventoryHistory.builder()
+                            .productId(reservation.getProductId())
+                            .color(normalizedColor)
+                            .quantityChange(reservation.getQuantity())
+                            .reason("TIMEOUT")
+                            .orderId(reservation.getOrderId())
+                            .build();
+                    historyRepository.save(history);
+                    
+                    log.info("Successfully restored {} units of product {} with color {} for expired order {} on attempt {}/{}", 
+                            reservation.getQuantity(), reservation.getProductId(), 
+                            normalizedColor, reservation.getOrderId(), retryCount + 1, maxRetries);
+                    
+                    success = true;
+                } catch (org.springframework.dao.OptimisticLockingFailureException e) {
+                    retryCount++;
+                    log.warn("Optimistic locking failure on attempt {} for expired reservation (orderId: {}, productId: {}): {}", 
+                            retryCount, reservation.getOrderId(), reservation.getProductId(), e.getMessage());
+                    
+                    if (retryCount >= maxRetries) {
+                        log.error("Max retry attempts ({}) reached for expired reservation (orderId: {}, productId: {})", 
+                                maxRetries, reservation.getOrderId(), reservation.getProductId());
+                        break; // Continue với reservation tiếp theo thay vì throw exception
+                    }
+                    
+                    try {
+                        Thread.sleep(150 * retryCount);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                } catch (Exception e) {
+                    log.error("Error restoring inventory for expired reservation (orderId: {}, productId: {}) on attempt {}/{}: {}", 
+                              reservation.getOrderId(), reservation.getProductId(), retryCount + 1, maxRetries, e.getMessage(), e);
+                    break; // Continue với reservation tiếp theo thay vì retry
+                }
+            }
+            
+            if (!success) {
+                log.error("Failed to restore inventory for expired reservation (orderId: {}, productId: {}) after {} attempts", 
+                          reservation.getOrderId(), reservation.getProductId(), maxRetries);
             }
         }
 

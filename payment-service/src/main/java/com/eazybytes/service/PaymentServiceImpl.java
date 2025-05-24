@@ -1,5 +1,7 @@
 package com.eazybytes.service;
 
+import com.eazybytes.dto.ConfirmVNPayPaymentResponseDto;
+import com.eazybytes.dto.InitiateVNPayPaymentRequestDto;
 import com.eazybytes.event.model.PaymentFailedEvent;
 import com.eazybytes.event.model.PaymentSucceededEvent;
 import com.eazybytes.event.model.ProcessPaymentRequest;
@@ -8,13 +10,17 @@ import com.eazybytes.model.Payment.PaymentMethod;
 import com.eazybytes.model.Payment.PaymentStatus;
 import com.eazybytes.repository.PaymentRepository;
 import com.eazybytes.event.PaymentProducer;
+import com.eazybytes.vnpay.common.utils.VnPayHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
+
 
 @Service
 @RequiredArgsConstructor
@@ -23,41 +29,21 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentProducer paymentProducer;
+    private final VNPayService vnPayService;
 
     @Transactional
     @Override
     public void processPayment(ProcessPaymentRequest request) {
-        log.info("Processing payment for orderId: {}, userId: {}, transactionId: {}", 
-                request.getOrderId(), request.getUserId(), request.getTransactionId());
+        log.info("Processing payment for orderId: {}, userId: {}, transactionId: {}, method: {}", 
+                request.getOrderId(), request.getUserId(), request.getTransactionId(), request.getPaymentMethod());
 
-        // Kiểm tra idempotency
-        Optional<Payment> existingPayment = paymentRepository.findByTransactionId(request.getTransactionId());
-        if (existingPayment.isPresent()) {
-            Payment payment = existingPayment.get();
-            log.info("Payment already processed for transactionId: {}. Status: {}", 
-                    request.getTransactionId(), payment.getStatus());
-            if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                paymentProducer.sendPaymentSucceededEvent(PaymentSucceededEvent.builder()
-                        .transactionId(payment.getTransactionId())
-                        .userId(payment.getUserId())
-                        .orderId(payment.getOrderId())
-                        .paymentId(payment.getPaymentId())
-                        .amount(payment.getAmount())
-                        .build());
-            } else if (payment.getStatus() == PaymentStatus.FAILED) {
-                paymentProducer.sendPaymentFailedEvent(PaymentFailedEvent.builder()
-                        .transactionId(payment.getTransactionId())
-                        .userId(payment.getUserId())
-                        .orderId(payment.getOrderId())
-                        .paymentId(payment.getPaymentId())
-                        .amount(payment.getAmount())
-                        .failureReason(payment.getFailureReason())
-                        .build());
-            }
+        Optional<Payment> existingPaymentOpt = paymentRepository.findByTransactionId(request.getTransactionId());
+        if (existingPaymentOpt.isPresent()) {
+            handleExistingPayment(existingPaymentOpt.get());
             return;
         }
 
-        // Tạo bản ghi Payment mới
+        // Create payment record with PENDING status before processing
         Payment payment = new Payment();
         payment.setOrderId(request.getOrderId());
         payment.setUserId(request.getUserId());
@@ -66,66 +52,96 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setPaymentMethod(request.getPaymentMethod());
         payment.setStatus(PaymentStatus.PENDING);
         payment = paymentRepository.save(payment);
+        log.info("Created payment record with PENDING status for orderId: {}, transactionId: {}", 
+                request.getOrderId(), request.getTransactionId());
 
-        try {
-            // TODO: Thay thế simulatePaymentProcessing bằng API thanh toán thực tế (ví dụ: Stripe, VNPay)
-            // - Gọi API thanh toán với thông tin: amount, paymentMethod, transactionId
-            // - Xử lý response từ API để xác định paymentSuccess và failureReason (nếu có)
-            boolean paymentSuccess = simulatePaymentProcessing();
+        if (isVNPayPaymentMethod(request.getPaymentMethod())) {
+            log.info("Processing VNPay payment for orderId: {}", request.getOrderId());
+            try {
+                // Create request for VNPay
+                InitiateVNPayPaymentRequestDto vnPayRequestDto = createVNPayRequest(request);
+                String clientIpAddress = "127.0.0.1"; // Default IP if not provided
 
-            if (paymentSuccess) {
-                // Cập nhật trạng thái thành công
-                payment.setStatus(PaymentStatus.SUCCESS);
-                paymentRepository.save(payment);
-                log.info("Payment successful for orderId: {}", request.getOrderId());
+                // Generate payment URL via VNPayService
+                String paymentUrl = vnPayService.createPaymentUrl(vnPayRequestDto, clientIpAddress);
+                log.info("VNPay URL generated for orderId: {}: {}", request.getOrderId(), paymentUrl);
 
-                // Gửi sự kiện thành công
-                PaymentSucceededEvent succeededEvent = PaymentSucceededEvent.builder()
-                        .transactionId(payment.getTransactionId())
-                        .userId(payment.getUserId())
-                        .orderId(payment.getOrderId())
-                        .paymentId(payment.getPaymentId())
-                        .amount(payment.getAmount())
-                        .build();
-                paymentProducer.sendPaymentSucceededEvent(succeededEvent);
-            } else {
-                // Cập nhật trạng thái thất bại
-                String failureReason = "Payment declined by gateway";
-                payment.setStatus(PaymentStatus.FAILED);
-                payment.setFailureReason(failureReason);
-                paymentRepository.save(payment);
-                log.warn("Payment failed for orderId: {}. Reason: {}", request.getOrderId(), failureReason);
-
-                // Gửi sự kiện thất bại
-                PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
-                        .transactionId(payment.getTransactionId())
-                        .userId(payment.getUserId())
-                        .orderId(payment.getOrderId())
-                        .paymentId(payment.getPaymentId())
-                        .amount(payment.getAmount())
-                        .failureReason(failureReason)
-                        .build();
-                paymentProducer.sendPaymentFailedEvent(failedEvent);
+            } catch (Exception e) {
+                handlePaymentError(request, e);
             }
-        } catch (Exception e) {
-            // Xử lý lỗi bất ngờ
-            String failureReason = "Internal server error: " + e.getMessage();
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setFailureReason(failureReason);
-            paymentRepository.save(payment);
-            log.error("Payment processing error for orderId: {}. Error: {}", request.getOrderId(), e.getMessage(), e);
-
-            // Gửi sự kiện thất bại
-            PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
-                    .transactionId(payment.getTransactionId())
-                    .userId(payment.getUserId())
-                    .orderId(payment.getOrderId())
-                    .paymentId(payment.getPaymentId())
-                    .amount(payment.getAmount())
-                    .failureReason(failureReason)
-                    .build();
-            paymentProducer.sendPaymentFailedEvent(failedEvent);
+        } else {
+            handleNonVNPayPayment(request);
         }
+    }
+
+    private boolean isVNPayPaymentMethod(PaymentMethod paymentMethod) {
+        return PaymentMethod.CREDIT_CARD.equals(paymentMethod) ||
+               PaymentMethod.DEBIT_CARD.equals(paymentMethod) ||
+               PaymentMethod.QR_CODE.equals(paymentMethod) ||
+               PaymentMethod.TRANSFER_BANKING.equals(paymentMethod);
+    }
+
+    private void handleExistingPayment(Payment existingPayment) {
+        log.info("Payment already processed for transactionId: {}. Status: {}", 
+                existingPayment.getTransactionId(), existingPayment.getStatus());
+                
+        if (existingPayment.getStatus() == PaymentStatus.SUCCESS) {
+            sendPaymentSuccessEvent(existingPayment);
+        } else if (existingPayment.getStatus() == PaymentStatus.FAILED) {
+            sendPaymentFailedEvent(existingPayment);
+        }
+    }
+
+    private InitiateVNPayPaymentRequestDto createVNPayRequest(ProcessPaymentRequest request) {
+        InitiateVNPayPaymentRequestDto vnPayRequestDto = new InitiateVNPayPaymentRequestDto();
+        vnPayRequestDto.setTransactionId(request.getTransactionId());
+        
+        // VNPay requires amount in the smallest currency unit (multiply by 100)
+        // For example: 1,000,000 VND should be sent as 100,000,000
+        Integer originalAmount = request.getTotalAmount();
+        // Use long to prevent integer overflow when multiplying large amounts
+        long amountInSmallestUnit = (long)originalAmount * 100;
+        
+        log.info("Converting amount for VNPay: Original={}, After multiplication={}", 
+                originalAmount, amountInSmallestUnit);
+                
+        vnPayRequestDto.setAmount(amountInSmallestUnit);
+        
+        String orderId = String.valueOf(request.getOrderId());
+        vnPayRequestDto.setOrderInfo("Thanh toan don hang " + orderId);
+        log.info("Setting vnp_OrderInfo with orderId at the end: {}", vnPayRequestDto.getOrderInfo());
+        String bankCode = PaymentMethodToBankCode(request.getPaymentMethod());
+        vnPayRequestDto.setBankCode(bankCode);
+        vnPayRequestDto.setOrderId(orderId);
+        return vnPayRequestDto;
+    }
+
+    private void handlePaymentError(ProcessPaymentRequest request, Exception e) {
+        log.error("Error generating VNPay URL for orderId: {}. Error: {}", request.getOrderId(), e.getMessage(), e);
+        
+        Payment failedPayment = paymentRepository.findByTransactionId(request.getTransactionId()).orElseGet(() -> {
+            Payment tempFailPayment = new Payment();
+            tempFailPayment.setOrderId(request.getOrderId());
+            tempFailPayment.setUserId(request.getUserId());
+            tempFailPayment.setTransactionId(request.getTransactionId());
+            tempFailPayment.setAmount(String.valueOf(request.getTotalAmount()));
+            tempFailPayment.setPaymentMethod(request.getPaymentMethod());
+            tempFailPayment.setStatus(PaymentStatus.FAILED);
+            tempFailPayment.setFailureReason("Error during VNPay URL generation: " + e.getMessage());
+            return paymentRepository.save(tempFailPayment);
+        });
+
+        sendPaymentFailedEvent(failedPayment, "Error generating VNPay URL: " + e.getMessage());
+    }
+
+    private void handleNonVNPayPayment(ProcessPaymentRequest request) {
+        log.warn("Payment method {} is not VNPay.", request.getPaymentMethod());
+        
+        // Payment record was already created with PENDING status, so no need to create it again
+        log.info("Non-VNPay payment recorded with PENDING status for orderId: {}", request.getOrderId());
+        
+        // TODO: Implement logic for other payment methods if any.
+        // For example, if it was a COD, it might be set to PENDING until delivery confirmation.
     }
 
     @Override
@@ -139,10 +155,147 @@ public class PaymentServiceImpl implements PaymentService {
         return payment.get();
     }
 
+    @Override
+    @Transactional
+    public void handleVNPayCallback(Map<String, String> vnpayParams) {
+        log.info("Handling VNPay IPN callback with params: {}", vnpayParams);
+        
+        /*  IPN URL: Ghi nhận kết quả thanh toán từ VNPAY
+           Phương thức này chỉ tập trung vào việc cập nhật trạng thái thanh toán
+           Các kiểm tra (checksum, orderId, amount, order status) đã được thực hiện trong VnpayController
+        */
+        
+        String vnp_TxnRef = vnpayParams.get("vnp_TxnRef");
+        String vnp_ResponseCode = vnpayParams.get("vnp_ResponseCode");
+        
+        // Tìm giao dịch trong database
+        Optional<Payment> paymentOptional = paymentRepository.findByTransactionId(vnp_TxnRef);
+        if (paymentOptional.isEmpty()) {
+            log.error("Payment record not found for transactionId: {}. Cannot process VNPay IPN.", vnp_TxnRef);
+            throw new RuntimeException("Payment not found for transactionId: " + vnp_TxnRef);
+        }
 
-    // TODO: Xóa phương thức này sau khi tích hợp API thanh toán thực tế
-    private boolean simulatePaymentProcessing() {
-        // Giả lập 80% thành công, 20% thất bại
-        return new Random().nextInt(100) < 80;
+        Payment payment = paymentOptional.get();
+        
+        // Kiểm tra trạng thái thanh toán
+        if (payment.getStatus() != PaymentStatus.PENDING) {
+            log.info("Payment already processed for transactionId: {}. Current status: {}. Skipping processing.", 
+                    vnp_TxnRef, payment.getStatus());
+            return;
+        }
+        
+        // Cập nhật trạng thái thanh toán dựa trên mã phản hồi
+        boolean isSuccessful = "00".equals(vnp_ResponseCode);
+        
+        if (isSuccessful) {
+            // Cập nhật trạng thái thành SUCCESS
+            payment.setStatus(PaymentStatus.SUCCESS);
+            payment.setUpdatedAt(LocalDateTime.now());
+            log.info("Payment status updated to SUCCESS for orderId: {}, transactionId: {}", 
+                    payment.getOrderId(), payment.getTransactionId());
+                    
+            // Lưu vào database
+            paymentRepository.save(payment);
+            
+            // Gửi sự kiện thành công
+            sendPaymentSuccessEvent(payment);
+        } else {
+            // Cập nhật trạng thái thành FAILED
+            String failureReason = String.format("VNPay payment failed. ResponseCode: %s", vnp_ResponseCode);
+            payment.setStatus(PaymentStatus.FAILED);
+            payment.setFailureReason(failureReason);
+            payment.setUpdatedAt(LocalDateTime.now());
+            
+            log.warn("Payment status updated to FAILED for orderId: {}, transactionId: {}", 
+                    payment.getOrderId(), payment.getTransactionId());
+                    
+            // Lưu vào database
+            paymentRepository.save(payment);
+            
+            // Gửi sự kiện thất bại
+            sendPaymentFailedEvent(payment, failureReason);
+        }
+    }
+    
+    @Override        
+    @Transactional        
+    public ConfirmVNPayPaymentResponseDto handleVNPayReturnUrl(HttpServletRequest request) {        
+        // Delegate to VNPayService for handling return URL and getting result        
+        ConfirmVNPayPaymentResponseDto vnpayResponse = vnPayService.handleVNPayReturn(request);                
+        
+        log.info("Received VNPay return URL result: {}", vnpayResponse);                
+        
+        // KHÔNG cập nhật database tại Return URL, chỉ trả về kết quả kiểm tra toàn vẹn dữ liệu
+        // Việc cập nhật database sẽ được thực hiện tại IPN URL (handleVNPayCallback)
+        
+        return vnpayResponse;    
+    }
+
+    private void sendPaymentSuccessEvent(Payment payment) {
+        PaymentSucceededEvent succeededEvent = PaymentSucceededEvent.builder()
+                .transactionId(payment.getTransactionId())
+                .userId(payment.getUserId())
+                .orderId(payment.getOrderId())
+                .paymentId(payment.getPaymentId())
+                .amount(payment.getAmount())
+                .build();
+            
+        try {
+            paymentProducer.sendPaymentSucceededEvent(succeededEvent);
+            log.info("Published PaymentSucceededEvent for orderId: {}, transactionId: {}", 
+                    payment.getOrderId(), payment.getTransactionId());
+        } catch (Exception e) {
+            log.error("Failed to send PaymentSucceededEvent for transactionId: {}. Error: {}", 
+                    payment.getTransactionId(), e.getMessage(), e);
+            // Set status back to PENDING if event publishing fails
+            payment.setStatus(PaymentStatus.PENDING);
+            paymentRepository.save(payment);
+        }
+    }
+
+    private void sendPaymentFailedEvent(Payment payment, String failureReason) {
+        PaymentFailedEvent failedEvent = PaymentFailedEvent.builder()
+                .transactionId(payment.getTransactionId())
+                .userId(payment.getUserId())
+                .orderId(payment.getOrderId())
+                .paymentId(payment.getPaymentId())
+                .amount(payment.getAmount())
+                .failureReason(failureReason != null ? failureReason : payment.getFailureReason())
+                .build();
+            
+        try {
+            paymentProducer.sendPaymentFailedEvent(failedEvent);
+            log.info("Published PaymentFailedEvent for orderId: {}, transactionId: {}", 
+                    payment.getOrderId(), payment.getTransactionId());
+        } catch (Exception e) {
+            log.error("Failed to send PaymentFailedEvent for transactionId: {}. Error: {}", 
+                    payment.getTransactionId(), e.getMessage(), e);
+            // If event publishing fails, at least keep the FAILED status in database
+        }
+    }
+
+    private void sendPaymentFailedEvent(Payment payment) {
+        sendPaymentFailedEvent(payment, null);
+    }
+
+    @Override
+    public Optional<Payment> findPaymentByTransactionId(String transactionId) {
+        log.debug("Finding payment by transactionId: {}", transactionId);
+        return paymentRepository.findByTransactionId(transactionId);
+    }
+
+    private String PaymentMethodToBankCode(PaymentMethod paymentMethod) {
+        switch (paymentMethod) {
+            case CREDIT_CARD:
+                return "INTCARD";
+            case DEBIT_CARD:
+                return "INTCARD";
+            case QR_CODE:
+                return "VNPAYQR";
+            case TRANSFER_BANKING:
+                return "VNBANK";
+            default:
+                throw new IllegalArgumentException("Unsupported payment method: " + paymentMethod);
+        }
     }
 }
