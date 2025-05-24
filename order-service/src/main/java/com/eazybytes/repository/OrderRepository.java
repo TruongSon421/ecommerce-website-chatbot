@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import com.eazybytes.model.Order;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
@@ -15,4 +16,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     // Tìm đơn hàng theo userId và trạng thái (tùy chọn, nếu cần)
     List<Order> findByUserIdAndStatus(String userId, Order.OrderStatus status);
+
+    Optional<Order> findByTransactionId(String transactionId);
 }

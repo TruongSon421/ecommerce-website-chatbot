@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart Test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Cart Test</h1>
+
+        <div class="section">
+            <h2>User Info</h2>
+            <div>
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" value="test-user-123">
+            </div>
+            <button id="getCartButton">Get Cart</button>
+            <button id="createCartButton">Create Cart (if not exists)</button>
+        </div>
+
+        <div class="section" id="cartDetailsSection" style="display:none;">
+            <h2>Cart Details</h2>
+            <pre id="cartDetailsOutput"></pre>
+        </div>
+
+        <div class="section">
+            <h2>Add Item to Cart</h2>
+            <div>
+                <label for="addItemProductId">Product ID:</label>
+                <input type="text" id="addItemProductId" value="P1001">
+            </div>
+            <div>
+                <label for="addItemProductName">Product Name:</label>
+                <input type="text" id="addItemProductName" value="Test Product">
+            </div>
+            <div>
+                <label for="addItemPrice">Price:</label>
+                <input type="number" id="addItemPrice" value="1000">
+            </div>
+            <div>
+                <label for="addItemQuantity">Quantity:</label>
+                <input type="number" id="addItemQuantity" value="1">
+            </div>
+            <div>
+                <label for="addItemColor">Color:</label>
+                <input type="text" id="addItemColor" value="Red">
+            </div>
+            <button id="addItemToCartButton">Add Item to Cart</button>
+        </div>
+
+        <div class="section">
+            <h2>Checkout</h2>
+            <div>
+                <label for="shippingAddress">Shipping Address:</label>
+                <input type="text" id="shippingAddress" value="123 Test Street">
+            </div>
+            <div>
+                <label for="paymentMethod">Payment Method:</label>
+                <select id="paymentMethod">
+                    <option value="QR_CODE">QR_CODE</option>
+                    <option value="CREDIT_CARD">Credit Card</option>
+                    <option value="DEBIT_CARD">DEBIT_CARD</option>
+                    <option value="TRANSFER_BANKING">TRANSFER_BANKING</option>
+                    <option value="VNPAY">VNPay</option>
+                </select>
+            </div>
+            <h3>Selected Items for Checkout (Optional)</h3>
+            <p>If empty, all cart items will be checked out.</p>
+            <div id="selectedCheckoutItemsContainer"></div>
+            <div class="item-input">
+                <input type="text" id="checkoutProductId" placeholder="Product ID">
+                <input type="text" id="checkoutProductColor" placeholder="Color">
+                <button id="addCheckoutItemButton">Add Item to Checkout List</button>
+            </div>
+            <button id="checkoutButton">Initiate Checkout</button>
+        </div>
+
+        <div class="section">
+            <h2>API Response</h2>
+            <pre id="responseOutput"></pre>
+        </div>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 

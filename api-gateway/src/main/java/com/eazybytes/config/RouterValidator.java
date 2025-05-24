@@ -34,7 +34,11 @@ public class RouterValidator {
             "/api/guest-carts",
             "/api/guest-carts/{guestId}",
             "/api/guest-carts/{guestId}/items",
-            "/api/guest-carts/{guestId}/items/{productId}"
+            "/api/guest-carts/{guestId}/items/{productId}",
+            
+            // VNPay payment endpoints
+            "/api/v1/payment/vnpay/ipn",
+            "/api/v1/payment/vnpay/return"
     );
 
     public Predicate<ServerHttpRequest> isSecured =

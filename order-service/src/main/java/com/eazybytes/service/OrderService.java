@@ -23,6 +23,8 @@ public interface OrderService {
 
     Order getOrderById(Long orderId);
 
+    Order getOrderByTransactionId(String transactionId);
+
     List<Order> getOrdersByUserId(String userId);
 
     void cancelOrder(Long orderId);

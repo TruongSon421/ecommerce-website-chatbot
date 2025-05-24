@@ -61,7 +61,16 @@ kafka:
       succeeded: payment-succeeded
       failed: payment-failed
 
-
+vnpay:
+  tmnCode: ZIRF5U94
+  hashSecret: C1A2GX4L9U5Z73NDYJT1QU6PQ61TP1HO
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  ipnUrl: https://6077-14-186-91-166.ngrok-free.app/api/v1/payment/vnpay/ipn
+  returnUrl: https://6077-14-186-91-166.ngrok-free.app/api/v1/payment/vnpay/return
+  frontendReturnUrlBase: http://localhost:5173
+  version: 2.1.0
+  command: pay
+  orderType: other
 # Eureka Configuration (Service Discovery)
 eureka:
   client:
@@ -78,5 +87,13 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eazybytes: INFO
+    com.eazybytes.service.VNPayServiceImpl: INFO
+    org.springframework.kafka: INFO
 
 
