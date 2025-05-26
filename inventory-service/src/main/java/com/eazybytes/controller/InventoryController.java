@@ -170,7 +170,6 @@ public class InventoryController {
 
 
     @DeleteMapping("/delete/{productId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
     public ResponseEntity<Void> deleteInventoriesByProductId(@PathVariable("productId") String productId) {
         inventoryService.deleteAllByProductId(productId);
@@ -178,7 +177,6 @@ public class InventoryController {
     }
 
     @DeleteMapping("/delete")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
     public ResponseEntity<Void> deleteInventory(@RequestParam("productId") String productId, @RequestParam("color") String color)
     {

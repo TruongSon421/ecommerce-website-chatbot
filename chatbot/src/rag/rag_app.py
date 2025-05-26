@@ -41,12 +41,46 @@ def merge_product_configs(product_data, device_type):
         "Kích thước", "Chất liệu", "Pin", "Hệ điều hành"
     ]
     
+    backup_charger_fields = [
+        "Dung lượng pin", "Hiệu suất sạc", "Lõi pin", "Công nghệ/ Tiện ích", "Thời gian sạc đầy pin",
+        "Nguồn ra", "Nguồn vào", "Kích thước", "Khối lượng", "Thương hiệu của", "Sản xuất tại"
+    ]
+    
+    cable_charger_hub_fields = [
+        "Model", "Chức năng", "Đầu vào", "Đầu ra", "Độ dài dây", "Công suất tối đa",
+        "Sản xuất tại", "Thương hiệu của", "Công nghệ/Tiện ích", "Dòng sạc tối đa", "Jack kết nối"
+    ]
+
+    headphone_fields = [
+        "Thời lượng pin tai nghe", "Cổng sạc", "Tương thích", "Jack cắm", "Độ dài dây", "Tiện ích",
+        "Kết nối cùng lúc", "Công nghệ kết nối", "Điều khiển", "Phím điều khiển", "Kích thước",
+        "Khối lượng", "Thương hiệu của", "Sản xuất tại"
+    ]
+    
+    wired_earphone_fields = [
+        "Tương thích", "Jack cắm", "Độ dài dây", "Tiện ích", "Kết nối cùng lúc", "Điều khiển",
+        "Phím điều khiển", "Khối lượng", "Thương hiệu của", "Sản xuất tại"
+    ]
+    
+    wireless_earphone_fields = [
+        "Thời lượng pin tai nghe", "Thời lượng pin hộp sạc", "Cổng sạc", "Công nghệ âm thanh",
+        "Tương thích", "Ứng dụng kết nối", "Tiện ích", "Kết nối cùng lúc", "Công nghệ kết nối",
+        "Điều khiển", "Phím điều khiển", "Kích thước", "Khối lượng", "Thương hiệu của", "Sản xuất tại"
+    ]
     # Chọn danh sách trường dựa trên type
-    config_fields = phone_fields if device_type == "PHONE" else laptop_fields
+    config_fields = {
+        "phone": phone_fields,
+        "laptop": laptop_fields,
+        "backup_charger": backup_charger_fields,
+        "cable_charger_hub": cable_charger_hub_fields,
+        "headphone": headphone_fields,
+        "wired_earphone": wired_earphone_fields,
+        "wireless_earphone": wireless_earphone_fields
+    }.get(device_type, [])
     
     # Ánh xạ tên trường tiếng Anh sang tiếng Việt
     field_mapping = {
-        "PHONE": {
+        "phone": {
             "os": "Hệ điều hành", "processor": "Vi xử lý", "cpuSpeed": "Tốc độ chip", "gpu": "Chip đồ họa",
             "ram": "RAM", "storage": "Dung lượng", "availableStorage": "Dung lượng khả dụng",
             "contactLimit": "Danh bạ", "rearCameraResolution": "Độ phân giải camera sau",
@@ -64,7 +98,7 @@ def merge_product_configs(product_data, device_type):
             "headphoneJack": "Jack tai nghe", "otherConnectivity": "Kết nối khác",
             "designType": "Kiểu thiết kế", "materials": "Chất liệu", "sizeWeight": "Kích thước, khối lượng"
         },
-        "LAPTOP": {
+        "laptop": {
             "processorModel": "Công nghệ CPU", "coreCount": "Số nhân", "threadCount": "Số luồng",
             "cpuSpeed": "Tốc độ CPU", "maxCpuSpeed": "Tốc độ tối đa", "ram": "RAM", "ramType": "Loại RAM",
             "ramBusSpeed": "Tốc độ Bus RAM", "maxRam": "Hỗ trợ RAM tối đa", "storage": "Ổ cứng",
@@ -74,6 +108,77 @@ def merge_product_configs(product_data, device_type):
             "wirelessConnectivity": "Kết nối không dây", "webcam": "Webcam", "otherFeatures": "Tính năng khác",
             "keyboardBacklight": "Đèn bàn phím", "size": "Kích thước", "material": "Chất liệu",
             "battery": "Pin", "os": "Hệ điều hành"
+        },
+        "backup_charger": {
+            "batteryCapactity": "Dung lượng pin",
+            "chargingEfficiency": "Hiệu suất sạc",
+            "batteryCellType": "Lõi pin",
+            "technologyFeatures": "Công nghệ/ Tiện ích",
+            "chargingTime": "Thời gian sạc đầy pin",
+            "output": "Nguồn ra",
+            "input": "Nguồn vào",
+            "size": "Kích thước",
+            "weight": "Khối lượng",
+            "brandOrigin": "Thương hiệu của",
+            "manufactured": "Sản xuất tại"
+        },
+        "cable_charger_hub": {
+            "model": "Model",
+            "features": "Chức năng",
+            "input": "Đầu vào",
+            "output": "Đầu ra",
+            "length": "Độ dài dây",
+            "maximumPower": "Công suất tối đa",
+            "manufactured": "Sản xuất tại",
+            "brandOrigin": "Thương hiệu của",
+            "technologyFeatures": "Công nghệ/Tiện ích",
+            "maximumCharging": "Dòng sạc tối đa",
+            "connectionJack": "Jack kết nối"
+        },
+        "headphone": {
+            "batteryLife": "Thời lượng pin tai nghe",
+            "chargingPort": "Cổng sạc",
+            "compatibility": "Tương thích",
+            "audioJack": "Jack cắm",
+            "cableLength": "Độ dài dây",
+            "features": "Tiện ích",
+            "simultaneousConnections": "Kết nối cùng lúc",
+            "connectionTechnology": "Công nghệ kết nối",
+            "controlType": "Điều khiển",
+            "controlButtons": "Phím điều khiển",
+            "size": "Kích thước",
+            "weight": "Khối lượng",
+            "brandOrigin": "Thương hiệu của",
+            "manufactured": "Sản xuất tại"
+        },
+        "wired_earphone": {
+            "compatibility": "Tương thích",
+            "audioJack": "Jack cắm",
+            "cableLength": "Độ dài dây",
+            "features": "Tiện ích",
+            "simultaneousConnections": "Kết nối cùng lúc",
+            "controlType": "Điều khiển",
+            "controlButtons": "Phím điều khiển",
+            "weight": "Khối lượng",
+            "brandOrigin": "Thương hiệu của",
+            "manufactured": "Sản xuất tại"
+        },
+        "wireless_earphone": {
+            "batteryLife": "Thời lượng pin tai nghe",
+            "chargingCaseBatteryLife": "Thời lượng pin hộp sạc",
+            "chargingPort": "Cổng sạc",
+            "audioTechnology": "Công nghệ âm thanh",
+            "compatibility": "Tương thích",
+            "connectionApp": "Ứng dụng kết nối",
+            "features": "Tiện ích",
+            "simultaneousConnections": "Kết nối cùng lúc",
+            "connectionTechnology": "Công nghệ kết nối",
+            "controlType": "Điều khiển",
+            "controlButtons": "Phím điều khiển",
+            "size": "Kích thước",
+            "weight": "Khối lượng",
+            "brandOrigin": "Thương hiệu của",
+            "manufactured": "Sản xuất tại"
         }
     }
     
@@ -87,7 +192,7 @@ def merge_product_configs(product_data, device_type):
     for field in config_fields:
         values = {}
         for product in product_data:
-            variant = product["productRequest"]["variant"]
+            variant = product["productRequest"]["variant"] or "Default"  # Handle None variant
             config = product["productRequest"]
             eng_field = next(k for k, v in field_mapping[device_type].items() if v == field)
             value = config.get(eng_field, None)
@@ -107,9 +212,9 @@ def merge_product_configs(product_data, device_type):
     # Gộp thông tin giá và màu từ inventoryRequests
     price_info = []
     for product in product_data:
-        variant = product["productRequest"]["variant"]
+        variant = product["productRequest"]["variant"] or "Default"
         inventory = product.get("inventoryRequests", [])
-        color_price_pairs = [f"{item['color']}: {item['currentPrice']}" for item in inventory]
+        color_price_pairs = [f"{handle_empty_value(item['color'])}: {item['currentPrice']}" for item in inventory]
         price_info.append(f"{variant} - {', '.join(color_price_pairs)}")
     
     return merged_config, price_info
@@ -118,7 +223,7 @@ def merge_product_configs(product_data, device_type):
 def create_document(data):
     product_data = data.get('products_data', [])
     group_data = data.get('group_data', {})
-    device_type = group_data.get('type', None)  # Mặc định là PHONE nếu không có type
+    device_type = group_data.get('type', 'phone')  
     
     # Gộp cấu hình từ các productRequest
     merged_config, price_info = merge_product_configs(product_data, device_type)
@@ -169,7 +274,7 @@ def add_to_elasticsearch():
         es_doc = {
             "document": document,
             "group_id": group_id,
-            "group_name": group_name,
+            "name": group_name,
             "type": product_type
         }
         

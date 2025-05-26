@@ -64,7 +64,5 @@ public class PhoneRequest extends ProductRequest {
     private String materials; // nguyên liệu
     private String sizeWeight; // kích thước khối lượng
 
-    private List<String> colors;
-
 }
 

@@ -13,7 +13,7 @@ interface UseAuth {
   error: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials, isAdminLogin?: boolean) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -67,14 +67,17 @@ export const useAuth = (): UseAuth => {
           { username: '', password: '' }
         )
       );
-      getCartItems(initialUser.id).catch((err: unknown) =>
-        console.error('Failed to fetch cart on init:', err)
-      );
+      // Skip cart fetch for admin users
+      if (!initialUser.roles?.includes('ADMIN')) {
+        getCartItems(initialUser.id).catch((err: unknown) =>
+          console.error('Failed to fetch cart on init:', err)
+        );
+      }
     }
     setInitialLoading(false);
   }, [dispatch, initialUser, initialAccessToken, initialRefreshToken, user]);
 
-  const loginHandler = useCallback(async (credentials: LoginCredentials) => {
+  const loginHandler = useCallback(async (credentials: LoginCredentials, isAdminLogin: boolean = false) => {
     try {
       const result = await dispatch(login(credentials)).unwrap();
       if (result.user && result.user.id && result.accessToken) {
@@ -82,7 +85,10 @@ export const useAuth = (): UseAuth => {
         localStorage.setItem('accessToken', result.accessToken);
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('refreshToken', result.refreshToken || '');
-        await mergeCart(result.user.id);
+        // Skip cart merge for admin users
+        if (!isAdminLogin && !result.user.roles?.includes('ADMIN')) {
+          await mergeCart(result.user.id);
+        }
       }
     } catch (err: unknown) {
       console.error('Login failed:', err);
@@ -98,7 +104,10 @@ export const useAuth = (): UseAuth => {
         localStorage.setItem('accessToken', result.accessToken);
         localStorage.setItem('user', JSON.stringify(result.user));
         localStorage.setItem('refreshToken', result.refreshToken || '');
-        await mergeCart(result.user.id);
+        // Skip cart merge for admin users (unlikely for registration, but included for consistency)
+        if (!result.user.roles?.includes('ADMIN')) {
+          await mergeCart(result.user.id);
+        }
       }
     } catch (err: unknown) {
       console.error('Register failed:', err);
