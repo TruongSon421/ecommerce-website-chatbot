@@ -48,8 +48,11 @@ public class ProductService {
 
     public ProductResponse getProductById(String type, String id) {
         BaseProduct product = findProductById(id);
-        List<InventoryDto> inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
 
+        if (!product.getType().equals(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product type: " + type);
+        }
+        List<InventoryDto> inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
         return mapToProductResponse(type, product, inventoryDtos);
     }
 
@@ -100,21 +103,22 @@ public class ProductService {
             }
 
             // Lưu product vào database
-            BaseProduct savedProduct = productRepository.save(product);
-
-            // Tạo inventory và xử lý rollback nếu có lỗi
-            List<InventoryDto> inventoryDtos;
+            
             try {
+                BaseProduct savedProduct = productRepository.save(product);
+                
+                // Tạo inventory và xử lý rollback nếu có lỗi
+                List<InventoryDto> inventoryDtos;
                 inventoryDtos = createInventories(savedProduct, inventoryRequests);
-            } catch (Exception e) {
+                return mapToProductResponse(savedProduct.getType(), savedProduct, inventoryDtos);
+            } catch (ResponseStatusException  e) {
                 // Rollback product đã lưu trong database
-                productRepository.delete(savedProduct);
-                throw e; // Ném lại exception để thông báo lỗi
+                if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                    throw e; // Propagate BAD_REQUEST
+                }
+                productRepository.delete(product);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create product", e);
             }
-
-            // Trả về response
-            String productType = determineProductType(productRequest);
-            return mapToProductResponse(productType, savedProduct, inventoryDtos);
 
         } catch (Exception e) {
             throw new ResponseStatusException(
@@ -170,9 +174,9 @@ public class ProductService {
             try {
                 // Giả sử inventoryClient có phương thức deleteInventory để xóa inventory
                 inventoryClient.deleteInventory(inventory.getProductId(), inventory.getColor());
-            } catch (Exception rollbackException) {
+            } catch (Exception ignored) {
                 // Log lỗi rollback nếu cần, nhưng không ném exception để tránh che lấp lỗi chính
-                System.err.println("Failed to rollback inventory: " + rollbackException.getMessage());
+                System.err.println("Failed to rollback inventory: ");
             }
         }
     }
@@ -183,6 +187,12 @@ public class ProductService {
         BaseProduct product = findProductById(id);
         String productType = product.getType();
 
+        String requestType = determineProductType(productRequest);
+        if (!productType.equals(requestType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Product type mismatch: expected " + productType + ", got " + requestType);
+        }
+        
         // Update product fields based on type
         switch (productType) {
             case PHONE_TYPE:
@@ -235,9 +245,11 @@ public class ProductService {
     }
 
     public void deleteProduct(String id) {
+        if (!productRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found with id: " + id);
+        }
         productRepository.deleteById(id);
     }
-
     private ProductResponse mapToProductResponse(String type, BaseProduct product, List<InventoryDto> inventoryDtos) {
         switch (type) {
             case PHONE_TYPE:

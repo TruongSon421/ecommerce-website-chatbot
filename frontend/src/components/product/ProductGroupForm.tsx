@@ -1,4 +1,3 @@
-// src/components/product/ProductGroupForm.tsx
 import React, { useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { createProduct, createGroupVariant } from "../../store/slices/productSlices";
@@ -11,6 +10,7 @@ import {
   ProductReview,
 } from "../../types/product";
 import ProductForm from "./ProductForm";
+import axios from "../../config/axios"; // Assuming axios is configured for API calls
 
 interface ProductGroupFormProps {
   onSuccess: (groupId: string) => void;
@@ -28,7 +28,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
   const [groupData, setGroupData] = useState({
     prefixName: "",
     groupImage: "",
-    type: "phone" as "phone" | "LAPTOP" | "ACCESSORY",
+    type: "phone" as "phone" | "laptop" | "ACCESSORY",
   });
 
   const [productForms, setProductForms] = useState([
@@ -57,19 +57,18 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
   };
 
   const handleAddProductForm = () => {
-    const baseForm = productForms[0]; // Sao chép từ form đầu tiên
+    const baseForm = productForms[0];
     setProductForms([
       ...productForms,
       {
         ...baseForm,
-        variant: "", // Reset variant để nhập mới
-        // Sao chép sâu các trường khác
-        images: {...baseForm.images},
+        variant: "",
+        images: { ...baseForm.images },
         colors: [...baseForm.colors],
-        config: {...baseForm.config},
+        config: { ...baseForm.config },
         promotions: [...baseForm.promotions],
         productReviews: [...baseForm.productReviews],
-        inventories: baseForm.inventories.map(inv => ({...inv})),
+        inventories: baseForm.inventories.map((inv) => ({ ...inv })),
       },
     ]);
   };
@@ -103,12 +102,11 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
       },
       inventoryRequests: data.inventories,
     };
-    
-    // Kiểm tra nếu sản phẩm đã tồn tại trong danh sách, thay thế nó
+
     const existingIndex = productsToCreate.findIndex(
-      p => p.productRequest.variant === data.variant
+      (p) => p.productRequest.variant === data.variant
     );
-    
+
     if (existingIndex >= 0) {
       const updatedProducts = [...productsToCreate];
       updatedProducts[existingIndex] = productRequest;
@@ -122,23 +120,22 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
     e.preventDefault();
 
     try {
-      // Gọi song song các API thêm sản phẩm
-      const productPromises = productsToCreate.map(product => 
+      // Create products
+      const productPromises = productsToCreate.map((product) =>
         dispatch(createProduct(product))
       );
       const productResults = await Promise.all(productPromises);
-      
+
       const createdProductIds: string[] = [];
       const allVariants: string[] = [];
       const allProductNames: string[] = [];
       const allOriginalPrices: (string | null)[] = [];
       const allCurrentPrices: (string | null)[] = [];
 
-      // Xử lý kết quả từ các API thêm sản phẩm
       for (let i = 0; i < productResults.length; i++) {
         const actionResult = productResults[i];
         const product = productsToCreate[i];
-        
+
         if (createProduct.fulfilled.match(actionResult)) {
           const productId = actionResult.payload.productId;
           createdProductIds.push(productId);
@@ -151,6 +148,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
         }
       }
 
+      // Create product group
       const updatedGroupData: GroupVariantRequest = {
         productIds: createdProductIds,
         image: groupData.groupImage || null,
@@ -161,10 +159,45 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
         defaultCurrentPrices: allCurrentPrices,
       };
 
-      // Gọi API tạo nhóm sản phẩm
       const groupResult = await dispatch(createGroupVariant(updatedGroupData));
       if (createGroupVariant.fulfilled.match(groupResult)) {
         const groupId = groupResult.payload.groupId;
+
+        // Prepare Elasticsearch payload
+        const elasticsearchPayload = {
+          products_data: productsToCreate.map((product) => ({
+            productRequest: {
+              ...product.productRequest,
+              // Ensure config fields match Flask API expectations
+              config: {
+                ...product.productRequest.config,
+                // Map fields to match Flask's field_mapping if needed
+              },
+            },
+            inventoryRequests: product.inventoryRequests,
+          })),
+          group_data: {
+            group_id: groupId,
+            group_name: groupData.prefixName,
+            type: groupData.type,
+            image: groupData.groupImage || null,
+          },
+        };
+
+        // Call Elasticsearch API
+        try {
+          const response = await axios.post(
+            "http://localhost:5000/add-to-elasticsearch",
+            elasticsearchPayload
+          );
+          console.log("Elasticsearch document added:", response.data);
+        } catch (esError) {
+          console.error("Failed to add document to Elasticsearch:", esError);
+          // Optionally, notify user but don't block success
+          // e.g., set an error state to display a warning
+        }
+
+        // Call onSuccess to reset and navigate
         onSuccess(groupId);
 
         // Reset form
@@ -183,6 +216,8 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
           },
         ]);
         setProductsToCreate([]);
+      } else {
+        throw new Error("Không thể tạo nhóm sản phẩm");
       }
     } catch (error) {
       console.error("Lỗi khi tạo nhóm sản phẩm:", error);
@@ -191,7 +226,6 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      {/* UI giữ nguyên như code cũ */}
       <h4 className="text-xl font-semibold text-gray-800 mb-4">Tạo nhóm sản phẩm mới</h4>
 
       {error && (
@@ -201,7 +235,6 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Thông tin nhóm */}
         <div className="p-4 bg-gray-50 rounded-md shadow-sm">
           <h5 className="text-lg font-semibold text-gray-800 mb-4">Thông tin nhóm</h5>
           <div className="space-y-4">
@@ -216,7 +249,7 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
                 value={groupData.prefixName}
                 onChange={handleGroupChange}
                 className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ví dụ: Điện thoại iPhone 16e"
+                placeholder="Ví dụ: Điện thoại iPhone 16"
                 required
               />
             </div>
@@ -248,12 +281,12 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
               >
                 <option value="phone">Điện thoại</option>
                 <option value="laptop">Laptop</option>
+                <option value="ACCESSORY">Phụ kiện</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* Danh sách form sản phẩm */}
         <div className="p-4 bg-gray-50 rounded-md shadow-sm">
           <h5 className="text-lg font-semibold text-gray-800 mb-4">Thêm sản phẩm vào nhóm</h5>
           {productForms.map((form, index) => (
@@ -275,7 +308,6 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
           </button>
         </div>
 
-        {/* Danh sách sản phẩm đã thêm */}
         {productsToCreate.length > 0 && (
           <div>
             <h5 className="text-lg font-semibold text-gray-800 mb-2">
@@ -291,7 +323,6 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
           </div>
         )}
 
-        {/* Nút submit */}
         <div className="flex justify-end">
           <button
             type="submit"

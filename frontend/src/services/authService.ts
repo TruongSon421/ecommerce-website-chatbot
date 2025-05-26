@@ -79,7 +79,6 @@ export const adminLogin = async (credentials: LoginCredentials) => {
     // Merge local cart with server cart after admin login
     if (user.id) {
       try {
-        await mergeCart(user.id);
         localStorage.removeItem('guestCartId');
       } catch (cartError) {
         console.warn('Failed to merge cart, continuing admin login:', cartError);
@@ -105,16 +104,6 @@ export const adminRegister = async (credentials: RegisterCredentials) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken || '');
     localStorage.setItem('user', JSON.stringify(user));
-
-    // Merge local cart with server cart after admin register
-    if (user.id) {
-      try {
-        await mergeCart(user.id);
-      } catch (cartError) {
-        console.warn('Failed to merge cart, continuing admin register:', cartError);
-        // Continue admin register even if cart merge fails
-      }
-    }
 
     return { user, accessToken, refreshToken };
   } catch (error: any) {

@@ -12,8 +12,6 @@ import com.eazybytes.model.Cart;
 import com.eazybytes.model.CartItems;
 import com.eazybytes.repository.CartRedisRepository;
 import com.eazybytes.repository.CartRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
@@ -28,10 +26,13 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class CartServiceImpl implements CartService {
+
+    private static final Logger log = LoggerFactory.getLogger(CartServiceImpl.class);
 
     @Autowired
     private CartRepository cartRepository;
@@ -46,8 +47,14 @@ public class CartServiceImpl implements CartService {
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final long RETRY_DELAY_MS = 50;
 
+    public CartServiceImpl(CartEventProducer cartEventProducer, InventoryClient inventoryClient, CircuitBreakerFactory<?, ?> cbFactory) {
+        this.cartEventProducer = cartEventProducer;
+        this.inventoryClient = inventoryClient;
+        this.cbFactory = cbFactory;
+    }
+
     @Override
-    @Transactional()
+    @Transactional
     public CartResponse getCartByUserId(String userId) throws CartNotFoundException {
         log.info("Fetching cart for user: {}", userId);
 
@@ -93,7 +100,7 @@ public class CartServiceImpl implements CartService {
             if (dbCart.isPresent()) {
                 List<CartItems> items = dbCart.get().getItems();
                 log.info("Database check for user {} (cart ID {}): {} items found", userId, cartId, items.size());
-                items.forEach(item -> log.info("Item: productId={}, color={}, quantity={}", 
+                items.forEach(item -> log.info("Item: productId={}, color={}, quantity={}",
                         item.getProductId(), item.getColor(), item.getQuantity()));
             } else {
                 log.warn("No cart found in database for user {}", userId);
@@ -112,8 +119,8 @@ public class CartServiceImpl implements CartService {
                 log.info("Attempt {} to add item {} for user: {}", attempt + 1, cartItemRequest.getProductId(), userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
-                
-                // Chuẩn hóa color
+
+                // Normalize color
                 String normalizedColor = normalizeColor(cartItemRequest.getColor());
 
                 CartItems cartItemToAdd = new CartItems();
@@ -126,7 +133,7 @@ public class CartServiceImpl implements CartService {
                 cartItemToAdd.setPrice(inventory.getCurrentPrice());
 
                 Optional<CartItems> existingItemOpt = cart.getItems().stream()
-                        .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) && 
+                        .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) &&
                                 normalizeColor(item.getColor()).equals(normalizedColor))
                         .findFirst();
 
@@ -174,9 +181,9 @@ public class CartServiceImpl implements CartService {
         int attempt = 0;
         while (true) {
             try {
-                // Chuẩn hóa color
+                // Normalize color
                 String normalizedColor = normalizeColor(color);
-                
+
                 log.info("Attempt {} to update item {} (color: {}) to quantity {} for user: {}", attempt + 1, productId, normalizedColor, quantity, userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
@@ -188,7 +195,7 @@ public class CartServiceImpl implements CartService {
                 }
 
                 Optional<CartItems> itemOpt = cart.getItems().stream()
-                        .filter(item -> item.getProductId().equals(productId) && 
+                        .filter(item -> item.getProductId().equals(productId) &&
                                 normalizeColor(item.getColor()).equals(normalizedColor))
                         .findFirst();
 
@@ -232,17 +239,17 @@ public class CartServiceImpl implements CartService {
         int attempt = 0;
         while (true) {
             try {
-                // Chuẩn hóa color
+                // Normalize color
                 String normalizedColor = normalizeColor(color);
-                
+
                 log.info("Attempt {} to remove item {} (color: {}) for user: {}", attempt + 1, productId, normalizedColor, userId);
                 Cart cart = getCartForUpdate(userId);
                 Hibernate.initialize(cart.getItems());
 
-                boolean removed = cart.getItems().removeIf(item -> 
-                        item.getProductId().equals(productId) && 
+                boolean removed = cart.getItems().removeIf(item ->
+                        item.getProductId().equals(productId) &&
                         normalizeColor(item.getColor()).equals(normalizedColor));
-                        
+
                 if (!removed) {
                     log.warn("Attempted to remove item {} (color: {}) not found in cart for user {}", productId, normalizedColor, userId);
                     cartRedisRepository.save(userId, cart);
@@ -279,86 +286,86 @@ public class CartServiceImpl implements CartService {
             log.info("Guest cart is empty. No items to merge for user: {}", userId);
             return getCartByUserId(userId);
         }
-        
+
         log.info("Merging {} guest cart items for user: {}", guestCartItems.size(), userId);
         CartResponse result = null;
-        
-        // Lấy giỏ hàng hiện tại của người dùng
+
+        // Get current user cart
         CartResponse currentCart = getCartByUserId(userId);
-        
+
         // Process each item in the guest cart
         for (CartItemRequest item : guestCartItems) {
             try {
-                // Chuẩn hóa color
+                // Normalize color
                 String normalizedColor = normalizeColor(item.getColor());
-                
+
                 log.debug("Processing guest cart item: {} ({}) x{}", item.getProductId(), normalizedColor, item.getQuantity());
-                
+
                 // Validate item inventory before adding
                 InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), normalizedColor);
                 if (inventory == null || inventory.getQuantity() <= 0) {
                     log.warn("Skipping item due to no inventory: {} ({})", item.getProductId(), normalizedColor);
                     continue;
                 }
-                
-                // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+
+                // Check if product already exists in cart
                 boolean itemExists = false;
                 for (CartItemResponse existingItem : currentCart.getItems()) {
-                    if (existingItem.getProductId().equals(item.getProductId()) && 
+                    if (existingItem.getProductId().equals(item.getProductId()) &&
                         normalizeColor(existingItem.getColor()).equals(normalizedColor)) {
-                        // Sản phẩm đã tồn tại, cập nhật số lượng
+                        // Product exists, update quantity
                         int newQuantity = existingItem.getQuantity() + item.getQuantity();
-                        
-                        // Kiểm tra số lượng tồn kho
+
+                        // Check inventory quantity
                         if (newQuantity > inventory.getQuantity()) {
-                            log.warn("Cannot update item quantity due to insufficient inventory: {} ({}), requested: {}, available: {}", 
+                            log.warn("Cannot update item quantity due to insufficient inventory: {} ({}), requested: {}, available: {}",
                                     item.getProductId(), normalizedColor, newQuantity, inventory.getQuantity());
                             continue;
                         }
-                        
-                        // Cập nhật số lượng cho sản phẩm hiện tại
+
+                        // Update quantity for existing product
                         result = updateCartItem(userId, item.getProductId(), newQuantity, normalizedColor);
-                        log.debug("Updated item quantity in cart: {} ({}) x{}", 
+                        log.debug("Updated item quantity in cart: {} ({}) x{}",
                                 item.getProductId(), normalizedColor, newQuantity);
                         itemExists = true;
                         break;
                     }
                 }
-                
-                // Nếu sản phẩm chưa tồn tại, thêm mới
+
+                // If product doesn't exist, add new
                 if (!itemExists) {
                     if (item.getQuantity() > inventory.getQuantity()) {
-                        log.warn("Skipping item due to insufficient inventory: {} ({}), requested: {}, available: {}", 
+                        log.warn("Skipping item due to insufficient inventory: {} ({}), requested: {}, available: {}",
                                 item.getProductId(), normalizedColor, item.getQuantity(), inventory.getQuantity());
                         continue;
                     }
-                    
-                    // Tạo một CartItemRequest mới với color đã chuẩn hóa
+
+                    // Create new CartItemRequest with normalized color
                     CartItemRequest normalizedItem = new CartItemRequest(
                             item.getProductId(),
                             item.getQuantity(),
                             normalizedColor
                     );
-                    
-                    // Thêm sản phẩm mới vào giỏ hàng
+
+                    // Add new product to cart
                     result = addItemToCart(userId, normalizedItem);
-                    log.debug("Successfully added item to cart: {} ({}) x{}", 
+                    log.debug("Successfully added item to cart: {} ({}) x{}",
                             item.getProductId(), normalizedColor, item.getQuantity());
                 }
             } catch (InvalidItemException e) {
-                log.warn("Skipping invalid item during merge: {} ({}). Reason: {}", 
+                log.warn("Skipping invalid item during merge: {} ({}). Reason: {}",
                         item.getProductId(), item.getColor(), e.getMessage());
             } catch (Exception e) {
-                log.error("Error processing item {} ({}) during merge for user {}. Reason: {}", 
+                log.error("Error processing item {} ({}) during merge for user {}. Reason: {}",
                         item.getProductId(), item.getColor(), userId, e.getMessage(), e);
             }
         }
-        
+
         // Invalidate Redis cache to ensure next fetch gets fresh data
         cartRedisRepository.delete(userId);
         log.info("Invalidated Redis cache for user: {} after cart merge to ensure data consistency", userId);
-        
-        // Return the final cart state from database
+
+        // Return final cart state from database
         return getCartByUserId(userId);
     }
 
@@ -411,14 +418,14 @@ public class CartServiceImpl implements CartService {
 
         List<CartItems> itemsToCheckout = cart.getItems();
         if (selectedItems != null && !selectedItems.isEmpty()) {
-            // Chuẩn hóa colors trong selectedItems trước khi so sánh
+            // Normalize colors in selectedItems before comparison
             List<CartItemIdentifier> normalizedSelectedItems = selectedItems.stream()
                     .map(item -> new CartItemIdentifier(item.getProductId(), normalizeColor(item.getColor())))
                     .collect(Collectors.toList());
-                    
+
             itemsToCheckout = cart.getItems().stream()
                     .filter(item -> normalizedSelectedItems.stream()
-                            .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && 
+                            .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) &&
                                     normalizeColor(item.getColor()).equals(sel.getColor())))
                     .collect(Collectors.toList());
             if (itemsToCheckout.isEmpty()) {
@@ -442,7 +449,7 @@ public class CartServiceImpl implements CartService {
 
         List<CartItemResponse> cartItems = itemsToCheckout.stream()
                 .map(item -> {
-                    // Chuẩn hóa color
+                    // Normalize color
                     String normalizedColor = normalizeColor(item.getColor());
                     InventoryDto inventory = checkInventoryWithCircuitBreaker(item.getProductId(), normalizedColor);
                     boolean isAvailable = inventory != null && item.getQuantity() <= inventory.getQuantity();
@@ -457,7 +464,7 @@ public class CartServiceImpl implements CartService {
                 })
                 .collect(Collectors.toList());
 
-        // Chuẩn hóa selectedItems cho CheckoutInitiatedEvent
+        // Normalize selectedItems for CheckoutInitiatedEvent
         List<CartItemIdentifier> normalizedSelectedItems = null;
         if (selectedItems != null) {
             normalizedSelectedItems = selectedItems.stream()
@@ -497,13 +504,13 @@ public class CartServiceImpl implements CartService {
             cart.getItems().clear();
             log.info("Cleared all items from cart for user: {}", event.getUserId());
         } else {
-            // Chuẩn hóa selectedItems trước khi so sánh để xóa
+            // Normalize selectedItems before comparison for removal
             List<CartItemIdentifier> normalizedSelectedItems = selectedItems.stream()
                     .map(sel -> new CartItemIdentifier(sel.getProductId(), normalizeColor(sel.getColor())))
                     .collect(Collectors.toList());
-                    
+
             cart.getItems().removeIf(item -> normalizedSelectedItems.stream()
-                    .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) && 
+                    .anyMatch(sel -> sel.getProductId().equals(item.getProductId()) &&
                             normalizeColor(item.getColor()).equals(sel.getColor())));
             log.info("Removed selected items from cart for user: {}", event.getUserId());
         }
@@ -541,7 +548,7 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponse createCart(String userId) {
         log.info("Explicitly creating new cart for user: {}", userId);
-        
+
         // Check if cart already exists for the user
         Optional<Cart> existingCart = cartRepository.findByUserId(userId);
         if (existingCart.isPresent()) {
@@ -550,7 +557,7 @@ public class CartServiceImpl implements CartService {
             Hibernate.initialize(cart.getItems());
             return toCartResponse(cart);
         }
-        
+
         // Create a new cart
         try {
             Cart cart = new Cart();
@@ -558,11 +565,11 @@ public class CartServiceImpl implements CartService {
             cart.setTotalPrice(0);
             Cart savedCart = cartRepository.save(cart);
             Hibernate.initialize(savedCart.getItems());
-            
+
             // Cache the cart in Redis
             cartRedisRepository.save(userId, savedCart);
             log.info("New cart created and cached for user: {}", userId);
-            
+
             return toCartResponse(savedCart);
         } catch (DataIntegrityViolationException e) {
             log.warn("Data integrity violation during cart creation for user {}, likely concurrent creation", userId, e);
@@ -574,7 +581,7 @@ public class CartServiceImpl implements CartService {
                         fallbackCart.setTotalPrice(0);
                         return cartRepository.save(fallbackCart);
                     });
-            
+
             Hibernate.initialize(newCart.getItems());
             cartRedisRepository.save(userId, newCart);
             return toCartResponse(newCart);
@@ -585,84 +592,84 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponse createGuestCart(String guestId) {
         log.info("Creating new guest cart with ID: {}", guestId);
-        
+
         Cart cart = new Cart();
         cart.setUserId(guestId);
         cart.setItems(new ArrayList<>());
         cart.setTotalPrice(0);
-        
-        // Chỉ lưu vào Redis, không lưu vào database
+
+        // Save to Redis only, not database
         cartRedisRepository.saveGuestCart(guestId, cart);
-        
+
         return toCartResponse(cart);
     }
-    
+
     @Override
     public CartResponse getGuestCartById(String guestId) throws CartNotFoundException {
         log.info("Fetching guest cart with ID: {}", guestId);
-        
+
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
             log.error("Guest cart not found in Redis with ID: {}", guestId);
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
-        
-        // Log để debug
+
+        // Log for debugging
         if (cart.getItems() != null) {
             log.info("Retrieved guest cart from Redis with {} items for guest: {}", cart.getItems().size(), guestId);
-            
-            // In chi tiết các item để debug
+
+            // Log item details for debugging
             for (CartItems item : cart.getItems()) {
-                log.info("Item in cart: productId={}, productName={}, color={}, quantity={}", 
-                         item.getProductId(), item.getProductName(), item.getColor(), item.getQuantity());
+                log.info("Item in cart: productId={}, productName={}, color={}, quantity={}",
+                        item.getProductId(), item.getProductName(), item.getColor(), item.getQuantity());
             }
         } else {
             log.warn("Items collection is null in guest cart from Redis for guest: {}", guestId);
-            // Khởi tạo danh sách rỗng nếu items là null
+            // Initialize empty list if items is null
             cart.setItems(new ArrayList<>());
         }
-        
+
         CartResponse response = toCartResponse(cart);
-        log.info("Returning CartResponse with {} items for guest: {}", 
+        log.info("Returning CartResponse with {} items for guest: {}",
                 response.getItems() != null ? response.getItems().size() : 0, guestId);
-        
+
         return response;
     }
-    
+
     @Override
     public CartResponse addItemToGuestCart(String guestId, CartItemRequest cartItemRequest) throws CartNotFoundException, InvalidItemException {
-        log.info("Adding item to guest cart: {}, product: {}, color: '{}'", 
+        log.info("Adding item to guest cart: {}, product: {}, color: '{}'",
                 guestId, cartItemRequest.getProductId(), cartItemRequest.getColor());
-        
+
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
-            // Tạo giỏ hàng mới nếu chưa tồn tại
+            // Create new cart if it doesn't exist
             log.info("Guest cart not found, creating new one for guest: {}", guestId);
             cart = new Cart();
             cart.setUserId(guestId);
             cart.setItems(new ArrayList<>());
             cart.setTotalPrice(0);
         } else {
-            log.info("Found existing guest cart for guest: {} with {} items", 
+            log.info("Found existing guest cart for guest: {} with {} items",
                     guestId, cart.getItems() != null ? cart.getItems().size() : 0);
-            
-            // Đảm bảo items không null
+
+            // Ensure items is not null
             if (cart.getItems() == null) {
                 log.warn("Items collection is null in existing cart, initializing empty list");
                 cart.setItems(new ArrayList<>());
             }
         }
-        
-        // Chuẩn hóa color
+
+        // Normalize color
         String normalizedColor = normalizeColor(cartItemRequest.getColor());
         log.info("Normalized color from '{}' to '{}'", cartItemRequest.getColor(), normalizedColor);
-        
+
         try {
-            // Kiểm tra tồn kho
+            // Check inventory
             InventoryDto inventory = checkInventoryWithCircuitBreaker(cartItemRequest.getProductId(), normalizedColor);
-            log.info("Inventory check passed for product: {}, color: {}, available: {}", 
+            log.info("Inventory check passed for product: {}, color: {}, available: {}",
                     cartItemRequest.getProductId(), normalizedColor, inventory.getQuantity());
-            
+
             CartItems cartItemToAdd = new CartItems();
             cartItemToAdd.setProductId(cartItemRequest.getProductId());
             cartItemToAdd.setQuantity(cartItemRequest.getQuantity());
@@ -670,58 +677,58 @@ public class CartServiceImpl implements CartService {
             cartItemToAdd.setProductName(inventory.getProductName());
             cartItemToAdd.setPrice(inventory.getCurrentPrice());
             cartItemToAdd.setCart(cart);
-            
-            // Kiểm tra số lượng tồn kho
+
+            // Check inventory quantity
             if (cartItemRequest.getQuantity() > inventory.getQuantity()) {
-                throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + 
-                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() +
+                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() +
                     ", requested: " + cartItemRequest.getQuantity());
             }
-            
-            // Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
+
+            // Check if product already exists in cart
             Optional<CartItems> existingItemOpt = cart.getItems().stream()
-                    .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) && 
+                    .filter(item -> item.getProductId().equals(cartItemToAdd.getProductId()) &&
                             normalizeColor(item.getColor()).equals(normalizedColor))
                     .findFirst();
-            
+
             if (existingItemOpt.isPresent()) {
-                // Cập nhật số lượng nếu sản phẩm đã tồn tại
+                // Update quantity if product exists
                 CartItems existingItem = existingItemOpt.get();
                 int newQuantity = existingItem.getQuantity() + cartItemRequest.getQuantity();
-                
-                // Kiểm tra lại số lượng tồn kho
+
+                // Check inventory again
                 if (newQuantity > inventory.getQuantity()) {
-                    throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() + 
-                        ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                    throw new InvalidItemException("Insufficient inventory for " + cartItemToAdd.getProductId() +
+                        ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() +
                         ", requested total: " + newQuantity);
                 }
-                
+
                 existingItem.setQuantity(newQuantity);
-                log.info("Updated existing item quantity to {} for product: {}, color: {}", 
+                log.info("Updated existing item quantity to {} for product: {}, color: {}",
                         newQuantity, existingItem.getProductId(), existingItem.getColor());
             } else {
-                // Thêm sản phẩm mới vào giỏ hàng
+                // Add new product to cart
                 cart.getItems().add(cartItemToAdd);
-                log.info("Added new item to cart: product: {}, color: {}, quantity: {}", 
+                log.info("Added new item to cart: product: {}, color: {}, quantity: {}",
                         cartItemToAdd.getProductId(), cartItemToAdd.getColor(), cartItemToAdd.getQuantity());
             }
-            
-            // Cập nhật tổng giá
+
+            // Update total price
             cart.setTotalPrice(calculateTotalPrice(cart));
-            
-            // Lưu vào Redis
+
+            // Save to Redis
             cartRedisRepository.saveGuestCart(guestId, cart);
             log.info("Saved guest cart to Redis with {} items", cart.getItems().size());
-            
-            // Kiểm tra lại xem cart có được lưu đúng không
+
+            // Verify saved cart
             Cart savedCart = cartRedisRepository.findByGuestId(guestId);
             if (savedCart != null && savedCart.getItems() != null) {
                 log.info("Verified guest cart in Redis: contains {} items", savedCart.getItems().size());
-                
-                // Kiểm tra chi tiết
+
+                // Log details if debug enabled
                 if (log.isDebugEnabled()) {
                     savedCart.getItems().forEach(item -> {
-                        log.debug("Verified item: productId={}, color={}, quantity={}", 
+                        log.debug("Verified item: productId={}, color={}, quantity={}",
                                 item.getProductId(), item.getColor(), item.getQuantity());
                     });
                 }
@@ -729,7 +736,7 @@ public class CartServiceImpl implements CartService {
                 log.warn("Failed to verify guest cart in Redis: {}",
                         savedCart == null ? "cart is null" : "items collection is null");
             }
-            
+
             CartResponse response = toCartResponse(cart);
             log.info("Returning CartResponse with {} items", response.getItems().size());
             return response;
@@ -740,73 +747,73 @@ public class CartServiceImpl implements CartService {
             throw new RuntimeException("Failed to add item to guest cart", e);
         }
     }
-    
+
     @Override
     public CartResponse updateGuestCartItem(String guestId, String productId, Integer quantity, String color) throws CartNotFoundException, InvalidItemException {
         log.info("Updating item in guest cart: {}, product: {}, color: {}, quantity: {}", guestId, productId, color, quantity);
-        
+
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
-        
-        // Chuẩn hóa color
+
+        // Normalize color
         String normalizedColor = normalizeColor(color);
         log.info("Normalized color for update: '{}' to '{}'", color, normalizedColor);
-        
+
         // Log cart items for debugging
         if (cart.getItems() != null && !cart.getItems().isEmpty()) {
             log.info("Guest cart {} contains {} items", guestId, cart.getItems().size());
             for (CartItems item : cart.getItems()) {
-                log.info("Cart item: productId={}, color='{}', normalizedColor='{}'", 
+                log.info("Cart item: productId={}, color='{}', normalizedColor='{}'",
                        item.getProductId(), item.getColor(), normalizeColor(item.getColor()));
             }
         } else {
             log.warn("Guest cart {} is empty or has null items", guestId);
         }
-        
+
         try {
-            // Kiểm tra tồn kho
+            // Check inventory
             InventoryDto inventory = checkInventoryWithCircuitBreaker(productId, normalizedColor);
-            
+
             if (quantity > inventory.getQuantity()) {
-                throw new InvalidItemException("Insufficient inventory for " + productId + 
-                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() + 
+                throw new InvalidItemException("Insufficient inventory for " + productId +
+                    ", color: " + normalizedColor + ". Available: " + inventory.getQuantity() +
                     ", requested: " + quantity);
             }
-            
-            // Tìm sản phẩm trong giỏ hàng - sử dụng case-insensitive matching cho color
+
+            // Find product in cart - use case-insensitive matching for color
             Optional<CartItems> itemOpt = cart.getItems().stream()
-                    .filter(item -> item.getProductId().equals(productId) && 
-                            (item.getColor().equalsIgnoreCase(color) || 
+                    .filter(item -> item.getProductId().equals(productId) &&
+                            (item.getColor().equalsIgnoreCase(color) ||
                              normalizeColor(item.getColor()).equalsIgnoreCase(normalizedColor)))
                     .findFirst();
-            
+
             if (itemOpt.isPresent()) {
                 CartItems item = itemOpt.get();
-                log.info("Found matching item: productId={}, color='{}', quantity={}", 
+                log.info("Found matching item: productId={}, color='{}', quantity={}",
                         item.getProductId(), item.getColor(), item.getQuantity());
-                
+
                 if (quantity <= 0) {
-                    // Xóa sản phẩm nếu số lượng <= 0
+                    // Remove product if quantity <= 0
                     cart.getItems().remove(item);
                     log.info("Removed item from cart due to quantity <= 0");
                 } else {
-                    // Cập nhật số lượng
+                    // Update quantity
                     item.setQuantity(quantity);
                     log.info("Updated item quantity to {}", quantity);
                 }
-                
-                // Cập nhật tổng giá
+
+                // Update total price
                 cart.setTotalPrice(calculateTotalPrice(cart));
-                
-                // Lưu vào Redis
+
+                // Save to Redis
                 cartRedisRepository.saveGuestCart(guestId, cart);
                 log.info("Saved updated cart to Redis");
-                
+
                 return toCartResponse(cart);
             } else {
-                log.warn("Item not found in cart: productId={}, color={}, normalizedColor={}", 
+                log.warn("Item not found in cart: productId={}, color={}, normalizedColor={}",
                         productId, color, normalizedColor);
                 throw new InvalidItemException("Item not found in cart: " + productId + ", color: " + normalizedColor);
             }
@@ -817,78 +824,78 @@ public class CartServiceImpl implements CartService {
             throw new RuntimeException("Failed to update item in guest cart", e);
         }
     }
-    
+
     @Override
     public CartResponse removeItemFromGuestCart(String guestId, String productId, String color) throws CartNotFoundException {
         log.info("Removing item from guest cart: {}, product: {}, color: {}", guestId, productId, color);
-        
+
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
-        
-        // Chuẩn hóa color
+
+        // Normalize color
         String normalizedColor = normalizeColor(color);
-        
-        // Xóa sản phẩm khỏi giỏ hàng
-        boolean removed = cart.getItems().removeIf(item -> 
-                item.getProductId().equals(productId) && 
+
+        // Remove product from cart
+        boolean removed = cart.getItems().removeIf(item ->
+                item.getProductId().equals(productId) &&
                 normalizeColor(item.getColor()).equals(normalizedColor));
-        
+
         if (removed) {
-            // Cập nhật tổng giá
+            // Update total price
             cart.setTotalPrice(calculateTotalPrice(cart));
-            
-            // Lưu vào Redis
+
+            // Save to Redis
             cartRedisRepository.saveGuestCart(guestId, cart);
         }
-        
+
         return toCartResponse(cart);
     }
-    
+
     @Override
     public void clearGuestCart(String guestId) throws CartNotFoundException {
         log.info("Clearing guest cart: {}", guestId);
-        
+
         Cart cart = cartRedisRepository.findByGuestId(guestId);
         if (cart == null) {
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
-        
-        // Xóa tất cả sản phẩm
+
+        // Clear all products
         cart.getItems().clear();
         cart.setTotalPrice(0);
-        
-        // Lưu vào Redis
+
+        // Save to Redis
         cartRedisRepository.saveGuestCart(guestId, cart);
     }
-    
+
     @Override
     @Transactional
     public CartResponse mergeGuestCartToUserCart(String userId, String guestId) throws CartNotFoundException, InvalidItemException {
         log.info("Merging guest cart {} into user cart {}", guestId, userId);
-        
-        // Lấy giỏ hàng của khách vãng lai
+
+        // Get guest cart
         Cart guestCart = cartRedisRepository.findByGuestId(guestId);
         if (guestCart == null) {
             throw new CartNotFoundException("Guest cart not found with ID: " + guestId);
         }
-        
-        // Chuyển đổi các item từ giỏ hàng khách vãng lai thành CartItemRequest
+
+        // Convert guest cart items to CartItemRequest
         List<CartItemRequest> guestCartItems = guestCart.getItems().stream()
-        .map(item -> new CartItemRequest(
-                item.getProductId(),
-                item.getQuantity(),
-                normalizeColor(item.getColor())
-        ))
-        .collect(Collectors.toList());
-        
-        // Hợp nhất vào giỏ hàng người dùng đã đăng nhập
+                .map(item -> new CartItemRequest(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        normalizeColor(item.getColor())
+                ))
+                .collect(Collectors.toList());
+
+        // Merge into user cart
         CartResponse mergedCart = mergeListItemToCart(userId, guestCartItems);
-        
-        // Xóa giỏ hàng khách vãng lai sau khi hợp nhất thành công
+
+        // Delete guest cart after successful merge
         cartRedisRepository.deleteGuestCart(guestId);
-        
+
         return mergedCart;
     }
 
@@ -919,9 +926,9 @@ public class CartServiceImpl implements CartService {
     }
 
     private InventoryDto checkInventoryWithCircuitBreaker(String productId, String color) throws InvalidItemException {
-        // Xử lý khi color là null hoặc rỗng
+        // Handle null or empty color
         final String colorParam = (color == null || color.trim().isEmpty()) ? "default" : color;
-        
+
         InventoryDto inventory = cbFactory.create("inventoryService").run(
                 () -> {
                     log.debug("Calling inventory service for product: {}, color: {}", productId, colorParam);
@@ -972,7 +979,7 @@ public class CartServiceImpl implements CartService {
     private CartResponse toCartResponse(Cart cart) {
         List<CartItemResponse> itemResponses = cart.getItems().stream()
                 .map(item -> {
-                    // Chuẩn hóa color
+                    // Normalize color
                     String normalizedColor = normalizeColor(item.getColor());
                     InventoryDto inventory = null;
                     boolean checkInventory = true;
@@ -1014,8 +1021,8 @@ public class CartServiceImpl implements CartService {
         return new CartResponse(cart.getUserId(), totalPrice, itemResponses);
     }
 
-    // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng
-    // Trả về color đã được chuẩn hóa để so sánh (lowercase)
+    // Helper to normalize color to "default" when null or empty
+    // Returns normalized color for comparison (lowercase)
     private String normalizeColor(String color) {
         return (color == null || color.trim().isEmpty()) ? "default" : color;
     }
