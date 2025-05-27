@@ -87,7 +87,7 @@ public class PhoneResponse extends ProductResponse {
         addSpecification(specs, "Mặt kính cảm ứng", phone.getScreenProtection());
 
         // Pin và sạc
-        addSpecification(specs, "Dung lượng pin", phone.getBatteryCapactity());
+        addSpecification(specs, "Dung lượng pin", phone.getBatteryCapacity());
         addSpecification(specs, "Loại pin", phone.getBatteryType());
         addSpecification(specs, "Hỗ trợ sạc tối đa", phone.getMaxChargingPower());
         addSpecification(specs, "Công nghệ pin", phone.getBatteryFeatures());

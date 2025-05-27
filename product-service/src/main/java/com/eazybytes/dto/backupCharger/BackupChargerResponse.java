@@ -54,7 +54,7 @@ public class BackupChargerResponse extends ProductResponse {
 
         List<Specification> specs = new ArrayList<>();
 
-        addSpecification(specs, "Dung lượng pin", backupCharger.getBatteryCapactity());
+        addSpecification(specs, "Dung lượng pin", backupCharger.getBatteryCapacity());
         addSpecification(specs, "Hiệu suất sạc", backupCharger.getChargingEfficiency());
         addSpecification(specs, "Lõi pin", backupCharger.getBatteryCellType());
         addSpecification(specs, "Công nghệ/ Tiện ích", backupCharger.getTechnologyFeatures());

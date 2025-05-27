@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @SuperBuilder
 public class BackupCharger extends BaseProduct {
-    private String batteryCapactity; // dung lượng pin
+    private String batteryCapacity; // dung lượng pin
     private String chargingEfficiency; // hieu suat sac
     private String batteryCellType; // loi pin
     private List<String> technologyFeatures; // cong nghe / tien ich

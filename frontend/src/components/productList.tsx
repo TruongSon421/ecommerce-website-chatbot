@@ -61,7 +61,7 @@ const calculateDiscount = (originalPrice: number, currentPrice: number): number 
 const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
     const [selectedProduct, setSelectedProduct] = useState<Product>(groupproduct.products[0]);
     
-    const href = `/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`;
+    const href = `/detail/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`;
     
     const originalPrice = selectedProduct.defaultOriginalPrice ? parsePrice(selectedProduct.defaultOriginalPrice) : null;
     const currentPrice = selectedProduct.defaultCurrentPrice ? parsePrice(selectedProduct.defaultCurrentPrice) : null;

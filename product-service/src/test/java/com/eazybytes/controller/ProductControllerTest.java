@@ -85,7 +85,7 @@ class ProductControllerTest {
                 .screenSize("6.1 inch")
                 .maxBrightness("2000 nits")
                 .screenProtection("Ceramic Shield")
-                .batteryCapactity("3274 mAh")
+                .batteryCapacity("3274 mAh")
                 .batteryType("Li-Ion")
                 .maxChargingPower("27W")
                 .batteryFeatures(Arrays.asList("MagSafe wireless charging"))

@@ -15,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class BackupChargerRequest extends ProductRequest {
-    private String batteryCapactity; // dung lượng pin
+    private String batteryCapacity; // dung lượng pin
     private String chargingEfficiency; // hieu suat sac
     private String batteryCellType; // loi pin
     private List<String> technologyFeatures; // cong nghe / tien ich

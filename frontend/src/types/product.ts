@@ -2,8 +2,8 @@
 export interface InventoryRequest {
     color: string | null;
     quantity: number;
-    originalPrice: string | null;
-    currentPrice: string | null;
+    originalPrice: number | null;
+    currentPrice: number | null;
 }
 
 export interface ImageData {
@@ -12,98 +12,78 @@ export interface ImageData {
 }
 
 export interface PhoneConfig {
-    // Cấu hình & Bộ nhớ
-    os?: string;
-    processor?: string;
-    cpuSpeed?: string;
-    gpu?: string;
-    ram?: string;
-    storage?: string;
-    availableStorage?: string;
-    contactLimit?: string;
-  
-    // Camera & Màn hình
-    rearCameraResolution?: string;
-    rearVideoRecording?: string[];
-    rearFlash?: string;
-    rearCameraFeatures?: string[];
-    frontCameraResolution?: string;
-    frontCameraFeatures?: string[];
-    displayTechnology?: string;
-    displayResolution?: string;
-    screenSize?: string;
-    maxBrightness?: string;
-    screenProtection?: string;
-  
-    // Pin & Sạc
-    batteryCapacity?: string;
-    batteryType?: string;
-    maxChargingPower?: string;
-    batteryFeatures?: string[];
-  
-    // Tiện ích
-    securityFeatures?: string[];
-    specialFeatures?: string[];
-    waterResistance?: string;
-    recording?: string[];
-    video?: string[];
-    audio?: string[];
-  
-    // Kết nối
-    mobileNetwork?: string;
-    simType?: string;
-    wifi?: string[];
-    gps?: string[];
-    bluetooth?: string[];
-    chargingPort?: string;
-    headphoneJack?: string;
-    otherConnectivity?: string[];
-  
-    // Thiết kế & Chất liệu
-    designType?: string;
-    materials?: string;
-    sizeWeight?: string;
-    release?: string;
+  os?: string;
+  processor?: string;
+  cpuSpeed?: string;
+  gpu?: string;
+  ram?: string;
+  storage?: string;
+  availableStorage?: string;
+  contactLimit?: string;
+  rearCameraResolution?: string;
+  rearVideoRecording?: string[];
+  rearFlash?: string;
+  rearCameraFeatures?: string[];
+  frontCameraResolution?: string;
+  frontCameraFeatures?: string[];
+  displayTechnology?: string;
+  displayResolution?: string;
+  screenSize?: string;
+  maxBrightness?: string;
+  screenProtection?: string;
+  batteryCapacity?: string; 
+  batteryType?: string;
+  maxChargingPower?: string;
+  batteryFeatures?: string[];
+  securityFeatures?: string[];
+  specialFeatures?: string[];
+  waterResistance?: string;
+  recording?: string[];
+  video?: string[];
+  audio?: string[];
+  mobileNetwork?: string;
+  simType?: string;
+  wifi?: string[];
+  gps?: string[];
+  bluetooth?: string[];
+  chargingPort?: string;
+  headphoneJack?: string;
+  otherConnectivity?: string[];
+  designType?: string;
+  materials?: string;
+  sizeWeight?: string;
 }
 
 export interface LaptopConfig {
-    // Bộ xử lý
-    processorModel?: string;
-    coreCount?: string;
-    threadCount?: string;
-    cpuSpeed?: string;
-    maxCpuSpeed?: string;
-  
-    // Bộ nhớ RAM, Ổ cứng
-    ram?: string;
-    ramType?: string;
-    ramBusSpeed?: string;
-    maxRam?: string;
-    storage?: string[];
-  
-    // Màn hình
-    screenSize?: string;
-    resolution?: string;
-    refreshRate?: string;
-    colorGamut?: string[];
-    displayTechnology?: string[];
-  
-    // Đồ họa và Âm thanh
-    graphicCard?: string;
-    audioTechnology?: string[];
-    ports?: string[];
-    wirelessConnectivity?: string[];
-    webcam?: string;
-    otherFeatures?: string[];
-    keyboardBacklight?: string;
-  
-    // Kích thước - Khối lượng - Pin
-    size?: string;
-    material?: string;
-    battery?: string;
-    os?: string;
-    release?: string;
-  }
+  processorModel?: string; // công nghệ cpu
+  coreCount?: string; // số core
+  threadCount?: string; // số luồng
+  cpuSpeed?: string; // tốc độ cpu
+  maxCpuSpeed?: string; // tốc độ tối đa
+  ram?: string;
+  ramType?: string;
+  ramBusSpeed?: string;
+  maxRam?: string;
+  storage?: string[];
+  screenSize?: string;
+  resolution?: string;
+  refreshRate?: string; // tần số quét
+  colorGamut?: string[]; // độ phủ màu
+  displayTechnology?: string[]; // công nghệ màn hình
+  touchScreen?: string[]; // cảm ứng màn hình
+  graphicCard?: string; // card màn hình
+  audioTechnology?: string[]; // công nghệ âm thanh
+  ports?: string[]; // cổng giao tiếp
+  wirelessConnectivity?: string[]; // kết nối không dây
+  webcam?: string;
+  otherFeatures?: string[];
+  keyboardBacklight?: string;
+  size?: string;
+  material?: string;
+  battery?: string;
+  os?: string;
+}
+
 export interface ProductReview {
     title: string;
     content: string;
@@ -154,8 +134,8 @@ export interface GroupVariantRequest {
     type: string;
     variants: string[];
     productNames: string[];
-    defaultOriginalPrices: (string | null)[];
-    defaultCurrentPrices: (string | null)[];
+    defaultOriginalPrices: (number | null)[];
+    defaultCurrentPrices: (number | null)[];
 }
   
 export interface GroupVariant {
