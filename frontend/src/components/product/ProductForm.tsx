@@ -1,4 +1,3 @@
-// src/components/product/ProductForm.tsx
 import React, { useState } from "react";
 import {
   PhoneConfig,
@@ -15,7 +14,7 @@ import { formatCurrency } from "../utils/formatCurrency";
 interface ProductFormProps {
   index: number;
   prefixName: string;
-  type: "phone" | "laptop" ;
+  type: "phone" | "laptop";
   initialData: {
     variant: string;
     description: string;
@@ -26,6 +25,8 @@ interface ProductFormProps {
     promotions: string[];
     productReviews: ProductReview[];
     inventories: InventoryRequest[];
+    warrantyPeriod?: string;
+    release?: string;
   };
   onAddToList: (data: {
     variant: string;
@@ -37,8 +38,18 @@ interface ProductFormProps {
     promotions: string[];
     productReviews: ProductReview[];
     inventories: InventoryRequest[];
+    warrantyPeriod?: string;
+    release?: string;
   }) => void;
 }
+
+// Helper function to convert formatted price string to number
+const parsePriceToNumber = (priceStr: string | null): number | null => {
+  if (!priceStr || priceStr.trim() === "") return null;
+  const cleanPrice = priceStr.replace(/[₫.,]/g, "");
+  const numericValue = parseInt(cleanPrice, 10);
+  return isNaN(numericValue) ? null : numericValue;
+};
 
 const ProductForm: React.FC<ProductFormProps> = ({
   index,
@@ -48,7 +59,11 @@ const ProductForm: React.FC<ProductFormProps> = ({
   onAddToList,
 }) => {
   const [isOpen, setIsOpen] = useState(index === 0);
-  const [formData, setFormData] = useState(initialData);
+  const [formData, setFormData] = useState({
+    ...initialData,
+    warrantyPeriod: initialData.warrantyPeriod || "",
+    release: initialData.release || "",
+  });
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleChange = (
@@ -86,12 +101,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
           newConfig[field as keyof Omit<PhoneConfig, typeof arrayFields[number]>] = value;
         }
         return { ...prev, config: newConfig };
-      } else if (type === "LAPTOP") {
+      } else if (type === "laptop") {
         const newConfig = { ...prev.config } as LaptopConfig;
         const arrayFields = [
           "storage",
           "colorGamut",
           "displayTechnology",
+          "touchScreen",
           "audioTechnology",
           "ports",
           "wirelessConnectivity",
@@ -135,12 +151,13 @@ const ProductForm: React.FC<ProductFormProps> = ({
           newConfig[field as keyof Pick<PhoneConfig, typeof arrayFields[number]>] = arrayValue;
         }
         return { ...prev, config: newConfig };
-      } else if (type === "LAPTOP") {
+      } else if (type === "laptop") {
         const newConfig = { ...prev.config } as LaptopConfig;
         const arrayFields = [
           "storage",
           "colorGamut",
           "displayTechnology",
+          "touchScreen",
           "audioTechnology",
           "ports",
           "wirelessConnectivity",
@@ -304,6 +321,8 @@ const ProductForm: React.FC<ProductFormProps> = ({
       setValidationError("Số lượng màu sắc và thông tin kho không khớp.");
       return;
     }
+
+    const processedInventories: InventoryRequest[] = [];
     for (const [index, inventory] of formData.inventories.entries()) {
       if (inventory.color !== validColors[index]) {
         setValidationError(
@@ -326,9 +345,61 @@ const ProductForm: React.FC<ProductFormProps> = ({
         );
         return;
       }
+
+      const originalPriceNumber = parsePriceToNumber(inventory.originalPrice);
+      const currentPriceNumber = parsePriceToNumber(inventory.currentPrice);
+
+      if (currentPriceNumber === null || currentPriceNumber <= 0) {
+        setValidationError(
+          `Giá hiện tại cho màu "${inventory.color}" phải là một số hợp lệ và lớn hơn 0.`
+        );
+        return;
+      }
+
+      processedInventories.push({
+        ...inventory,
+        originalPrice: originalPriceNumber,
+        currentPrice: currentPriceNumber,
+      });
     }
 
-    onAddToList({ ...formData, colors: validColors });
+    const transformedImages: Record<string, Array<Record<string, string>>> = {};
+    validColors.forEach((color) => {
+      transformedImages[color] = (formData.images[color] || []).map((img) => ({
+        url: img.url,
+        title: img.title,
+      }));
+    });
+
+    const transformedReviews = formData.productReviews.map((review) => ({
+      title: review.title,
+      content: review.content,
+    }));
+
+    const productName = `${prefixName} ${formData.variant}`.trim();
+    const { config, inventories, colors, images, productReviews, variant, ...baseData } = formData;
+
+    const flattenedProductRequest = {
+      ...baseData,
+      productName,
+      type,
+      images: transformedImages,
+      productReviews: transformedReviews,
+      ...config,
+    };
+
+    const dataToSubmit = {
+      productRequest: flattenedProductRequest,
+      inventoryRequests: processedInventories,
+    };
+
+    onAddToList({
+      ...formData,
+      colors: validColors,
+      inventories: processedInventories,
+    });
+
+    console.log("Flattened data structure:", JSON.stringify(dataToSubmit, null, 2));
   };
 
   return (
@@ -408,6 +479,41 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 required
               />
             </div>
+            <div>
+              <label
+                htmlFor={`warrantyPeriod-${index}`}
+                className="block text-gray-700 font-medium mb-1"
+              >
+                Thời gian bảo hành
+              </label>
+              <input
+                type="text"
+                id={`warrantyPeriod-${index}`}
+                name="warrantyPeriod"
+                value={formData.warrantyPeriod}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ví dụ: 12 tháng"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor={`release-${index}`}
+              className="block text-gray-700 font-medium mb-1"
+            >
+              Thời điểm ra mắt
+            </label>
+            <input
+              type="text"
+              id={`release-${index}`}
+              name="release"
+              value={formData.release}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Ví dụ: Tháng 9/2023"
+            />
           </div>
 
           <div>
@@ -452,17 +558,12 @@ const ProductForm: React.FC<ProductFormProps> = ({
                 onArrayUpdate={handleArrayUpdate}
               />
             )}
-            {type === "LAPTOP" && (
+            {type === "laptop" && (
               <LaptopConfigForm
                 config={formData.config as LaptopConfig}
                 onChange={handleStringChange}
                 onArrayUpdate={handleArrayUpdate}
               />
-            )}
-            {type === "ACCESSORY" && (
-              <p className="text-gray-500">
-                Chưa có cấu hình chi tiết cho phụ kiện.
-              </p>
             )}
           </div>
 

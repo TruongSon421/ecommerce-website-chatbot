@@ -18,7 +18,7 @@ const PublicRouter = () => {
         <Route path="register" element={<Register />} />
         <Route path="/home" element={<Home />} /> {/* Dùng index cho path="/" */}
         <Route path=":type" element={<PageCategory />} />
-        <Route path=":type/:product_id" element={<ProductGH />} />
+        <Route path="/detail/:type/:product_id" element={<ProductGH />} />
         <Route path="cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="profile" element={<Profile />} />

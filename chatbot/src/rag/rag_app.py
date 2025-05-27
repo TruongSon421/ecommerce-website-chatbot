@@ -1,10 +1,12 @@
 from flask import Flask, request, jsonify
 from elasticsearch import Elasticsearch
+from flask_cors import CORS  # Import CORS
 import json
 import re
 
 app = Flask(__name__)
 
+CORS(app, resources={r"/add-to-elasticsearch": {"origins": "http://localhost:5173"}})
 # Kết nối tới Elasticsearch (cấu hình mặc định localhost:9200)
 es = Elasticsearch(["http://localhost:9200"])
 
@@ -89,7 +91,7 @@ def merge_product_configs(product_data, device_type):
             "frontCameraFeatures": "Tính năng camera trước", "displayTechnology": "Công nghệ màn hình",
             "displayResolution": "Độ phân giải màn hình", "screenSize": "Màn hình rộng",
             "maxBrightness": "Độ sáng tối đa", "screenProtection": "Mặt kính cảm ứng",
-            "batteryCapactity": "Dung lượng pin", "batteryType": "Loại pin",
+            "batteryCapacity": "Dung lượng pin", "batteryType": "Loại pin",
             "maxChargingPower": "Hỗ trợ sạc tối đa", "batteryFeatures": "Công nghệ pin",
             "securityFeatures": "Bảo mật nâng cao", "specialFeatures": "Tính năng đặc biệt",
             "waterResistance": "Kháng nước, bụi", "recording": "Ghi âm", "video": "Xem phim",
@@ -110,7 +112,7 @@ def merge_product_configs(product_data, device_type):
             "battery": "Pin", "os": "Hệ điều hành"
         },
         "backup_charger": {
-            "batteryCapactity": "Dung lượng pin",
+            "batteryCapacity": "Dung lượng pin",
             "chargingEfficiency": "Hiệu suất sạc",
             "batteryCellType": "Lõi pin",
             "technologyFeatures": "Công nghệ/ Tiện ích",

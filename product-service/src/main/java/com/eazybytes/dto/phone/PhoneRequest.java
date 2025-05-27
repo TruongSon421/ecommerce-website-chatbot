@@ -36,7 +36,7 @@ public class PhoneRequest extends ProductRequest {
     private String screenProtection; // mặt kính cảm ứng
 
     //Pin và sạc
-    private String batteryCapactity; // dung lượng pin
+    private String batteryCapacity; // dung lượng pin
     private String batteryType; // loại pin
     private String maxChargingPower; // hỗ trợ sạc tối đa
     private List<String> batteryFeatures; // công nghệ pin
