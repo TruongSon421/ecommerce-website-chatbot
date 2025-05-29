@@ -1,111 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { confirmVNPayPayment, ConfirmVNPayPaymentRequest } from '../services/paymentService';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const VNPayReturnPage: React.FC = () => {
-  const location = useLocation();
+const VNPayReturnPage = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const processVNPayReturn = async () => {
-      const queryParams = new URLSearchParams(location.search);
-      // Create an object to collect all parameters
-      const vnpayParams: ConfirmVNPayPaymentRequest = {};
-      
-      // Extract all parameters from query string, especially those starting with vnp_
-      queryParams.forEach((value, key) => {
-        vnpayParams[key] = value;
+    // Get VNPay return parameters
+    const transactionId = searchParams.get('vnp_TxnRef');
+    const responseCode = searchParams.get('vnp_ResponseCode');
+    
+    if (!transactionId) {
+      // Redirect to payment failed if no transaction ID
+      navigate('/payment-failed', { 
+        state: { 
+          message: 'Không tìm thấy mã giao dịch từ VNPay' 
+        } 
       });
+      return;
+    }
 
-      if (Object.keys(vnpayParams).length === 0) {
-        setError('Không tìm thấy thông tin thanh toán VNPay trong URL.');
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        // No need to call our backend for confirmation as that's handled automatically
-        // by the VnpayController's /return endpoint which redirects user here with
-        // appropriate parameters
+    // Redirect to payment processing page with transaction ID
+    // The PaymentProcessingPage will handle status checking and display appropriate UI
+    navigate(`/payment-processing?transactionId=${transactionId}&vnp_ResponseCode=${responseCode}`);
+  }, [navigate, searchParams]);
 
-        // Check for orderId and status in URL params
-        const orderId = queryParams.get('orderId');
-        const status = queryParams.get('status');
-        const message = queryParams.get('message');
-
-        if (!orderId) {
-          setError('Thiếu thông tin đơn hàng. Vui lòng liên hệ hỗ trợ.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Navigate based on status
-        if (status === 'success') {
-          navigate(`/order-confirmation/${orderId}`);
-        } else if (status === 'processing') {
-          navigate(`/payment-processing/${orderId}?status=processing&message=${message || ''}`);
-        } else {
-          // Handle failed payment
-          const errorParams = new URLSearchParams({
-            orderId: orderId,
-            message: message || 'Thanh toán không thành công',
-          });
-          navigate(`/payment-failed?${errorParams.toString()}`);
-        }
-      } catch (err) {
-        console.error('Error processing VNPay return:', err);
-        setError(err instanceof Error ? err.message : 'Đã xảy ra lỗi khi xử lý kết quả thanh toán.');
-        setIsLoading(false);
-      }
-    };
-
-    processVNPayReturn();
-  }, [location, navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto p-8 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold mb-6">Đang xác nhận thanh toán</h1>
-          <div className="flex justify-center mb-6">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
-          </div>
-          <p className="text-gray-600">Vui lòng đợi trong khi chúng tôi xác nhận thanh toán của bạn.</p>
+  // Show loading while redirecting
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Xử lý thanh toán VNPay</h1>
+        <p className="text-gray-600">Đang xử lý kết quả thanh toán từ VNPay...</p>
+        <div className="mt-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
         </div>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto p-8 flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <div className="text-red-500 text-6xl mb-6">✕</div>
-          <h1 className="text-2xl font-bold mb-4">Xác nhận thanh toán thất bại</h1>
-          <p className="text-gray-700 mb-6">{error}</p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button 
-              onClick={() => navigate('/')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md"
-            >
-              Quay về trang chủ
-            </button>
-            <button 
-              onClick={() => navigate('/my-orders')}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-md"
-            >
-              Kiểm tra đơn hàng
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Fallback - should not reach here as we navigate away on success
-  return null;
+    </div>
+  );
 };
 
 export default VNPayReturnPage; 

@@ -3,6 +3,7 @@ import { RootState, AppDispatch } from '../../store';
 import { login, register, logout } from '../../store/slices/authSlices'; 
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
 import { useCallback } from 'react';
+import { mergeCart } from '../../services/cartService';
 
 interface UseAuth {
   user: User | null;
@@ -25,7 +26,20 @@ export const useAuth = (): UseAuth => {
 
   const loginHandler = useCallback(async (credentials: LoginCredentials) => {
     try {
-      await dispatch(login(credentials)).unwrap();
+      const result = await dispatch(login(credentials)).unwrap();
+      
+      // After successful login, merge guest cart with user cart (except for admin users)
+      if (result.user?.id && result.user?.role !== 'admin') {
+        try {
+          await mergeCart(result.user.id);
+          console.log('Cart merged successfully after login');
+        } catch (mergeError) {
+          console.error('Failed to merge cart after login:', mergeError);
+          // Don't throw error here as login was successful
+        }
+      } else if (result.user?.role === 'admin') {
+        console.log('Admin user detected, skipping cart merge');
+      }
     } catch (err) {
       console.error('Login failed:', err);
       throw err;
@@ -34,7 +48,20 @@ export const useAuth = (): UseAuth => {
 
   const registerHandler = useCallback(async (credentials: RegisterCredentials) => {
     try {
-      await dispatch(register(credentials)).unwrap();
+      const result = await dispatch(register(credentials)).unwrap();
+      
+      // After successful registration, merge guest cart with user cart (except for admin users)
+      if (result.user?.id && result.user?.role !== 'admin') {
+        try {
+          await mergeCart(result.user.id);
+          console.log('Cart merged successfully after registration');
+        } catch (mergeError) {
+          console.error('Failed to merge cart after registration:', mergeError);
+          // Don't throw error here as registration was successful
+        }
+      } else if (result.user?.role === 'admin') {
+        console.log('Admin user detected, skipping cart merge');
+      }
     } catch (err) {
       console.error('Register failed:', err);
       throw err;
@@ -44,6 +71,7 @@ export const useAuth = (): UseAuth => {
   const logoutHandler = useCallback(async () => {
     try {
       await dispatch(logout()).unwrap();
+      // Clear cart store on logout - guest cart will be re-initialized if needed
     } catch (err) {
       console.error('Logout failed:', err);
       throw err;

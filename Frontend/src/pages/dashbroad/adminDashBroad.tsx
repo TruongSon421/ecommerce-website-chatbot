@@ -12,7 +12,7 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import AdminNavbar from "../../components/layout/narbarAdmin";
+import AdminNavbar from "../../components/layout/navbarAdmin";
 
 ChartJS.register(
   CategoryScale,

@@ -1,118 +1,121 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { checkPaymentStatus } from '../services/paymentService';
 
-const PaymentProcessingPage: React.FC = () => {
-  const { orderId } = useParams<{ orderId: string }>();
-  const location = useLocation();
+const PaymentProcessingPage = () => {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [checkCount, setCheckCount] = useState(0);
-  const maxChecks = 10; // Maximum number of status checks (30 seconds with 3s interval)
-  
-  // Get status from query params if available
-  const queryParams = new URLSearchParams(location.search);
-  const statusFromParams = queryParams.get('status');
-  const messageFromParams = queryParams.get('message');
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState<'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | null>(null);
+  const [message, setMessage] = useState<string>('');
+  const [orderId, setOrderId] = useState<string>('');
 
   useEffect(() => {
-    if (!orderId) {
-      setError('Order ID is missing.');
-      setIsLoading(false);
+    const transactionId = searchParams.get('transactionId') || searchParams.get('vnp_TxnRef');
+    
+    if (!transactionId) {
+      // Redirect to home if no transaction ID
+      setTimeout(() => navigate('/'), 3000);
       return;
     }
 
-    // If we already have a final status from params, don't poll
-    if (statusFromParams && (statusFromParams === 'success' || statusFromParams === 'failed')) {
-      handleFinalStatus(statusFromParams);
-      return;
-    }
-
-    const checkInterval = setInterval(() => {
-      checkPaymentStatusFromBackend();
-      setCheckCount(prevCount => prevCount + 1);
-    }, 3000); // Check every 3 seconds
-
-    return () => clearInterval(checkInterval);
-  }, [orderId, checkCount, statusFromParams]);
-
-  // Check if we've reached max checks
-  useEffect(() => {
-    if (checkCount >= maxChecks) {
-      setError('Quá thời gian xử lý thanh toán. Vui lòng kiểm tra trạng thái đơn hàng trong trang cá nhân.');
-      setIsLoading(false);
-    }
-  }, [checkCount]);
-
-  const checkPaymentStatusFromBackend = async () => {
-    if (!orderId || checkCount >= maxChecks) return;
-
-    try {
-      const response = await checkPaymentStatus(orderId);
-      
-      // Convert status to uppercase to match backend values
-      const status = response.status.toUpperCase();
-      
-      if (status === 'SUCCESS') {
-        handleFinalStatus('success');
-      } else if (status === 'FAILED' || status === 'EXPIRED') {
-        handleFinalStatus('failed', response.message);
-      }
-      // If status is still PROCESSING or PENDING, continue polling
-    } catch (err) {
-      console.error('Error checking payment status:', err);
-      // Don't set error yet, continue polling
-    }
-  };
-
-  const handleFinalStatus = (status: string, message?: string) => {
-    if (status.toLowerCase() === 'success') {
-      navigate(`/order-confirmation/${orderId}`);
-    } else if (status.toLowerCase() === 'failed') {
-      const params = new URLSearchParams({
-        orderId: orderId || '',
-        message: message || 'Thanh toán không thành công hoặc đã bị hủy.'
-      });
-      navigate(`/payment-failed?${params.toString()}`);
-    }
-  };
-
-  return (
-    <div className="container mx-auto p-8 flex flex-col items-center justify-center min-h-[60vh]">
-      <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-        <h1 className="text-2xl font-bold mb-6">Đang xử lý thanh toán</h1>
+    // Check payment status in background
+    const checkStatus = async () => {
+      try {
+        const response = await checkPaymentStatus(transactionId);
         
-        {isLoading ? (
-          <>
-            <div className="flex justify-center mb-6">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
-            </div>
-            <p className="text-gray-600 mb-2">
-              Thanh toán của bạn đang được xử lý. Vui lòng không đóng trang này.
-            </p>
-            <p className="text-gray-500 text-sm">
-              Quá trình này có thể mất vài phút. Hệ thống đang chờ xác nhận từ cổng thanh toán VNPay.
-            </p>
-          </>
-        ) : error ? (
-          <>
-            <div className="text-yellow-500 text-5xl mb-4">⚠️</div>
-            <p className="text-red-600 mb-4">{error}</p>
-            <p className="text-gray-600 mb-6">
-              Bạn có thể kiểm tra trạng thái đơn hàng trong phần "Đơn hàng của tôi".
-            </p>
-            <button
-              onClick={() => navigate('/my-orders')}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-md"
-            >
-              Xem đơn hàng
-            </button>
-          </>
-        ) : null}
+        if (!response.exists) {
+          setStatus('PENDING');
+          setMessage(response.message || '');
+        } else {
+          setStatus(response.status as 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED');
+          setMessage(response.message || '');
+          setOrderId(response.orderId?.toString() || '');
+          
+          // Auto redirect based on status after processing
+          if (response.status === 'SUCCESS') {
+            setTimeout(() => navigate('/orders'), 3000);
+          } else if (response.status === 'FAILED' || response.status === 'EXPIRED') {
+            setTimeout(() => navigate('/cart'), 3000);
+          }
+        }
+      } catch (error: any) {
+        setStatus('FAILED');
+        setMessage(error.message || 'Lỗi kiểm tra trạng thái thanh toán');
+        setTimeout(() => navigate('/cart'), 3000);
+      }
+    };
+
+    checkStatus();
+
+    // Poll for status updates if payment is still pending
+    const interval = setInterval(async () => {
+      if (status !== 'PENDING') {
+        clearInterval(interval);
+        return;
+      }
+      
+      try {
+        const response = await checkPaymentStatus(transactionId);
+        
+        if (!response.exists) {
+          setStatus('PENDING');
+          setMessage(response.message || '');
+        } else {
+          setStatus(response.status as 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED');
+          setMessage(response.message || '');
+          setOrderId(response.orderId?.toString() || '');
+          
+          if (response.status !== 'PENDING') {
+            clearInterval(interval);
+            
+            // Auto redirect based on status
+            if (response.status === 'SUCCESS') {
+              setTimeout(() => navigate('/orders'), 2000);
+            } else if (response.status === 'FAILED' || response.status === 'EXPIRED') {
+              setTimeout(() => navigate('/cart'), 2000);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+      }
+    }, 3000);
+
+    // Clear interval after 10 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      // Redirect to cart if still processing after 10 minutes
+      if (status === 'PENDING' || status === null) {
+        navigate('/cart');
+      }
+    }, 600000);
+
+    return () => clearInterval(interval);
+  }, [searchParams, status, navigate]);
+
+  // Always show the same processing message regardless of status
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Tiến hành thanh toán</h1>
+        <p className="text-gray-600">Vui lòng đợi trong khi chúng tôi xử lý thanh toán của bạn...</p>
+        
+        <div className="mt-6">
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+          >
+            Về trang chủ
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-export default PaymentProcessingPage; 
+export default PaymentProcessingPage;

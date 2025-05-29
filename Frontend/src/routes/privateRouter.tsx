@@ -15,7 +15,7 @@ import VNPayReturnPage from "../pages/VNPayReturnPage";
 import PaymentProcessingPage from "../pages/PaymentProcessingPage";
 import PaymentFailedPage from "../pages/PaymentFailedPage";
 import CheckoutPage from "../pages/CheckoutPage";
-
+import Profile from "../components/user/profile";
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
@@ -36,6 +36,14 @@ const PrivateRouter = () => {
           element={
             <UserPrivateRoute>
               <CheckoutPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="profile"
+          element={
+            <UserPrivateRoute>
+              <Profile />
             </UserPrivateRoute>
           }
         />

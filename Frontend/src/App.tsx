@@ -1,17 +1,161 @@
 // App.tsx
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Provider } from "react-redux";
 import store from "./store/index";
-import PublicRouter from "./routes/publicRouter";
-import PrivateRouter from "./routes/privateRouter";
+import { useGuestCart } from "./components/hooks/useGuestCart";
+import { useAuth } from "./components/hooks/useAuth";
 
+// Import layouts
+import UserLayout from "./layouts/userLayouts";
+import AdminLayout from "./layouts/adminLayouts";
+
+// Import public components
+import Login from "./components/user/login";
+import Register from "./components/user/register";
+import Home from "./pages/home";
+import PageCategory from "./pages/categories";
+import ProductGH from "./pages/productDetail";
+import CartPage from "./pages/CartPage";
+
+// Import admin components
+import AdminLogin from "./pages/admin/LoginAdmin";
+import AdminRegister from "./pages/admin/RegisterAdmin";
+import Dashboard from "./pages/dashbroad/adminDashBroad";
+import AddProductPage from "./pages/product/addProduct";
+import ProductManagement from "./pages/admin/ProductManagement";
+
+// Import private user components
+import PaymentPage from "./pages/PaymentPage";
+import OrderConfirmationPage from "./pages/OrderConfirmationPage";
+import VNPayReturnPage from "./pages/VNPayReturnPage";
+import PaymentProcessingPage from "./pages/PaymentProcessingPage";
+import PaymentFailedPage from "./pages/PaymentFailedPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import Profile from "./components/user/profile";
+
+// Private route components
+const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+};
+
+const AdminPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isAdmin } = useAuth();
+  return isAuthenticated && isAdmin ? <>{children}</> : <Navigate to="/admin/login" replace />;
+};
+
+function AppContent() {
+  useGuestCart(); // Initialize guest cart functionality
+  
+  return (
+    <Routes>
+      {/* User routes with UserLayout */}
+      <Route path="/" element={<UserLayout />}>
+        {/* Public routes */}
+        <Route index element={<Home />} />
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+        <Route path="cart" element={<CartPage />} />
+        <Route path=":type" element={<PageCategory />} />
+        <Route path=":type/:product_id" element={<ProductGH />} />
+        
+        {/* Private user routes */}
+        <Route 
+          path="checkout"
+          element={
+            <UserPrivateRoute>
+              <CheckoutPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="profile"
+          element={
+            <UserPrivateRoute>
+              <Profile />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment/:transactionId"
+          element={
+            <UserPrivateRoute>
+              <PaymentPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="order-confirmation/:orderId"
+          element={
+            <UserPrivateRoute>
+              <OrderConfirmationPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="vnpay-return"
+          element={
+            <UserPrivateRoute>
+              <VNPayReturnPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment-processing/:orderId"
+          element={
+            <UserPrivateRoute>
+              <PaymentProcessingPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment-failed"
+          element={
+            <UserPrivateRoute>
+              <PaymentFailedPage />
+            </UserPrivateRoute>
+          }
+        />
+      </Route>
+
+      {/* Admin routes with AdminLayout */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route path="login" element={<AdminLogin />} />
+        <Route path="register" element={<AdminRegister />} />
+        <Route
+          path="dashboard"
+          element={
+            <AdminPrivateRoute>
+              <Dashboard />
+            </AdminPrivateRoute>
+          }
+        />
+        <Route
+          path="product/add"
+          element={
+            <AdminPrivateRoute>
+              <AddProductPage />
+            </AdminPrivateRoute>
+          }
+        />
+        <Route
+          path="products"
+          element={
+            <AdminPrivateRoute>
+              <ProductManagement />
+            </AdminPrivateRoute>
+          }
+        />
+      </Route>
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
-        <PublicRouter />
-        <PrivateRouter />
+        <AppContent />
       </Router>
     </Provider>
   );

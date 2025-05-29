@@ -1,6 +1,6 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8080/api/v1/payment'; // Updated to match the payment-service URL
+import api from '../config/axios';
+import ENV from '../config/env';
 
 interface PaymentIntentRequest {
   amount: number; // Amount in smallest currency unit (e.g., cents)
@@ -26,17 +26,20 @@ interface ConfirmPaymentResponse {
   message?: string;
 }
 
-// Request to your backend to initiate VNPay payment
-export interface InitiateVNPayPaymentRequest {
-  transactionId: string; // Your internal transaction ID
-  amount: number; // Total order amount
-  orderInfo: string; // Description of the order, e.g., "Payment for order [transactionId]"
-  orderId: string; // Your internal order ID
-  paymentMethod?: string; // Optional: Payment method (e.g., VNPAYQR, VNBANK, INTCARD)
-  bankCode?: string; // Optional: If specific bank is chosen
+// Request to process payment via PaymentController
+export interface ProcessPaymentRequest {
+  orderId: number;
+  userId: string;
+  paymentMethod: string; // 'CREDIT_CARD', 'DEBIT_CARD', 'QR_CODE', 'TRANSFER_BANKING'
+  totalAmount: number;
 }
 
-// Response from your backend after initiating VNPay payment
+// Request to get payment URL by transaction ID
+export interface GetPaymentUrlRequest {
+  transactionId: string;
+}
+
+// Response from PaymentController for VNPay payments
 export interface InitiateVNPayPaymentResponse {
   paymentUrl: string; // The VNPay URL to redirect the user to
 }
@@ -58,13 +61,14 @@ export interface ConfirmVNPayPaymentResponse {
 
 // Response for checking payment status
 export interface PaymentStatusResponse {
-  orderId: string;
-  status: string; // 'SUCCESS', 'PROCESSING', 'FAILED', 'PENDING', 'EXPIRED'
+  exists: boolean;
+  status?: string; // 'SUCCESS', 'PROCESSING', 'FAILED', 'PENDING', 'EXPIRED'
   message?: string;
-  paymentId?: string;
-  amount?: string;
   paymentMethod?: string;
-  transactionTime?: string;
+  amount?: string;
+  orderId?: number;
+  userId?: string;
+  failureReason?: string;
 }
 
 /**
@@ -117,18 +121,41 @@ export const confirmBackendPayment = async (data: ConfirmPaymentRequest): Promis
 };
 
 /**
- * Calls your backend to get a VNPay payment URL.
+ * Process payment via PaymentController - creates payment record and returns VNPay URL
  */
-export const initiateVNPayPayment = async (data: InitiateVNPayPaymentRequest): Promise<InitiateVNPayPaymentResponse> => {
+export const processPayment = async (data: ProcessPaymentRequest): Promise<InitiateVNPayPaymentResponse> => {
   try {
-    const response = await axios.post<InitiateVNPayPaymentResponse>(`${API_BASE_URL}/vnpay/create-payment`, data);
+    const params = new URLSearchParams({
+      orderId: data.orderId.toString(),
+      userId: data.userId,
+      paymentMethod: data.paymentMethod,
+      totalAmount: data.totalAmount.toString()
+    });
+
+    const response = await api.post<InitiateVNPayPaymentResponse>(`/payments/process?${params.toString()}`);
     return response.data;
   } catch (error) {
-    console.error('Error initiating VNPay payment:', error);
+    console.error('Error processing payment:', error);
     if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Failed to initiate VNPay payment: ${error.response.data.message || error.message}`);
+      throw new Error(`Failed to process payment: ${error.response.data.error || error.message}`);
     }
-    throw new Error('An unexpected error occurred while initiating VNPay payment.');
+    throw new Error('An unexpected error occurred while processing payment.');
+  }
+};
+
+/**
+ * Get payment URL by transaction ID via PaymentController
+ */
+export const getPaymentUrlByTransactionId = async (transactionId: string): Promise<InitiateVNPayPaymentResponse> => {
+  try {
+    const response = await api.post<InitiateVNPayPaymentResponse>(`/payments/url/${transactionId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting payment URL:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(`Failed to get payment URL: ${error.response.data.error || error.message}`);
+    }
+    throw new Error('An unexpected error occurred while getting payment URL.');
   }
 };
 
@@ -140,7 +167,7 @@ export const confirmVNPayPayment = async (vnpayParams: ConfirmVNPayPaymentReques
   try {
     // VNPay return is usually a GET request. We append query params to the URL.
     // Your backend endpoint /vnpay/return should be a GET endpoint that expects these params.
-    const response = await axios.get<ConfirmVNPayPaymentResponse>(`${API_BASE_URL}/vnpay/return`, {
+    const response = await axios.get<ConfirmVNPayPaymentResponse>(`${ENV.API_URL}/v1/payment/vnpay/return`, {
       params: vnpayParams 
     });
     return response.data;
@@ -154,17 +181,17 @@ export const confirmVNPayPayment = async (vnpayParams: ConfirmVNPayPaymentReques
 };
 
 /**
- * Checks the current status of a payment by orderId.
+ * Checks the current status of a payment by transaction ID.
  * Used for polling payment status after redirect from VNPay.
  */
-export const checkPaymentStatus = async (orderId: string): Promise<PaymentStatusResponse> => {
+export const checkPaymentStatus = async (transactionId: string): Promise<PaymentStatusResponse> => {
   try {
-    const response = await axios.get<PaymentStatusResponse>(`${API_BASE_URL}/status/${orderId}`);
+    const response = await api.get<PaymentStatusResponse>(`/payments/status/${transactionId}`);
     return response.data;
   } catch (error) {
     console.error('Error checking payment status:', error);
     if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Failed to check payment status: ${error.response.data.message || error.message}`);
+      throw new Error(`Failed to check payment status: ${error.response.data.error || error.message}`);
     }
     throw new Error('An unexpected error occurred while checking payment status.');
   }
