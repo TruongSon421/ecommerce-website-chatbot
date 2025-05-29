@@ -5,7 +5,7 @@ import BannerSection from './layout/bannerSection';
 import ProductReview from './productReview';
 import ProductSpecifications from './productSpecifications';
 import ENV from '../config/env';
-
+import AddToCartButtons from './cart/AddToCartButton';
 // Định nghĩa interface cho props của sản phẩm
 interface Image {
   url: string;
@@ -287,7 +287,14 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
               )}
               <BannerSection imageSrc="/images/slider/slide1.png" altText="banner-pd-dt" />
               <Promotions promotions={product.promotions} />
-              <ActionButtons />
+              <AddToCartButtons 
+                product={{
+                  productId: product.productId,
+                  productName: product.productName,
+                  price: currentPrice,
+                  color: selectedColor
+                }} 
+              />
             </div>
           </div>
         )}
@@ -519,16 +526,5 @@ const Promotions: React.FC<PromotionsProps> = ({ promotions }) => {
   );
 };
 
-// Component action buttons
-const ActionButtons: React.FC = () => (
-  <div className="flex space-x-4 mt-4">
-    <button className="flex items-center border-2 border-red-600 text-red-600 px-4 py-2 rounded-md hover:bg-red-50">
-      <span className="mr-2">🛒</span> Thêm Vào Giỏ Hàng
-    </button>
-    <button className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-      Mua Ngay
-    </button>
-  </div>
-);
 
 export default ProductDetail;

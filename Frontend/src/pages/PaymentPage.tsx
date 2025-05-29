@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchOrderDetailsByTransactionId, OrderDetailsResponse } from '../services/orderService';
-import { initiateVNPayPayment, InitiateVNPayPaymentRequest } from '../services/paymentService';
+import { processPayment, ProcessPaymentRequest } from '../services/paymentService';
 import OrderSummary from '../components/payment/OrderSummary';
 // import PaymentForm from '../components/payment/PaymentForm'; // No longer directly used for VNPay redirect
 
@@ -44,16 +44,14 @@ const PaymentPage: React.FC = () => {
     setIsRedirecting(true);
     setError(null);
     try {
-      const paymentRequest: InitiateVNPayPaymentRequest = {
-        transactionId: transactionId,
-        amount: orderDetails.totalAmount, // Ensure this amount is what VNPay expects (e.g., VND)
-        orderInfo: `Payment for order ${transactionId}`,
-        orderId: orderDetails.id, // Important: Include the orderId field
-        // Optional fields:
-        // paymentMethod: 'VNPAY', // If your backend expects this
-        // bankCode: '', // Optional: specific bank code if user selects one
+      const paymentRequest: ProcessPaymentRequest = {
+        orderId: Number(orderDetails.id),
+        userId: orderDetails.userId || 'anonymous', // You might need to get this from auth context
+        paymentMethod: 'CREDIT_CARD', // Default to credit card, you can add UI to let user choose
+        totalAmount: orderDetails.totalAmount,
       };
-      const response = await initiateVNPayPayment(paymentRequest);
+      
+      const response = await processPayment(paymentRequest);
       if (response.paymentUrl) {
         // Redirect the user to VNPay's payment gateway
         window.location.href = response.paymentUrl;
@@ -62,8 +60,8 @@ const PaymentPage: React.FC = () => {
         setIsRedirecting(false);
       }
     } catch (err) {
-      console.error('Error initiating VNPay payment:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred during VNPay initiation.');
+      console.error('Error processing VNPay payment:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred during VNPay processing.');
       setIsRedirecting(false);
     }
   };

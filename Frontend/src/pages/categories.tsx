@@ -10,7 +10,7 @@ import useProductApi from '../components/hooks/useProductApi';
 function PageCategory() {
   const { type = '' } = useParams<{ type: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
+  const [filters, setFilters] = useState<{ [key: string]: string[] | number[] | string }>({});
   const [sortByPrice, setSortByPrice] = useState<string>('desc');
   const [pageSize] = useState<number>(20); // Define a consistent page size
   
@@ -31,7 +31,7 @@ function PageCategory() {
   // Create query params for API request
   const createQueryParams = useCallback((
     currentPage: number, 
-    appliedFilters: { [key: string]: string[] | number[] }
+    appliedFilters: { [key: string]: string[] | number[] | string }
   ) => {
     const queryParams: string[] = [
       `page=${currentPage}`,
@@ -55,10 +55,20 @@ function PageCategory() {
     };
 
     Object.entries(filterMapping).forEach(([key, param]) => {
-      if (appliedFilters[key] && (appliedFilters[key] as string[]).length > 0) {
-        queryParams.push(`${param}=${(appliedFilters[key] as string[]).join(',')}`);
+      const filterValue = appliedFilters[key];
+      if (filterValue) {
+        if (Array.isArray(filterValue) && filterValue.length > 0) {
+          queryParams.push(`${param}=${filterValue.join(',')}`);
+        } else if (typeof filterValue === 'string' && filterValue.trim() !== '') {
+          queryParams.push(`${param}=${filterValue}`);
+        }
       }
     });
+
+    // Process search query
+    if (appliedFilters.searchQuery && typeof appliedFilters.searchQuery === 'string' && appliedFilters.searchQuery.trim() !== '') {
+      queryParams.push(`searchQuery=${appliedFilters.searchQuery}`);
+    }
 
     // Process price range
     if (appliedFilters.priceRange) {
@@ -124,7 +134,7 @@ function PageCategory() {
     });
   };
 
-  const handleApplyFilters = (newFilters: { [key: string]: string[] | number[] }) => {
+  const handleApplyFilters = (newFilters: { [key: string]: string[] | number[] | string }) => {
     setFilters(newFilters);
     // Reset to page 0 when filters change
     setSearchParams(prev => {
