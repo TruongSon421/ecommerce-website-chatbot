@@ -4,8 +4,8 @@ import com.eazybytes.dto.ConfirmVNPayPaymentResponseDto;
 import com.eazybytes.dto.InitiateVNPayPaymentRequestDto;
 import com.eazybytes.service.VNPayService;
 import com.eazybytes.service.PaymentService;
-import com.eazybytes.util.VNPayIPNTester;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
@@ -19,20 +19,26 @@ import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/v1/payment/vnpay")
-@CrossOrigin(origins = {"https://6077-14-186-91-166.ngrok-free.app", "http://localhost:5173", "http://localhost:8070"})
 public class VnpayController {
 
     private static final Logger logger = Logger.getLogger(VnpayController.class.getName());
     private final VNPayService vnpayService;
     private final PaymentService paymentService;
     private final VnpayConfig vnpayConfig;
-    private final VNPayIPNTester ipnTester;
 
-    public VnpayController(VNPayService vnpayService, PaymentService paymentService, VnpayConfig vnpayConfig, VNPayIPNTester ipnTester) {
+
+    // Environment variables for dynamic configuration
+    @Value("${NGROK_BASE_URL:https://f96b-101-99-36-202.ngrok-free.app}")
+    private String ngrokBaseUrl;
+
+    @Value("${FRONTEND_URL:http://localhost:5173}")
+    private String frontendUrl;
+
+    public VnpayController(VNPayService vnpayService, PaymentService paymentService, VnpayConfig vnpayConfig) {
         this.vnpayService = vnpayService;
         this.paymentService = paymentService;
         this.vnpayConfig = vnpayConfig;
-        this.ipnTester = ipnTester;
+        
     }
 
     @PostMapping("/create-payment")
@@ -40,6 +46,7 @@ public class VnpayController {
                                               HttpServletRequest request) {
         String clientIpAddress = VnPayHelper.getIpAddress(request);
         String paymentUrl = vnpayService.createPaymentUrl(requestDto, clientIpAddress);
+        logger.info("Created payment URL for transaction: " + requestDto.getTransactionId());
         return ResponseEntity.ok(paymentUrl);
     }
 
@@ -60,6 +67,9 @@ public class VnpayController {
     @GetMapping("/ipn")
     public ResponseEntity<String> vnpayIpn(HttpServletRequest request) {
         try {
+            // Log the current ngrok URL being used
+            logger.info("Processing VNPay IPN with ngrok URL: " + ngrokBaseUrl);
+            
             // Get all parameters from the request
             Map<String, String> vnpParams = getVnpayParamsMap(request);
             logger.info("Received VNPay IPN: " + vnpParams);
@@ -121,6 +131,7 @@ public class VnpayController {
             // 6. Xử lý thanh toán và cập nhật database
             try {
                 paymentService.handleVNPayCallback(vnpParams);
+                logger.info("Successfully processed VNPay IPN for transactionId: " + vnp_TxnRef);
                 return ResponseEntity.ok("{\"RspCode\":\"00\",\"Message\":\"Confirm Success\"}");
             } catch (Exception e) {
                 logger.severe("Error processing VNPay IPN: " + e.getMessage());
@@ -140,6 +151,9 @@ public class VnpayController {
     @GetMapping("/return") 
     public RedirectView vnpayReturn(HttpServletRequest request) {
         try {
+            // Log the current configuration being used
+            logger.info("Processing VNPay return with ngrok URL: " + ngrokBaseUrl + ", frontend URL: " + frontendUrl);
+            
             // Log all parameters received from VNPay
             Map<String, String> vnpParams = getVnpayParamsMap(request);
             logger.info("Received VNPay return URL parameters: " + vnpParams);
@@ -233,6 +247,10 @@ public class VnpayController {
             response.put("endpoint", "/api/v1/payment/vnpay/ipn");
             response.put("ssl_required", true);
             response.put("method", "GET");
+            response.put("current_ngrok_url", ngrokBaseUrl);
+            response.put("current_frontend_url", frontendUrl);
+            response.put("full_ipn_url", ngrokBaseUrl + "/api/v1/payment/vnpay/ipn");
+            response.put("full_return_url", ngrokBaseUrl + "/api/v1/payment/vnpay/return");
             logger.info("IPN health check performed successfully");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -244,6 +262,31 @@ public class VnpayController {
         }
     }
 
+    /**
+     * Endpoint để lấy thông tin cấu hình hiện tại
+     * Giúp developer kiểm tra các URL đang được sử dụng
+     */
+    @GetMapping("/config/info")
+    public ResponseEntity<Map<String, Object>> getConfigInfo() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            response.put("ngrok_base_url", ngrokBaseUrl);
+            response.put("frontend_url", frontendUrl);
+            response.put("vnpay_ipn_url", ngrokBaseUrl + "/api/v1/payment/vnpay/ipn");
+            response.put("vnpay_return_url", ngrokBaseUrl + "/api/v1/payment/vnpay/return");
+            response.put("frontend_return_url_base", vnpayConfig.getFrontendReturnUrlBase());
+            response.put("timestamp", new Date());
+            response.put("status", "config_retrieved");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", "Failed to get config info: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
 
     /**
      * Endpoint để lấy thông tin debug về các request IPN gần đây
@@ -258,7 +301,8 @@ public class VnpayController {
                 "ipn_url", "/api/v1/payment/vnpay/ipn",
                 "method", "GET",
                 "ssl_required", true,
-                "description", "VNPay IPN notification endpoint"
+                "description", "VNPay IPN notification endpoint",
+                "current_full_url", ngrokBaseUrl + "/api/v1/payment/vnpay/ipn"
             ));
             
             response.put("expected_parameters", Arrays.asList(
@@ -283,6 +327,13 @@ public class VnpayController {
                 "4. Check transaction status",
                 "5. Validate amount",
                 "6. Update payment status"
+            ));
+            
+            response.put("current_configuration", Map.of(
+                "ngrok_url", ngrokBaseUrl,
+                "frontend_url", frontendUrl,
+                "ipn_endpoint", ngrokBaseUrl + "/api/v1/payment/vnpay/ipn",
+                "return_endpoint", ngrokBaseUrl + "/api/v1/payment/vnpay/return"
             ));
             
             response.put("timestamp", new Date());

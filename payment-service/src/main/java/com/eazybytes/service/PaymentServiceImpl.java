@@ -2,6 +2,7 @@ package com.eazybytes.service;
 
 import com.eazybytes.dto.ConfirmVNPayPaymentResponseDto;
 import com.eazybytes.dto.InitiateVNPayPaymentRequestDto;
+import com.eazybytes.dto.InitiateVNPayPaymentResponseDto;
 import com.eazybytes.event.model.PaymentFailedEvent;
 import com.eazybytes.event.model.PaymentSucceededEvent;
 import com.eazybytes.event.model.ProcessPaymentRequest;
@@ -10,7 +11,6 @@ import com.eazybytes.model.Payment.PaymentMethod;
 import com.eazybytes.model.Payment.PaymentStatus;
 import com.eazybytes.repository.PaymentRepository;
 import com.eazybytes.event.PaymentProducer;
-import com.eazybytes.vnpay.common.utils.VnPayHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,13 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Transactional
     @Override
-    public void processPayment(ProcessPaymentRequest request) {
+    public InitiateVNPayPaymentResponseDto processPayment(ProcessPaymentRequest request) {
         log.info("Processing payment for orderId: {}, userId: {}, transactionId: {}, method: {}", 
                 request.getOrderId(), request.getUserId(), request.getTransactionId(), request.getPaymentMethod());
 
         Optional<Payment> existingPaymentOpt = paymentRepository.findByTransactionId(request.getTransactionId());
         if (existingPaymentOpt.isPresent()) {
-            handleExistingPayment(existingPaymentOpt.get());
-            return;
+            return handleExistingPayment(existingPaymentOpt.get(), request);
         }
 
         // Create payment record with PENDING status before processing
@@ -60,17 +59,20 @@ public class PaymentServiceImpl implements PaymentService {
             try {
                 // Create request for VNPay
                 InitiateVNPayPaymentRequestDto vnPayRequestDto = createVNPayRequest(request);
-                String clientIpAddress = "127.0.0.1"; // Default IP if not provided
+                String clientIpAddress = request.getClientIpAddress() != null ? request.getClientIpAddress() : "127.0.0.1";
 
                 // Generate payment URL via VNPayService
                 String paymentUrl = vnPayService.createPaymentUrl(vnPayRequestDto, clientIpAddress);
                 log.info("VNPay URL generated for orderId: {}: {}", request.getOrderId(), paymentUrl);
+                
+                return new InitiateVNPayPaymentResponseDto(paymentUrl);
 
             } catch (Exception e) {
                 handlePaymentError(request, e);
+                throw new RuntimeException("Failed to generate payment URL: " + e.getMessage());
             }
         } else {
-            handleNonVNPayPayment(request);
+            return handleNonVNPayPayment(request);
         }
     }
 
@@ -81,15 +83,59 @@ public class PaymentServiceImpl implements PaymentService {
                PaymentMethod.TRANSFER_BANKING.equals(paymentMethod);
     }
 
-    private void handleExistingPayment(Payment existingPayment) {
-        log.info("Payment already processed for transactionId: {}. Status: {}", 
+    private InitiateVNPayPaymentResponseDto handleExistingPayment(Payment existingPayment, ProcessPaymentRequest request) {
+        log.info("Payment already exists for transactionId: {}. Status: {}", 
                 existingPayment.getTransactionId(), existingPayment.getStatus());
                 
         if (existingPayment.getStatus() == PaymentStatus.SUCCESS) {
             sendPaymentSuccessEvent(existingPayment);
-        } else if (existingPayment.getStatus() == PaymentStatus.FAILED) {
-            sendPaymentFailedEvent(existingPayment);
+            throw new RuntimeException("Payment has already been completed successfully");
+        } else if (existingPayment.getStatus() == PaymentStatus.PROCESSING) {
+            throw new RuntimeException("Payment is currently being processed");
+        } else if (existingPayment.getStatus() == PaymentStatus.FAILED || existingPayment.getStatus() == PaymentStatus.PENDING) {
+            // For FAILED or PENDING payments, regenerate URL if it's a VNPay payment
+            if (isVNPayPaymentMethod(existingPayment.getPaymentMethod())) {
+                try {
+                    // Create VNPay request from existing payment
+                    InitiateVNPayPaymentRequestDto vnPayRequestDto = new InitiateVNPayPaymentRequestDto();
+                    vnPayRequestDto.setTransactionId(existingPayment.getTransactionId());
+                    
+                    Integer originalAmount = Integer.valueOf(existingPayment.getAmount());
+                    long amountInSmallestUnit = (long) originalAmount * 100;
+                    vnPayRequestDto.setAmount(amountInSmallestUnit);
+                    
+                    vnPayRequestDto.setOrderInfo("Thanh toan don hang " + existingPayment.getOrderId());
+                    vnPayRequestDto.setOrderId(String.valueOf(existingPayment.getOrderId()));
+                    vnPayRequestDto.setBankCode(PaymentMethodToBankCode(existingPayment.getPaymentMethod()));
+                    
+                    String clientIpAddress = request.getClientIpAddress() != null ? request.getClientIpAddress() : "127.0.0.1";
+                    String paymentUrl = vnPayService.createPaymentUrl(vnPayRequestDto, clientIpAddress);
+                    
+                    // Update status to PENDING if it was FAILED
+                    if (existingPayment.getStatus() == PaymentStatus.FAILED) {
+                        existingPayment.setStatus(PaymentStatus.PENDING);
+                        existingPayment.setFailureReason(null);
+                        existingPayment.setUpdatedAt(LocalDateTime.now());
+                        paymentRepository.save(existingPayment);
+                        log.info("Updated payment status from FAILED to PENDING for orderId: {}", existingPayment.getOrderId());
+                    }
+                    
+                    log.info("Regenerated VNPay URL for existing payment - orderId: {}, transactionId: {}", 
+                            existingPayment.getOrderId(), existingPayment.getTransactionId());
+                    return new InitiateVNPayPaymentResponseDto(paymentUrl);
+                    
+                } catch (Exception e) {
+                    log.error("Error regenerating payment URL for existing payment - orderId: {}, transactionId: {}. Error: {}", 
+                            existingPayment.getOrderId(), existingPayment.getTransactionId(), e.getMessage(), e);
+                    throw new RuntimeException("Failed to regenerate payment URL: " + e.getMessage());
+                }
+            } else {
+                // Non-VNPay payment method
+                return null;
+            }
         }
+        
+        return null;
     }
 
     private InitiateVNPayPaymentRequestDto createVNPayRequest(ProcessPaymentRequest request) {
@@ -134,14 +180,18 @@ public class PaymentServiceImpl implements PaymentService {
         sendPaymentFailedEvent(failedPayment, "Error generating VNPay URL: " + e.getMessage());
     }
 
-    private void handleNonVNPayPayment(ProcessPaymentRequest request) {
-        log.warn("Payment method {} is not VNPay.", request.getPaymentMethod());
+    private InitiateVNPayPaymentResponseDto handleNonVNPayPayment(ProcessPaymentRequest request) {
+        log.warn("Payment method {} does not support online payment URL generation.", request.getPaymentMethod());
         
         // Payment record was already created with PENDING status, so no need to create it again
         log.info("Non-VNPay payment recorded with PENDING status for orderId: {}", request.getOrderId());
         
         // TODO: Implement logic for other payment methods if any.
         // For example, if it was a COD, it might be set to PENDING until delivery confirmation.
+        
+        // Return null for non-VNPay payments since they don't need payment URLs
+        // Frontend should handle this case appropriately
+        return null;
     }
 
     @Override
@@ -272,10 +322,6 @@ public class PaymentServiceImpl implements PaymentService {
                     payment.getTransactionId(), e.getMessage(), e);
             // If event publishing fails, at least keep the FAILED status in database
         }
-    }
-
-    private void sendPaymentFailedEvent(Payment payment) {
-        sendPaymentFailedEvent(payment, null);
     }
 
     @Override
