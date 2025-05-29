@@ -35,6 +35,10 @@ public class RouterValidator {
             "/api/guest-carts/{guestId}",
             "/api/guest-carts/{guestId}/items",
             "/api/guest-carts/{guestId}/items/{productId}",
+
+
+            "/api/payments/status/{transactionId}",
+            "/api/payments/url/{transactionId}",
             
             // VNPay payment endpoints
             "/api/v1/payment/vnpay/ipn",
