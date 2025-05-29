@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: cart-service
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        
+  h2:
+    console:
+      enabled: true
+      
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+      
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8080/auth/realms/eazybank/protocol/openid_connect/certs
+          
+  cloud:
+    discovery:
+      enabled: false
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+      
+  kafka:
+    bootstrap-servers: ""
+
+eureka:
+  client:
+    enabled: false
+    
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+        
+logging:
+  level:
+    com.eazybytes: DEBUG
+    org.springframework.security: DEBUG 
