@@ -4,12 +4,17 @@ import com.eazybytes.model.Group;
 import com.eazybytes.model.GroupProduct;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface GroupProductRepository extends JpaRepository<GroupProduct, Integer> {
+
+    List<GroupProduct> findByProductId(String productId);
+    
+    List<GroupProduct> findByGroupId(Integer groupId);
 
     @Query("SELECT g.groupId FROM GroupProduct g WHERE g.productId = :productId")
     Optional<Integer> findGroupIdByProductId(@Param("productId") String productId);
@@ -42,6 +47,13 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
 
     void deleteAllByGroupId(Integer groupId);
 
-    void deleteByProductId(String productId);
+    @Modifying
+    @Query("DELETE FROM GroupProduct gp WHERE gp.productId = :productId")
+    void deleteByProductId(@Param("productId") String productId);
+    
+    @Modifying
+    @Query("DELETE FROM GroupProduct gp WHERE gp.groupId = :groupId")
+    void deleteByGroupId(@Param("groupId") Integer groupId);
+
 
 }

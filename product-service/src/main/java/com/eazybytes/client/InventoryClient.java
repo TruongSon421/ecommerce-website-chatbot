@@ -29,14 +29,23 @@ public interface InventoryClient {
     @DeleteMapping("/delete")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteInventory(@RequestParam("productId") String productId, @RequestParam("color") String color);
+    void deleteInventory(@RequestParam("productId") String productId, @RequestParam("color") String color);
 
     @PutMapping("/api/inventory/update")
     ResponseEntity<InventoryDto> updateInventory(@RequestParam("inventoryId") Integer inventoryId, @Valid @RequestBody InventoryDto request);
 
     @DeleteMapping("/api/inventory/delete/{productId}")
-    ResponseEntity<Void> deleteInventoriesByProductId(@PathVariable("productId") String productId);
+    void  deleteInventoriesByProductId(@PathVariable("productId") String productId);
 
-    @DeleteMapping("/delete")
-    ResponseEntity<Void> deleteProductInventory(@RequestParam("productId") String productId, @RequestParam("color") String color);
+    @DeleteMapping("/api/inventory/products/batch")
+    void deleteInventoriesByProductIds(@RequestBody List<String> productIds);
+
+    @DeleteMapping("/api/inventory/delete")
+    void  deleteProductInventory(@RequestParam("productId") String productId, @RequestParam("color") String color);
+
+    @DeleteMapping("/api/group-variants/group-product/product/{productId}")
+    void  deleteGroupProductByProductId(@PathVariable String productId);
+
+    @DeleteMapping("/api/group-variants/group-product/group/{groupId}")
+    void deleteGroupProductsByGroupId(@PathVariable Integer groupId);
 }

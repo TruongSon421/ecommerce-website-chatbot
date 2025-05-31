@@ -249,4 +249,31 @@ public class GroupController {
         return ResponseEntity.ok(updatedGroup);
     }
 
+    @DeleteMapping("/group-product/product/{productId}")
+    @PreAuthorize("@roleChecker.hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteGroupProductByProductId(@PathVariable String productId) {
+        try {
+            groupService.deleteByProductId(productId);
+            log.info("Successfully deleted group-product link for product ID: {}", productId);
+        } catch (Exception e) {
+            log.error("Error deleting group-product link for product ID {}: {}", productId, e.getMessage());
+            throw new RuntimeException("Failed to delete group-product link for product: " + productId, e);
+        }
+    }
+
+    @DeleteMapping("/group-product/group/{groupId}")
+    @PreAuthorize("@roleChecker.hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteGroupProductsByGroupId(@PathVariable Integer groupId) {
+        try {
+            groupService.deleteByGroupId(groupId);
+            log.info("Successfully deleted all group-product links for group ID: {}", groupId);
+        } catch (Exception e) {
+            log.error("Error deleting group-product links for group ID {}: {}", groupId, e.getMessage());
+            throw new RuntimeException("Failed to delete group-product links for group: " + groupId, e);
+        }
+    }
+
+
 }

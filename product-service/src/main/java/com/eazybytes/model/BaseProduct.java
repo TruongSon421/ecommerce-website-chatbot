@@ -26,6 +26,7 @@ public abstract class BaseProduct {
     private String brand;
 
     private Map<String,List<Map<String,String>>> images;
+    //
 
     private String warrantyPeriod;
 

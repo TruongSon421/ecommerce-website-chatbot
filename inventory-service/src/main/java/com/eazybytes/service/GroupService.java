@@ -233,8 +233,11 @@ public class GroupService {
         return descending ? Double.compare(price2, price1) : Double.compare(price1, price2);
     }
 
-    public List<VariantDto> findAllProductsInSameGroup(String productId) {
+    public GroupVariantResponseDto findAllProductsInSameGroup(String productId) {
         log.debug("Finding all products in same group (including current) for productId: {}", productId);
+
+        // Initialize response DTO
+        GroupVariantResponseDto response = new GroupVariantResponseDto();
 
         // Find groupId from GroupProduct
         Optional<Integer> groupIdOpt = groupProductRepository.findGroupIdByProductId(productId);
@@ -242,6 +245,15 @@ public class GroupService {
         if (groupIdOpt.isPresent()) {
             Integer groupId = groupIdOpt.get();
             log.debug("Found groupId: {} for productId: {}", groupId, productId);
+
+            // Fetch Group entity to get groupName
+            Optional<Group> groupOpt = groupRepository.findById(groupId);
+            String groupName = groupOpt.map(Group::getGroupName).orElse(null);
+            log.debug("Found groupName: {} for groupId: {}", groupName, groupId);
+
+            // Set groupId and groupName in response
+            response.setGroupId(groupId);
+            response.setGroupName(groupName);
 
             // Get all GroupProduct entries for this group
             List<GroupProduct> groupProducts = groupProductRepository.findAllByGroupIdOrderByOrderNumberAsc(groupId);
@@ -257,10 +269,12 @@ public class GroupService {
                     })
                     .collect(Collectors.toList());
 
-            return variants;
+            response.setVariants(variants);
+            return response;
         } else {
             log.debug("No group found for productId: {}", productId);
-            return new ArrayList<>();
+            response.setVariants(new ArrayList<>());
+            return response;
         }
     }
 
@@ -418,6 +432,56 @@ public class GroupService {
                 .originalPrice(inventory.getOriginalPrice())
                 .currentPrice(inventory.getCurrentPrice())
                 .build();
+    }
+
+    public void deleteByGroupId(Integer groupId) {
+        try {
+            // 1. Xóa tất cả liên kết trong group_product_junction
+            List<GroupProduct> groupProducts = groupProductRepository.findByGroupId(groupId);
+            if (!groupProducts.isEmpty()) {
+                groupProductRepository.deleteAll(groupProducts);
+                log.info("Deleted {} group-product links for group ID: {}", groupProducts.size(), groupId);
+            } else {
+                log.info("No group-product junctions found for group ID: {}", groupId);
+            }
+            
+            // 2. Xóa Group entity từ bảng groups
+            if (groupRepository.existsById(groupId)) {
+                groupRepository.deleteById(groupId);
+                log.info("Successfully deleted group entity with ID: {}", groupId);
+            } else {
+                log.warn("Group with ID {} not found in groups table", groupId);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error deleting group and junctions for group ID {}: {}", groupId, e.getMessage());
+            throw new RuntimeException("Failed to delete group and junctions for group: " + groupId, e);
+        }
+    }
+
+    public void deleteByProductId(String productId) {
+        try {
+            List<GroupProduct> groupProducts = groupProductRepository.findByProductId(productId);
+            if (!groupProducts.isEmpty()) {
+                groupProductRepository.deleteAll(groupProducts);
+                log.info("Deleted {} group-product links for product ID: {}", groupProducts.size(), productId);
+            }
+        } catch (Exception e) {
+            log.error("Error deleting group-product links for product ID {}: {}", productId, e.getMessage());
+            throw new RuntimeException("Failed to delete group-product links for product: " + productId, e);
+        }
+    }
+
+    public List<String> getProductIdsByGroupId(Integer groupId) {
+        try {
+            List<GroupProduct> groupProducts = groupProductRepository.findByGroupId(groupId);
+            return groupProducts.stream()
+                    .map(GroupProduct::getProductId)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error getting product IDs for group ID {}: {}", groupId, e.getMessage());
+            throw new RuntimeException("Failed to get product IDs for group: " + groupId, e);
+        }
     }
 
 

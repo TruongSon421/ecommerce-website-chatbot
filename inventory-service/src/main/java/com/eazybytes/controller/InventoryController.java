@@ -2,6 +2,7 @@ package com.eazybytes.controller;
 
 import com.eazybytes.dto.InventoryDto;
 import com.eazybytes.dto.VariantDto;
+import com.eazybytes.dto.GroupVariantResponseDto;
 import com.eazybytes.exception.InventoryAlreadyExistsException;
 import com.eazybytes.model.ProductInventory;
 import com.eazybytes.service.GroupService;
@@ -38,15 +39,16 @@ public class InventoryController {
     }
 
     @GetMapping("/related/{productId}")
-    public ResponseEntity<List<VariantDto>> getRelatedProducts(@PathVariable String productId) {
+    public ResponseEntity<GroupVariantResponseDto> getRelatedProducts(@PathVariable String productId) {
         log.debug("Received request for related products with productId: {}", productId);
 
-        List<VariantDto> relatedProductIds = groupService.findAllProductsInSameGroup(productId);
+        GroupVariantResponseDto relatedProducts = groupService.findAllProductsInSameGroup(productId);
 
-        log.debug("Found {} related products for productId: {}", relatedProductIds.size(), productId);
-        log.debug("Related product IDs: {}", relatedProductIds);
+        log.debug("Found {} related products for productId: {}", 
+                 relatedProducts.getVariants() != null ? relatedProducts.getVariants().size() : 0, productId);
+        log.debug("Related products: {}", relatedProducts);
 
-        return ResponseEntity.ok(relatedProductIds);
+        return ResponseEntity.ok(relatedProducts);
     }
 
     @GetMapping("/product")
@@ -62,6 +64,7 @@ public class InventoryController {
                 .productName(inventory.getProductName())
                 .originalPrice(inventory.getOriginalPrice())
                 .currentPrice(inventory.getCurrentPrice())
+                .version(inventory.getVersion())
                 .build();
 
         return ResponseEntity.ok(inventoryDto);
@@ -119,6 +122,7 @@ public class InventoryController {
                 .quantity(updatedInventory.getQuantity())
                 .originalPrice(updatedInventory.getOriginalPrice())
                 .currentPrice(updatedInventory.getCurrentPrice())
+                .version(updatedInventory.getVersion()) // Thêm version
                 .build();
 
         return ResponseEntity.ok(inventoryDto);
@@ -174,6 +178,19 @@ public class InventoryController {
     public ResponseEntity<Void> deleteInventoriesByProductId(@PathVariable("productId") String productId) {
         inventoryService.deleteAllByProductId(productId);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/products/batch")
+    @PreAuthorize("@roleChecker.hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteInventoriesByProductIds(@RequestBody List<String> productIds) {
+        try {
+            inventoryService.deleteInventoriesByProductIds(productIds);
+            log.info("Successfully deleted inventories for {} products", productIds.size());
+        } catch (Exception e) {
+            log.error("Error deleting inventories for products: {}", productIds, e);
+            throw new RuntimeException("Failed to delete inventories for products", e);
+        }
     }
 
     @DeleteMapping("/delete")

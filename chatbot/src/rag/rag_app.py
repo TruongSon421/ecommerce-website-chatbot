@@ -6,7 +6,7 @@ import re
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/add-to-elasticsearch": {"origins": "http://localhost:5173"}})
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 # Kết nối tới Elasticsearch (cấu hình mặc định localhost:9200)
 es = Elasticsearch(["http://localhost:9200"])
 
@@ -194,21 +194,45 @@ def merge_product_configs(product_data, device_type):
     for field in config_fields:
         values = {}
         for product in product_data:
-            variant = product["productRequest"]["variant"] or "Default"  # Handle None variant
+            variant = product["productRequest"]["variant"] or "Default"
             config = product["productRequest"]
-            eng_field = next(k for k, v in field_mapping[device_type].items() if v == field)
-            value = config.get(eng_field, None)
-            if isinstance(value, list):
-                value = [remove_detail_link(handle_empty_value(v)) for v in value]
-            else:
-                value = remove_detail_link(handle_empty_value(value))
-            values[variant] = value
+            eng_field = next((k for k, v in field_mapping.get(device_type, {}).items() if v == field), None)
+            
+            if eng_field:
+                value = config.get(eng_field, None)
+                if isinstance(value, list):
+                    value = [remove_detail_link(handle_empty_value(v)) for v in value]
+                else:
+                    value = remove_detail_link(handle_empty_value(value))
+                values[variant] = value
         
+        if not values:  # Bỏ qua nếu không có dữ liệu
+            continue
+            
+        # ===== PHẦN SỬA CHÍNH =====
         # Kiểm tra xem giá trị có giống nhau giữa các phiên bản không
-        unique_values = set(tuple(v) if isinstance(v, list) else str(v) for v in values.values())
-        if len(unique_values) == 1:
-            merged_config[field] = list(values.values())[0]
+        def normalize_value_for_comparison(val):
+            """Chuẩn hóa giá trị để so sánh"""
+            if isinstance(val, list):
+                # Sắp xếp list và loại bỏ duplicates
+                normalized = list(set(val))
+                normalized.sort()
+                return tuple(normalized)  # Convert to tuple để có thể hash
+            elif isinstance(val, str):
+                return val.strip().lower()
+            else:
+                return str(val) if val is not None else ""
+        
+        # Chuẩn hóa tất cả giá trị để so sánh
+        normalized_values = {k: normalize_value_for_comparison(v) for k, v in values.items()}
+        unique_normalized_values = set(normalized_values.values())
+        
+        if len(unique_normalized_values) <= 1:
+            # Tất cả giá trị giống nhau -> gộp thành một giá trị
+            first_value = list(values.values())[0] if values else None
+            merged_config[field] = first_value
         else:
+            # Có sự khác biệt -> giữ nguyên format dict
             merged_config[field] = values
     
     # Gộp thông tin giá và màu từ inventoryRequests
@@ -251,10 +275,21 @@ Giá: {'; '.join(price_info)} (Việt Nam đồng)
     
     for field, value in merged_config.items():
         if isinstance(value, dict):
-            formatted_value = ', '.join(
-                [f"{k}: {v}" if not isinstance(v, list) else f"{k}: {', '.join(v)}" for k, v in value.items()]
-            )
-            document += f"{field}: {formatted_value}\n"
+            # Kiểm tra xem tất cả giá trị trong dict có giống nhau không
+            dict_values = list(value.values())
+            if len(set(str(v) for v in dict_values)) == 1:
+                # Tất cả giá trị giống nhau -> chỉ hiển thị một lần
+                single_value = dict_values[0]
+                if isinstance(single_value, list):
+                    document += f"{field}: {', '.join(single_value)}\n"
+                else:
+                    document += f"{field}: {single_value}\n"
+            else:
+                # Có sự khác biệt -> hiển thị theo variant
+                formatted_value = ', '.join(
+                    [f"{k}: {v}" if not isinstance(v, list) else f"{k}: {', '.join(v)}" for k, v in value.items()]
+                )
+                document += f"{field}: {formatted_value}\n"
         else:
             if isinstance(value, list):
                 document += f"{field}: {', '.join(value)}\n"
@@ -287,6 +322,214 @@ def add_to_elasticsearch():
             "id": response["_id"],
             "document": document
         }), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để xóa document khỏi Elasticsearch
+@app.route('/delete-from-elasticsearch/<doc_id>', methods=['DELETE'])
+def delete_from_elasticsearch(doc_id):
+    try:
+        # Kiểm tra document có tồn tại không
+        if not es.exists(index="products", id=doc_id):
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Xóa document
+        response = es.delete(index="products", id=doc_id)
+        
+        return jsonify({
+            "message": "Document deleted successfully",
+            "id": doc_id,
+            "result": response["result"]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để xóa document theo group_id
+@app.route('/delete-by-group-id/<group_id>', methods=['DELETE'])
+def delete_by_group_id(group_id):
+    try:
+        # Tìm kiếm documents có group_id tương ứng
+        search_query = {
+            "query": {
+                "term": {
+                    "group_id": group_id
+                }
+            }
+        }
+        
+        # Thực hiện delete by query
+        response = es.delete_by_query(index="products", body=search_query)
+        
+        if response["deleted"] == 0:
+            return jsonify({"error": "No documents found with the given group_id"}), 404
+        
+        return jsonify({
+            "message": f"Deleted {response['deleted']} document(s) successfully",
+            "group_id": group_id,
+            "deleted_count": response["deleted"]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để cập nhật document trong Elasticsearch
+@app.route('/update-elasticsearch/<doc_id>', methods=['PUT'])
+def update_elasticsearch(doc_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        
+        # Kiểm tra document có tồn tại không
+        if not es.exists(index="products", id=doc_id):
+            return jsonify({"error": "Document not found"}), 404
+        
+        # Tạo document mới từ dữ liệu
+        document, group_id, group_name, product_type = create_document(data)
+        
+        es_doc = {
+            "document": document,
+            "group_id": group_id,
+            "name": group_name,
+            "type": product_type
+        }
+        
+        # Cập nhật document
+        response = es.update(index="products", id=doc_id, body={"doc": es_doc})
+        
+        return jsonify({
+            "message": "Document updated successfully",
+            "id": doc_id,
+            "document": document,
+            "result": response["result"]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để cập nhật document theo group_id
+@app.route('/update-by-group-id/<group_id>', methods=['PUT'])
+def update_by_group_id(group_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data provided"}), 400
+        
+        # Tìm document có group_id tương ứng
+        search_query = {
+            "query": {
+                "term": {
+                    "group_id": group_id
+                }
+            }
+        }
+        
+        search_response = es.search(index="products", body=search_query)
+        
+        if search_response["hits"]["total"]["value"] == 0:
+            return jsonify({"error": "No documents found with the given group_id"}), 404
+        
+        # Tạo document mới từ dữ liệu
+        document, new_group_id, group_name, product_type = create_document(data)
+        
+        es_doc = {
+            "document": document,
+            "group_id": new_group_id,
+            "name": group_name,
+            "type": product_type
+        }
+        
+        # Cập nhật tất cả documents có group_id này
+        update_query = {
+            "script": {
+                "source": """
+                    ctx._source.document = params.document;
+                    ctx._source.group_id = params.group_id;
+                    ctx._source.name = params.name;
+                    ctx._source.type = params.type;
+                """,
+                "params": es_doc
+            },
+            "query": {
+                "term": {
+                    "group_id": group_id
+                }
+            }
+        }
+        
+        response = es.update_by_query(index="products", body=update_query)
+        
+        return jsonify({
+            "message": f"Updated {response['updated']} document(s) successfully",
+            "group_id": group_id,
+            "updated_count": response["updated"],
+            "document": document
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để lấy thông tin document theo ID
+@app.route('/get-document/<doc_id>', methods=['GET'])
+def get_document(doc_id):
+    try:
+        if not es.exists(index="products", id=doc_id):
+            return jsonify({"error": "Document not found"}), 404
+        
+        response = es.get(index="products", id=doc_id)
+        
+        return jsonify({
+            "id": doc_id,
+            "document": response["_source"]
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint để tìm kiếm documents
+@app.route('/search-documents', methods=['GET'])
+def search_documents():
+    try:
+        query = request.args.get('q', '')
+        size = int(request.args.get('size', 10))
+        from_param = int(request.args.get('from', 0))
+        
+        if not query:
+            # Trả về tất cả documents nếu không có query
+            search_body = {
+                "query": {"match_all": {}},
+                "size": size,
+                "from": from_param
+            }
+        else:
+            # Tìm kiếm trong document content
+            search_body = {
+                "query": {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["document", "name", "type"]
+                    }
+                },
+                "size": size,
+                "from": from_param
+            }
+        
+        response = es.search(index="products", body=search_body)
+        
+        results = []
+        for hit in response["hits"]["hits"]:
+            results.append({
+                "id": hit["_id"],
+                "score": hit["_score"],
+                "source": hit["_source"]
+            })
+        
+        return jsonify({
+            "total": response["hits"]["total"]["value"],
+            "results": results
+        }), 200
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
