@@ -12,7 +12,6 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import AdminNavbar from "../../components/layout/narbarAdmin";
 
 ChartJS.register(
   CategoryScale,
@@ -81,7 +80,6 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <AdminNavbar />
       <div className="flex-1 p-6 bg-gray-100">
         <h1 className="text-3xl font-bold mb-8 text-gray-800">Admin Dashboard</h1>
         {loading ? (

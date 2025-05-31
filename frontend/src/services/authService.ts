@@ -4,7 +4,7 @@ import { LoginCredentials, RegisterCredentials, User } from '../types/auth';
 import { initializeGuestCart } from './cartService';
 
 const API_URL = 'http://localhost:8070/api/auth';
-const USER_API_URL = 'http://localhost:8070/api/users';
+
 
 export const login = async (credentials: LoginCredentials) => {
   try {

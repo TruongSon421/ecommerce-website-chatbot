@@ -6,9 +6,12 @@ import UserLayout from "../layouts/userLayouts";
 import { useAuth } from "../components/hooks/useAuth";
 import AdminLogin from "../pages/admin/LoginAdmin";
 import AdminRegister from "../pages/admin/RegisterAdmin";
-import Dashboard from "../pages/dashbroad/adminDashBroad";
+import Dashboard from "../pages/dashboard/adminDashBoard";
 import AddProductPage from "../pages/product/addProduct";
 import ProductManagement from "../pages/admin/ProductManagement";
+import PageCategory from "../pages/admin/ProductManagement";
+import ProductGH from "../pages/admin/productDetailAdmin";
+
 
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -47,14 +50,10 @@ const PrivateRouter = () => {
           }
         />
 
-        <Route
-          path="products"
-          element={
-            <AdminPrivateRoute>
-              <ProductManagement />
-            </AdminPrivateRoute>
-          }
-        />
+
+        <Route path="/admin/products/:type" element={<PageCategory />} />
+        <Route path="/admin/detail/:type/:product_id" element={<ProductGH />} />
+
       </Route>
     </Routes>
   );

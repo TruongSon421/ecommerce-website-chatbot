@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import ProductDetail from '../components/productDetail';
+import ProductDetail from '../components/product/user/productDetail';
 
 interface Product {
   productId: string;

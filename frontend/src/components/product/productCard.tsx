@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/productCard.css';
+import '../../styles/productCard.css';
 
 
 interface imagesUrl {

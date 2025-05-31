@@ -70,7 +70,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
   };
 
   const handleAddToCart = async (product: Product, group: GroupDto) => {
-    console.log('Adding to cart:', { productId: product.productId, color: product.variant, productType: group.type });
+    console.log('Adding to cart:', { productId: product.productId, color: product.color, productType: group.type });
 
     const cartItem: CartItem = {
       productId: product.productId,
@@ -151,7 +151,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                               : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
                           }`}
                         >
-                          {product.variant}
+                          {product.color}
                         </button>
                       ))}
                     </div>
@@ -268,7 +268,7 @@ const ChatbotWidget: React.FC = () => {
     setIsBotTyping(true);
     setApiError(null);
     try {
-      const response = await axios.post<QueryResponse>('http://localhost:5000/api/query', {
+      const response = await axios.post<QueryResponse>('http://localhost:6000/api/query', {
         user_id: user?.id || (localStorage.getItem('guestCartId')),
         session_id: chatSession.session_id,
         query: input,
