@@ -23529,3 +23529,12 @@ Raw response:
 -----------------------------------------------------------
 
 2025-05-23 14:02:28,434 - INFO - Append event: content=Content(parts=[Part(video_metadata=None, thought=None, inline_data=None, code_execution_result=None, executable_code=None, file_data=None, function_call=None, function_response=None, text='Giỏ hàng của bạn hiện có:\n\n*   1 Điện thoại HONOR Magic V3 5G 12GB/512GB màu Xanh lá\n*   1 Điện thoại HONOR Magic V3 5G 12GB/512GB màu Đen\n*   1 Điện thoại HONOR Magic V3 5G 12GB/512GB màu Nâu Đỏ\n\nTổng giá trị giỏ hàng là 113.970.000 VNĐ. Bạn muốn thay đổi gì nữa không?\n')], role='model') grounding_metadata=None partial=None turn_complete=None error_code=None error_message=None interrupted=None custom_metadata=None invocation_id='e-5748fe99-e2bc-4692-837b-d6ca443192e9' author='Cart' actions=EventActions(skip_summarization=None, state_delta={}, artifact_delta={}, transfer_to_agent=None, escalate=None, requested_auth_configs={}) long_running_tool_ids=None branch=None id='7I1wU2SC' timestamp=1748008945.702858 to session session-po537izle
+2025-05-30 13:16:23,745 - INFO - Local timezone: Etc/UTC
+2025-05-30 13:17:17,837 - INFO - Local timezone: Etc/UTC
+2025-05-30 13:17:32,206 - INFO - Local timezone: Etc/UTC
+2025-05-30 13:17:32,280 - INFO - Local timezone: Etc/UTC
+2025-05-31 02:28:11,656 - INFO - Local timezone: Etc/UTC
+2025-05-31 02:28:27,216 - INFO - Local timezone: Etc/UTC
+2025-05-31 02:28:27,282 - INFO - Local timezone: Etc/UTC
+2025-05-31 02:35:48,085 - INFO - Local timezone: Etc/UTC
+2025-05-31 02:35:48,160 - INFO - Local timezone: Etc/UTC

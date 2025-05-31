@@ -43,5 +43,6 @@ public class ProductResponse {
     public static class Specification {
         private String name;
         private Object value;
+        private String ori_name;
     }
 }

@@ -14,6 +14,7 @@ import com.eazybytes.repository.InventoryHistoryRepository;
 import com.eazybytes.repository.InventoryReservationRepository;
 import com.eazybytes.repository.ProductInventoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -144,27 +145,49 @@ public class InventoryService {
 
     @Transactional
     public ProductInventory updateInventory(InventoryDto request) {
-        // Chuẩn hóa color
-        String normalizedColor = normalizeColor(request.getColor());
-        
-        Optional<ProductInventory> existingInventory = productInventoryRepository
-                .findByProductIdAndColor(request.getProductId(), normalizedColor);
+        try {
+            log.info("Updating inventory for productId: {}, color: {}", 
+                    request.getProductId(), request.getColor());
+            
+            String normalizedColor = normalizeColor(request.getColor());
+            
+            Optional<ProductInventory> existingInventory = productInventoryRepository
+                    .findByProductIdAndColor(request.getProductId(), normalizedColor);
 
-        ProductInventory inventory;
+            ProductInventory inventory;
 
-        if (existingInventory.isPresent()) {
-            inventory = existingInventory.get();
-        } else {
-            inventory = new ProductInventory();
-            inventory.setProductId(request.getProductId());
-            inventory.setColor(normalizedColor);
+            if (existingInventory.isPresent()) {
+                inventory = existingInventory.get();
+                log.info("Found existing inventory with ID: {}, version: {}", 
+                        inventory.getInventoryId(), inventory.getVersion());
+                
+                // Kiểm tra version conflict nếu frontend gửi version
+                if (request.getVersion() != null && 
+                    !inventory.getVersion().equals(request.getVersion())) {
+                    throw new OptimisticLockingFailureException(
+                        "Inventory has been modified by another transaction");
+                }
+            } else {
+                inventory = new ProductInventory();
+                inventory.setProductId(request.getProductId());
+                inventory.setColor(normalizedColor);
+                log.info("Creating new inventory entry");
+            }
+            
+            inventory.setProductName(request.getProductName());
+            inventory.setQuantity(request.getQuantity());
+            inventory.setOriginalPrice(request.getOriginalPrice());
+            inventory.setCurrentPrice(request.getCurrentPrice());
+
+            ProductInventory savedInventory = productInventoryRepository.save(inventory);
+            log.info("Successfully saved inventory with ID: {}, new version: {}", 
+                    savedInventory.getInventoryId(), savedInventory.getVersion());
+            
+            return savedInventory;
+        } catch (Exception e) {
+            log.error("Error updating inventory: ", e);
+            throw e;
         }
-        inventory.setProductName(request.getProductName());
-        inventory.setQuantity(request.getQuantity());
-        inventory.setOriginalPrice(request.getOriginalPrice());
-        inventory.setCurrentPrice(request.getCurrentPrice());
-
-        return productInventoryRepository.save(inventory);
     }
 
     
@@ -240,6 +263,18 @@ public class InventoryService {
     public void deleteAllByProductId(String productId) {
 
         productInventoryRepository.deleteAllByProductId(productId);
+    }
+
+    public void deleteInventoriesByProductIds(List<String> productIds) {
+        try {
+            for (String productId : productIds) {
+                deleteAllByProductId(productId);
+            }
+            log.info("Successfully deleted inventories for all {} products", productIds.size());
+        } catch (Exception e) {
+            log.error("Error deleting inventories for products: {}", productIds, e);
+            throw new RuntimeException("Failed to delete inventories for products", e);
+        }
     }
 
     @Transactional

@@ -180,9 +180,7 @@ public class ProductService {
         }
     }
 
-    public ProductResponse updateProduct(String id, ProductWithInventoryRequest request) {
-        ProductRequest productRequest = request.getProductRequest();
-        List<InventoryDto> inventoryRequests = request.getInventoryRequests();
+    public BaseProduct updateProduct(String id, ProductRequest productRequest) {
         BaseProduct product = findProductById(id);
         String productType = product.getType();
 
@@ -217,11 +215,7 @@ public class ProductService {
 
         BaseProduct updatedProduct = productRepository.save(product);
 
-        inventoryClient.deleteInventoriesByProductId(id);
-
-        List<InventoryDto> inventoryDtos = createInventories(updatedProduct, inventoryRequests);
-
-        return mapToProductResponse(productType, updatedProduct, inventoryDtos);
+        return updatedProduct;
     }
 
 
@@ -238,7 +232,42 @@ public class ProductService {
     }
 
     public void deleteProduct(String id) {
-        productRepository.deleteById(id);
+        try {
+            productRepository.deleteById(id);
+            log.info("Successfully deleted product from database: {}", id);
+        } catch (Exception e) {
+            log.error("Error deleting product ID {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to delete product: " + id, e);
+        }
+    }
+    
+    public DeleteGroupDto deleteProductGroup(DeleteGroupDto request) {
+        Integer groupId = request.getGroupId();
+        List<String> productIds = request.getProductIds();
+        try {
+            
+            if (!productIds.isEmpty()) {
+                // 2. Xóa tất cả inventories
+                inventoryClient.deleteInventoriesByProductIds(productIds);
+                log.info("Successfully deleted inventories for group ID: {}", groupId);
+                
+                // 3. Xóa tất cả products
+                productRepository.deleteAllById(productIds);
+                log.info("Successfully deleted {} products for group ID: {}", productIds.size(), groupId);
+            }
+            
+            // 4. Xóa tất cả liên kết GroupProduct
+            inventoryClient.deleteGroupProductsByGroupId(groupId);
+            log.info("Successfully deleted group-product links for group ID: {}", groupId);
+            
+            // 5. Xóa Group (sẽ được xử lý ở Group Service nếu cần)
+            log.info("Successfully completed group deletion process for group ID: {}", groupId);
+            
+        } catch (Exception e) {
+            log.error("Error in deleteProductGroup for group ID {}: {}", groupId, e.getMessage());
+            throw new RuntimeException("Failed to delete product group: " + groupId, e);
+        }
+        return request;
     }
 
     private ProductResponse mapToProductResponse(String type, BaseProduct product, List<InventoryDto> inventoryDtos) {
