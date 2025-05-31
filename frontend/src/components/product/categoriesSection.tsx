@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/categorySection.css';
+import '../../styles/categorySection.css';
 import CategoryCard from './categoriesCard';
 
 interface Category {

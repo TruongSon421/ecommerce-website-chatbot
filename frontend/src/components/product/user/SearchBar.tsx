@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GroupDto } from '../types/group';
-import { searchProducts } from '../services/productService';
+import { GroupDto } from '../../../types/group';
+import { searchProducts } from '../../../services/productService';
 import { debounce } from 'lodash';
 
 const SearchBar = () => {
@@ -66,7 +66,7 @@ const SearchBar = () => {
   const handleGroupClick = (group: GroupDto) => {
     if (group.productId) {
       const groupType = group.type || 'default';
-      navigate(`/${groupType}/${group.productId}`);
+      navigate(`/detail/${groupType}/${group.productId}`);
       setResults([]);
     }
   };

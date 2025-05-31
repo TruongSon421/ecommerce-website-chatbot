@@ -1,6 +1,6 @@
 import React from "react";
 import { useState } from "react";
-import formatProductName from "./utils/formatProductName";
+import formatProductName from "../../utils/formatProductName";
 import { Link } from "react-router-dom";
 interface Product {
     productId: string;

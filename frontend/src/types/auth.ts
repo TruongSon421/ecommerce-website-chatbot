@@ -19,7 +19,7 @@ export interface AuthResponse {
 }
 
 export interface User {
-  id: number;
+  id: string;
   username: string;
   email: string;
   roles: string[];
@@ -53,4 +53,3 @@ export interface CreateUserDTO {
   roleNames?: string[];
   addresses?: Address[];
 }
-```

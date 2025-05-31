@@ -1,185 +1,238 @@
-// src/pages/admin/ProductManagement.tsx
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+// src/pages/PageCategory.tsx (continued)
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import Header from '../../components/layout/header';
+import ProductListAdmin from '../../components/product/admin/productListAdmin';
+import ProductFilter from '../../components/filters/ProductFilter';
+import ProductListSkeleton from '../../components/product/ProductListSkeleton';
+import useProductApi from '../../components/hooks/useProductApi';
+import { useAuth } from '../../components/hooks/useAuth';
+import CategoriesSection from '../../components/product/categoriesSection';
 
-// Định nghĩa interface cho sản phẩm
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-}
+function PageCategory() {
+  const { type = '' } = useParams<{ type: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
+  const [sortByPrice, setSortByPrice] = useState<string>('desc');
+  const { isAdmin } = useAuth();
+  
+  // Get page from URL params or default to 0
+  const page = Number(searchParams.get('page')) || 0;
+  
+  // Custom hook for product API operations
+  const { 
+    products, 
+    totalProducts, 
+    loading, 
+    error, 
+    fetchProducts 
+  } = useProductApi();
 
-// Giả lập dữ liệu từ API (có thể thay bằng fetch thực tế)
-const fetchProducts = async (): Promise<Product[]> => {
-  return [
-    { id: "1", name: "iPhone 13", price: 999, stock: 50 },
-    { id: "2", name: "Samsung Galaxy S23", price: 899, stock: 30 },
-    { id: "3", name: "MacBook Pro", price: 1999, stock: 20 },
-  ];
-};
+  const remainingProducts = totalProducts - products.length;
 
-const ProductManagement = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  // Create query params for API request
+  const createQueryParams = useCallback((
+    currentPage: number, 
+    appliedFilters: { [key: string]: string[] | number[] }
+  ) => {
+    const queryParams: string[] = [
+      `page=${currentPage}`,
+      `size=20`,
+      `sortByPrice=${sortByPrice}`
+    ];
 
-  // Lấy danh sách sản phẩm khi component mount
-  useEffect(() => {
-    const loadProducts = async () => {
-      setLoading(true);
-      const data = await fetchProducts(); // Thay bằng API thực tế nếu có
-      setProducts(data);
-      setLoading(false);
+    if (type) {
+      queryParams.push(`type=${type}`);
+    }
+
+    // Process filters
+    const filterMapping = {
+      brand: 'brand',
+      tags: 'tags',
+      ram: 'ram',
+      resolution: 'resolution',
+      refresh_rate: 'refresh_rate',
+      cpu: 'cpu',
+      storage: 'storage'
     };
-    loadProducts();
-  }, []);
 
-  // Xóa sản phẩm
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      setProducts(products.filter((product) => product.id !== id));
-      // Gọi API xóa nếu có: await api.delete(`/api/products/${id}`);
+    Object.entries(filterMapping).forEach(([key, param]) => {
+      if (appliedFilters[key] && (appliedFilters[key] as string[]).length > 0) {
+        queryParams.push(`${param}=${(appliedFilters[key] as string[]).join(',')}`);
+      }
+    });
+
+    // Process price range
+    if (appliedFilters.priceRange) {
+      const [minPrice, maxPrice] = appliedFilters.priceRange as number[];
+      queryParams.push(`minPrice=${minPrice}`, `maxPrice=${maxPrice}`);
     }
+
+    return queryParams.join('&');
+  }, [type, sortByPrice]);
+
+  // Fetch products when dependencies change
+  useEffect(() => {
+    const queryString = createQueryParams(page, filters);
+    fetchProducts(queryString, page === 0);
+  }, [fetchProducts, page, filters, createQueryParams]);
+
+  // Save filters to URL
+  useEffect(() => {
+    const currentParams = Object.fromEntries(searchParams.entries());
+    setSearchParams({
+      ...currentParams,
+      filters: JSON.stringify(filters),
+      sort: sortByPrice,
+      page: page.toString()
+    }, { replace: true }); // Use replace to avoid adding multiple history entries
+  }, [filters, sortByPrice, page, setSearchParams, searchParams]);
+
+  // Restore state from URL on mount
+  useEffect(() => {
+    const filtersFromUrl = searchParams.get('filters');
+    const sortFromUrl = searchParams.get('sort');
+    
+    if (filtersFromUrl) {
+      try {
+        setFilters(JSON.parse(filtersFromUrl));
+      } catch (e) {
+        console.error('Error parsing filters from URL:', e);
+      }
+    }
+    
+    if (sortFromUrl) {
+      setSortByPrice(sortFromUrl);
+    }
+  }, [searchParams]); // Only run on mount
+
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', nextPage.toString());
+      return newParams;
+    });
   };
 
-  // Lưu chỉnh sửa sản phẩm
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editProduct) {
-      setProducts(
-        products.map((p) =>
-          p.id === editProduct.id ? { ...editProduct } : p
-        )
-      );
-      setEditProduct(null);
-      // Gọi API cập nhật nếu có: await api.put(`/api/products/${editProduct.id}`, editProduct);
-    }
+  const handleApplyFilters = (newFilters: { [key: string]: string[] | number[] }) => {
+    setFilters(newFilters);
+    // Reset to page 0 when filters change
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '0');
+      return newParams;
+    });
   };
+
+  const handleSortChange = (order: string) => {
+    setSortByPrice(order);
+    // Reset to page 0 when sort changes
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set('page', '0');
+      return newParams;
+    });
+  };
+const categories = [
+    {
+      id: 1,
+      name: 'Phone',
+      imageSrc: '/images/categories/phone.png',
+      link: '/admin/products/phone'
+    },
+    {
+      id: 2,
+      name: 'Laptop',
+      imageSrc: '/images/categories/laptop.png',
+      link: '/admin/products/laptop'
+    },
+    {
+      id: 3,
+      name: 'Tablet',
+      imageSrc: '/images/categories/tablet.png',
+      link: '/admin/products/tablet'
+    },
+    {
+      id: 4,
+      name: 'Audio',
+      imageSrc: '/images/categories/audio.png',
+      link: '/admin/products/audio'
+    },
+    {
+      id: 5,
+      name: 'Phụ kiện',
+      imageSrc: '/images/categories/Phukien.png',
+      link: '/admin/products/phukien'
+    }
+  ];
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Product Management</h1>
-
-      {/* Nút thêm sản phẩm */}
-      <div className="mb-6">
-        <Link
-          to="/admin/product/add"
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          Add New Product
-        </Link>
+      
+  
+    <div className="pageCategory">
+      {/* Conditionally render categories section for admin */}
+      {isAdmin && (
+        <CategoriesSection categories={categories} />
+      )}
+      <Header title={type} />
+      <div className="flex flex-col gap-6 p-6">
+        <div className="w-full">
+          {type ? (
+            <ProductFilter
+              type={type}
+              onApplyFilters={handleApplyFilters}
+              onSortChange={handleSortChange}
+              sortByPrice={sortByPrice}
+              isLoading={loading}
+            />
+          ) : (
+            <div className="text-center p-4 bg-gray-100 rounded-md">
+              Không có bộ lọc cho loại sản phẩm này.
+            </div>
+          )}
+        </div>
+        <div className="w-full">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+              <strong className="font-bold">Lỗi!</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+          
+          {loading && products.length === 0 ? (
+            <ProductListSkeleton />
+          ) : (
+            <div className="w-full">
+              <ProductListAdmin grouplist={products} />
+              {remainingProducts > 0 && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md
+                             disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors duration-200"
+                    onClick={handleLoadMore}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Đang tải...
+                      </span>
+                    ) : (
+                      `Xem thêm ${remainingProducts} sản phẩm`
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-
-      {/* Bảng danh sách sản phẩm */}
-      {loading ? (
-        <div className="text-center text-gray-500">Loading...</div>
-      ) : (
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-gray-600 border-b">
-                <th className="p-3">ID</th>
-                <th className="p-3">Name</th>
-                <th className="p-3">Price</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id} className="border-b hover:bg-gray-50">
-                  <td className="p-3">{product.id}</td>
-                  <td className="p-3">{product.name}</td>
-                  <td className="p-3">${product.price.toLocaleString()}</td>
-                  <td className="p-3">{product.stock}</td>
-                  <td className="p-3">
-                    <button
-                      onClick={() => setEditProduct(product)}
-                      className="text-blue-500 hover:underline mr-4"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Modal chỉnh sửa sản phẩm */}
-      {editProduct && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Edit Product</h2>
-            <form onSubmit={handleUpdate}>
-              <div className="mb-4">
-                <label className="block text-gray-700">Product Name</label>
-                <input
-                  type="text"
-                  value={editProduct.name}
-                  onChange={(e) =>
-                    setEditProduct({ ...editProduct, name: e.target.value })
-                  }
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700">Price</label>
-                <input
-                  type="number"
-                  value={editProduct.price}
-                  onChange={(e) =>
-                    setEditProduct({
-                      ...editProduct,
-                      price: parseFloat(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-gray-700">Stock</label>
-                <input
-                  type="number"
-                  value={editProduct.stock}
-                  onChange={(e) =>
-                    setEditProduct({
-                      ...editProduct,
-                      stock: parseInt(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border rounded-md"
-                />
-              </div>
-              <div className="flex justify-end space-x-4">
-                <button
-                  type="button"
-                  onClick={() => setEditProduct(null)}
-                  className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
-};
+}
 
-export default ProductManagement;
+export default PageCategory;

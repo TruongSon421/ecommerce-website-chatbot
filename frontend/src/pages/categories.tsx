@@ -2,16 +2,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Header from '../components/layout/header';
-import ProductList from '../components/productList';
+import ProductList from '../components/product/user/productList';
 import ProductFilter from '../components/filters/ProductFilter';
-import ProductListSkeleton from '../components/ProductListSkeleton';
+import ProductListSkeleton from '../components/product/ProductListSkeleton';
 import useProductApi from '../components/hooks/useProductApi';
+import { useAuth } from '../components/hooks/useAuth';
+import CategoriesSection from '../components/product/categoriesSection';
 
 function PageCategory() {
   const { type = '' } = useParams<{ type: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
   const [sortByPrice, setSortByPrice] = useState<string>('desc');
+  const { isAdmin } = useAuth();
   
   // Get page from URL params or default to 0
   const page = Number(searchParams.get('page')) || 0;
@@ -131,9 +134,47 @@ function PageCategory() {
       return newParams;
     });
   };
+const categories = [
+    {
+      id: 1,
+      name: 'Phone',
+      imageSrc: '/images/categories/phone.png',
+      link: '/admin/products/phone'
+    },
+    {
+      id: 2,
+      name: 'Laptop',
+      imageSrc: '/images/categories/laptop.png',
+      link: '/admin/products/laptop'
+    },
+    {
+      id: 3,
+      name: 'Tablet',
+      imageSrc: '/images/categories/tablet.png',
+      link: '/admin/products/tablet'
+    },
+    {
+      id: 4,
+      name: 'Audio',
+      imageSrc: '/images/categories/audio.png',
+      link: '/admin/products/audio'
+    },
+    {
+      id: 5,
+      name: 'Phụ kiện',
+      imageSrc: '/images/categories/Phukien.png',
+      link: '/admin/products/phukien'
+    }
+  ];
 
   return (
+      
+  
     <div className="pageCategory">
+      {/* Conditionally render categories section for admin */}
+      {isAdmin && (
+        <CategoriesSection categories={categories} />
+      )}
       <Header title={type} />
       <div className="flex flex-col gap-6 p-6">
         <div className="w-full">

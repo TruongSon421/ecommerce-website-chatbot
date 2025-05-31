@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Slider } from '@mui/material';
-import { filterData } from '../types/datafilter';
+import { filterData } from '../../types/datafilter';
 import { debounce } from 'lodash';
 
 interface ProductFilterProps {

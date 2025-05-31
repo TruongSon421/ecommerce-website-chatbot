@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../../store/cartStore';
 import { showNotification } from '../common/Notification';
-import SearchBar from '../SearchBar';
+import SearchBar from '../product/user/SearchBar';
 import { getCartItems, initializeGuestCart } from '../../services/cartService';
 
 const Navbar: React.FC = () => {

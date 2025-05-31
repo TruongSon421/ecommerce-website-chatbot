@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/categoryCard.css';
+import '../../styles/categoryCard.css';
 // Define the Category interface 
 interface Category {
     id: number;

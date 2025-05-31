@@ -11,6 +11,17 @@ export interface ImageData {
     title: string;
 }
 
+export interface Variant {
+  productId: string;
+  variant: string;
+}
+
+export interface GroupVariantResponse {
+  groupId: number | null;
+  groupName: string | null;
+  variants: Variant[];
+}
+
 export interface PhoneConfig {
   os?: string;
   processor?: string;

@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/productSection.css';
+import '../../styles/productSection.css';
 import ProductCard from './productCard';
 import { useState } from 'react';
 import { useSearchParams } from "react-router-dom";
