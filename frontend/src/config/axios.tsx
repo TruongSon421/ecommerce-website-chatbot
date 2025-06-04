@@ -41,13 +41,13 @@ instance.interceptors.response.use(
         const response = await axios.post('http://localhost:8070/api/auth/refresh-token', {
           refreshToken,
         });
-        const { token, refreshToken: newRefreshToken } = response.data;
-        console.log('Refresh token successful:', { token, newRefreshToken });
-        localStorage.setItem('accessToken', token);
+        const { accessToken, refreshToken: newRefreshToken } = response.data;
+        console.log('Refresh token successful:', { accessToken, newRefreshToken });
+        localStorage.setItem('accessToken', accessToken);
         if (newRefreshToken) {
           localStorage.setItem('refreshToken', newRefreshToken);
         }
-        originalRequest.headers.Authorization = `Bearer ${token}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return instance(originalRequest);
       } catch (refreshError) {
         console.error('Failed to refresh token:', refreshError);

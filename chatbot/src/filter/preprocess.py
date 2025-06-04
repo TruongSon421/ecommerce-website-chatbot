@@ -12,7 +12,7 @@ class Filter:
     sensitive_words = [
         # Từ ngữ bạo lực - Tiếng Việt
         'fuck', 'shit', 'giết', 'chết', 'máu', 'đánh', 'bắn', 'cướp',
-        'tử hình', 'sát hại', 'xác', 'kill', 'die', 'death', 'sex',
+        'tử hình', 'sát hại', 'xác', 'kill', 'die', 'death',
         'murder', 'rob', 'ass', 'shitty',
         
         # Từ ngữ bạo lực bổ sung - Tiếng Việt
@@ -33,7 +33,7 @@ class Filter:
         'terrorist', 'destroy', 'demolish', 'annihilate', 'exterminate',
         
         # Từ ngữ tình dục - Tiếng Việt
-        'sex', 'tình dục', 'quan hệ', 'làm tình', 'ân ái', 'giao hợp',
+        'tình dục', 'quan hệ', 'làm tình', 'ân ái', 'giao hợp',
         'nude', 'khỏa thân', 'cởi truồng', 'khỏa thể', 'sex toy', 'đồ chơi tình dục',
         'porn', 'phim sex', 'phim khiêu dâm', 'khiêu dâm', 'dâm dục',
         'mại dâm', 'gái điếm', 'điếm đĩ', 'đĩ thỏa', 'cave', 'gái gọi',
@@ -55,11 +55,11 @@ class Filter:
         'mẹ kiếp', 'đéo', 'vãi', 'vãi lồn', 'đụ má', 'đụ mẹ',
         
         # Từ ngữ chửi thề - Tiếng Anh
-        'damn', 'hell', 'bastard', 'asshole', 'dickhead', 'motherfucker',
+        'damn', 'bastard', 'asshole', 'dickhead', 'motherfucker',
         'bitch', 'cunt', 'dick', 'cock', 'pussy', 'tits', 'boobs',
         'nipple', 'penis', 'vagina', 'anus', 'rectum', 'testicle',
         'screw', 'piss', 'crap', 'bullshit', 'goddamn', 'jesus christ',
-        'holy shit', 'what the hell', 'what the fuck', 'son of a bitch',
+        'holy shit', 'what the fuck', 'son of a bitch',
         
         # Từ ngữ ma túy - Tiếng Việt
         'ma túy', 'thuốc phiện', 'heroin', 'cocaine', 'cần sa', 'cỏ Mỹ',
@@ -82,7 +82,8 @@ class Filter:
         
         # Từ viết tắt và biến thể
         'wtf', 'omfg', 'stfu', 'lmao', 'lmfao', 'dmm', 'vcl', 'vkl',
-        'wtf', 'lol', 'rofl', 'lmao', 'rotfl', 'bff', 'smh',
+        'wtf', 'lol', 'rofl', 'lmao', 'rotfl', 'bff', 'smh', 'cmm', 'lmm',
+        'loz', 'cc', 'dkm', 'cdm', 'dcm'
         
         # Số điện thoại và thông tin cá nhân pattern
         'sdt:', 'số điện thoại:', 'phone:', 'tel:', 'zalo:', 'facebook:',
@@ -124,11 +125,16 @@ class Filter:
     
     @classmethod
     def check_sensitive_words(cls, query):
-        query = query.lower()
+        """Kiểm tra xem query có chứa từ nhạy cảm riêng biệt không"""
+        query_lower = query.lower()
+        # Tách câu thành các từ riêng biệt
+        words_in_query = query_lower.split()
         found_words = []
         
         for word in cls.sensitive_words:
-            if word.lower() in query:
+            word_lower = word.lower().strip()
+            # Kiểm tra từ nhạy cảm có xuất hiện như một từ riêng biệt không
+            if word_lower in words_in_query:
                 found_words.append(word)
         
         return len(found_words) > 0, found_words
@@ -160,24 +166,32 @@ class Filter:
         
     @classmethod
     def check_common_greetings(cls, query):
-        query = query.lower()
+        """Kiểm tra xem query có phải là lời chào chính xác không"""
+        # Kiểm tra chính xác: query.strip() phải giống hoàn toàn với một từ chào hỏi
+        query_stripped = query.strip().lower()
         found_words = []
         
         for word in cls.common_greetings:
-            if word.lower().strip() == query:
+            if word.lower().strip() == query_stripped:
                 found_words.append(word)
         return len(found_words) > 0, found_words
 
     @classmethod
     def filter_query(cls, query):
+        # 1. Kiểm tra lời chào trước (chính xác hoàn toàn)
+        if cls.check_common_greetings(query)[0]:
+            return 2
+        
+        # 2. Kiểm tra từ nhạy cảm (chứa trong câu)
         if cls.check_sensitive_words(query)[0]:
             return 0
         
-        # Get top 2 languages with probabilities
+        # 3. Get top 2 languages with probabilities
         lang_results = cls.check_lang(query)
         print(lang_results)
         supported_langs = ['vie', 'eng']
         has_supported_lang = False
+        userLang = 'vie'  # Default language
         
         for lang_code, prob in lang_results:
             if lang_code in supported_langs and prob > 0.4:
@@ -187,8 +201,5 @@ class Filter:
         
         if not has_supported_lang:
             return 1
-                
-        if cls.check_common_greetings(query)[0]:
-            return 2
                 
         return 3, userLang
