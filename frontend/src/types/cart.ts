@@ -7,6 +7,11 @@ export interface CartItem {
   available: boolean;
 }
 
+export interface CartItemIdentity {
+  productId: string;
+  color: string;
+}
+
 export interface CartResponse {
   userId: string;
   totalPrice: number;
@@ -16,13 +21,35 @@ export interface CartResponse {
 export interface CheckoutRequest {
   userId: string;
   shippingAddress: string;
-  paymentMethod: 'CREDIT_CARD' | 'BANK_TRANSFER' | 'COD';
-  paymentState: 'PENDING' | 'SUCCESS' | 'FAILED';
+  paymentMethod: 'CREDIT_CARD' | 'DEBIT_CARD' | 'TRANSFER_BANKING' | 'COD' | 'QR_CODE';
 }
 
 export interface CheckoutPayload {
   checkoutRequest: CheckoutRequest;
-  selectedItems: CartItem[];
+  selectedItems: CartItemIdentity[];
+}
+
+// New types for the updated payment flow
+export interface CheckoutResponse {
+  transactionId: string;
+  orderId?: string;
+  message?: string;
+}
+
+export interface PaymentUrlResponse {
+  paymentUrl: string;
+  transactionId: string;
+}
+
+export interface PaymentStatusResponse {
+  exists: boolean;
+  status?: 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+  paymentMethod?: string;
+  amount?: string;
+  orderId?: number;
+  userId?: string;
+  failureReason?: string;
+  message?: string;
 }
 
 export interface Province {

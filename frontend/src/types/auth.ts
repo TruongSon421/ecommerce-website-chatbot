@@ -1,3 +1,23 @@
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'user' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  addresses: Address[];
+}
+
+export interface AuthResponse {
+  token: string;
+  refreshToken: string;
+  id: number;
+  username: string;
+  email: string;
+  roles: string[];
+}
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -6,28 +26,8 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   username: string;
   password: string;
+  confirmPassword: string;
   email: string;
-}
-
-export interface AuthResponse {
-  token: string;
-  refreshToken: string;
-  id: string;
-  username: string;
-  email: string;
-  roles: string[];
-}
-
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  roles: string[];
-  firstName?: string;
-  lastName?: string;
-  phoneNumber?: string;
-  isActive?: boolean;
-  addresses: Address[];
 }
 
 export interface Address {

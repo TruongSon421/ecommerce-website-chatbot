@@ -35,6 +35,12 @@ public interface ProductInventoryRepository extends JpaRepository<ProductInvento
             "CASE WHEN :color = 'default' THEN (color IS NULL OR color = '') ELSE color = :color END", nativeQuery = true)
     int updateInventoryQuantity(@Param("productId") String productId, @Param("color") String color, @Param("quantity") Integer quantity);
 
+    @Modifying
+    @jakarta.transaction.Transactional
+    @Query(value = "UPDATE product_inventory SET quantity = quantity + :quantityToAdd WHERE product_id = :productId AND " +
+            "CASE WHEN :color = 'default' THEN (color IS NULL OR color = '') ELSE color = :color END", nativeQuery = true)
+    int increaseInventoryQuantity(@Param("productId") String productId, @Param("color") String color, @Param("quantityToAdd") Integer quantityToAdd);
+
     Optional<ProductInventory> findFirstByProductId(String productId);
 
     List<ProductInventory> findByProductId(String productId);

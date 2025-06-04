@@ -10,8 +10,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.eazybytes.dto.CartItemResponse;
+import com.eazybytes.dto.OrderDetailsResponseDto;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -50,6 +55,21 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/transaction/{transactionId}")
+    public ResponseEntity<OrderDetailsResponseDto> getOrderByTransactionId(@PathVariable String transactionId) {
+        try {
+            log.info("Received request to get order by transaction ID: {}", transactionId);
+            Order order = orderService.getOrderByTransactionId(transactionId);
+
+            OrderDetailsResponseDto responseDto = convertToOrderDetailsResponseDto(order);
+            return new ResponseEntity<>(responseDto, HttpStatus.OK);
+
+        } catch (RuntimeException e) {
+            log.warn("Error fetching order by transaction ID: {}. Reason: {}", transactionId, e.getMessage());
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @DeleteMapping("/{orderId}")
     public ResponseEntity<Void> cancelOrder(@PathVariable Long orderId) {
         try {
@@ -80,6 +100,30 @@ public class OrderController {
                 order.getUserId(),
                 order.getTotalAmount(),
                 order.getStatus().name()
+        );
+    }
+
+    private OrderDetailsResponseDto convertToOrderDetailsResponseDto(Order order) {
+        List<CartItemResponse> itemDtos = order.getItems().stream()
+                .map(item -> new CartItemResponse(
+                        item.getProductId(),
+                        item.getProductName(),
+                        item.getPrice(),
+                        item.getQuantity(),
+                        item.getColor(),
+                        true // luôn true, hoặc thay đổi theo logic kiểm tra tồn kho nếu cần
+                ))
+                .collect(Collectors.toList());
+
+        return new OrderDetailsResponseDto(
+                order.getId().toString(),
+                order.getTransactionId(),
+                order.getUserId(),
+                itemDtos,
+                order.getTotalAmount(),
+                order.getShippingAddress(),
+                order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null,
+                order.getStatus() != null ? order.getStatus().name() : null
         );
     }
 }

@@ -12,6 +12,20 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
   currentFilterData,
   onRemoveFilter
 }) => {
+  // Helper function to get label for a filter value
+  const getFilterLabel = (key: string, value: string): string => {
+    const filters = currentFilterData[key] || [];
+    for (const filter of filters) {
+      const option = filter.options?.find((opt: { value: string; label: string }) => opt.value === value);
+      if (option) return option.label;
+    }
+    // If label not found, try to extract label from value (for values with prefix)
+    if (value.includes('_')) {
+      return value.split('_').slice(1).join(' ');
+    }
+    return value;
+  };
+
   return (
     <div className="flex flex-wrap gap-2 mt-2">
       {Object.entries(selectedFilters).map(([key, values]) =>
@@ -20,7 +34,7 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
             key={`${key}-${value}`}
             className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm"
           >
-            {currentFilterData[key]?.[0]?.options.find((opt: { value: string; }) => opt.value === value)?.label}
+            {getFilterLabel(key, value)}
             <button
               onClick={() => onRemoveFilter(key, value)}
               className="ml-1 text-blue-600 hover:text-blue-800"

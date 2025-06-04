@@ -20,6 +20,8 @@ public class Tags {
     private Integer tagId;
 
     @Column(name = "tag_name", nullable = false, unique = true)
+    @NotBlank(message = "tag name không được để trống")
+    @Size(max = 100, message = "tag name phải từ 0-200 ký tự")
     private String tagName;
 
 

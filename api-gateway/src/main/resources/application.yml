@@ -89,10 +89,15 @@ spring:
         - id: payment-service
           uri: lb://payment-service
           predicates:
-            - Path=/api/payment/**
+            - Path=/api/payments/**
           filters:
             - Authentication
 
+        # VNPay payment routes without authentication requirement
+        - id: vnpay-payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payment/vnpay/ipn, /api/v1/payment/vnpay/return
 
 eureka:
   client:
@@ -105,7 +110,6 @@ logging:
   level:
     org.springframework.cloud.gateway: DEBUG
     com.eazybytes.filter: DEBUG
-
 
 management:
   endpoints:

@@ -29,6 +29,62 @@ const PrivateRouter = () => {
       <Route path="/" element={<UserLayout />}>
         
         {/* Các route con cho user nếu có */}
+        <Route 
+          path="checkout"
+          element={
+            <UserPrivateRoute>
+              <CheckoutPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="profile"
+          element={
+            <UserPrivateRoute>
+              <Profile />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment/:transactionId"
+          element={
+            <UserPrivateRoute>
+              <PaymentPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="order-confirmation/:orderId"
+          element={
+            <UserPrivateRoute>
+              <OrderConfirmationPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="vnpay-return"
+          element={
+            <UserPrivateRoute>
+              <VNPayReturnPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment-processing/:orderId"
+          element={
+            <UserPrivateRoute>
+              <PaymentProcessingPage />
+            </UserPrivateRoute>
+          }
+        />
+        <Route 
+          path="payment-failed"
+          element={
+            <UserPrivateRoute>
+              <PaymentFailedPage />
+            </UserPrivateRoute>
+          }
+        />
       </Route>
       <Route path="/admin" element={<AdminLayout />}>
         <Route path="login" element={<AdminLogin />} />

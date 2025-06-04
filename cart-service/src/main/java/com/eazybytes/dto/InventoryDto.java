@@ -32,4 +32,5 @@ public class InventoryDto {
 
     private Integer currentPrice;
 
+    private String version;
 }

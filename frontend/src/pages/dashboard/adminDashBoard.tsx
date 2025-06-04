@@ -1,5 +1,4 @@
-// src/pages/dashbroad/adminDashBroad.tsx
-// src/pages/dashbroad/adminDashBroad.tsx
+
 import React, { useState, useEffect } from "react";
 import {
   Chart as ChartJS,

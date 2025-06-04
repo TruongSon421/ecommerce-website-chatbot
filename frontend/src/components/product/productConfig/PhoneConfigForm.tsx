@@ -1,5 +1,5 @@
 import React from "react";
-import { PhoneConfig } from "../../types/product";
+import { PhoneConfig } from "../../../types/product";
 
 interface PhoneConfigFormProps {
   config: PhoneConfig;
