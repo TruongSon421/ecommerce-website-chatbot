@@ -10,62 +10,72 @@ const Footer: React.FC = () => {
             <h3>Sản phẩm</h3>
             <ul>
               <li><a href="/iphone">iPhone</a></li>
-              <li><a href="/mac">Mac</a></li>
-              <li><a href="/ipad">iPad</a></li>
-              <li><a href="/watch">Watch</a></li>
-              <li><a href="/airpods">AirPods</a></li>
+              <li><a href="/samsung">Samsung</a></li>
+              <li><a href="/xiaomi">Xiaomi</a></li>
+              <li><a href="/laptop">Laptop</a></li>
+              <li><a href="/accessories">Phụ kiện</a></li>
             </ul>
           </div>
           
           <div className="footer-col">
-            <h3>Thông tin</h3>
+            <h3>Địa chỉ cửa hàng</h3>
             <ul>
-              <li><a href="/about">Giới thiệu</a></li>
-              <li><a href="/stores">Hệ thống cửa hàng</a></li>
-              <li><a href="/warranty">Chính sách bảo hành</a></li>
-              <li><a href="/terms">Điều khoản sử dụng</a></li>
-              <li><a href="/privacy">Chính sách bảo mật</a></li>
-            </ul>
-          </div>
-          
-          <div className="footer-col">
-            <h3>Liên hệ</h3>
-            <ul>
-              <li>Tổng đài: 1900 6999</li>
-              <li>Email: support@topzone.vn</li>
               <li>
-                <div className="social-links">
-                  <a href="https://facebook.com/topzone" className="social-icon">
-                    <i className="fab fa-facebook-f"></i>
-                  </a>
-                  <a href="https://instagram.com/topzone" className="social-icon">
-                    <i className="fab fa-instagram"></i>
-                  </a>
-                  <a href="https://youtube.com/topzone" className="social-icon">
-                    <i className="fab fa-youtube"></i>
-                  </a>
-                </div>
+                <strong>Trụ sở chính:</strong><br/>
+                123 Đường Công Nghệ<br/>
+                Phường 7, Quận 5<br/>
+                TP. Hồ Chí Minh
+              </li>
+              <li style={{ marginTop: '10px' }}>
+                <strong>Kho hàng:</strong><br/>
+                45 Đường Sáng Tạo<br/>
+                Khu Công Nghệ Cao<br/>
+                TP. Thủ Đức, TP. HCM
               </li>
             </ul>
           </div>
           
           <div className="footer-col">
-            <h3>Đăng ký nhận tin</h3>
-            <p>Nhận thông tin sản phẩm mới nhất, tin khuyến mãi và nhiều hơn nữa.</p>
-            <form className="subscribe-form">
-              <input type="email" placeholder="Email của bạn" required />
-              <button type="submit">Đăng ký</button>
-            </form>
+            <h3>Liên hệ & Hỗ trợ</h3>
+            <ul>
+              <li><strong>Hotline:</strong> 1900 1234</li>
+              <li><strong>Khiếu nại:</strong> 0909 567 890</li>
+              <li><strong>Email:</strong> support@techzone.vn</li>
+              <li><strong>Website:</strong> www.techzone.vn</li>
+              <li style={{ marginTop: '10px' }}>
+                <strong>Giờ hoạt động:</strong><br/>
+                Hotline: 8:00 - 22:00<br/>
+                Showroom: 9:00 - 18:00 (T2-T7)
+              </li>
+            </ul>
+          </div>
+          
+          <div className="footer-col">
+            <h3>Chính sách & Bảo hành</h3>
+            <ul>
+              <li><strong>Bảo hành:</strong></li>
+              <li>• Điện thoại, Laptop: 12 tháng</li>
+              <li>• Tai nghe, Loa: 6 tháng</li>
+              <li>• Phụ kiện: 3 tháng</li>
+              <li style={{ marginTop: '8px' }}><strong>Đổi trả:</strong></li>
+              <li>• Đổi trả trong 7 ngày</li>
+              <li>• Bảo hành 1 đổi 1 trong 30 ngày</li>
+            </ul>
           </div>
         </div>
+
+        
         
         <div className="footer-bottom">
-          <p>© 2025 Nexus - Cửa hàng Điện thoại, Laptop, Phụ kiện chính hãng. Tất cả quyền được bảo lưu.</p>
-          <div className="payment-methods">
-            <img src="/images/payment/visa.png" alt="Visa" />
-            <img src="/images/payment/mastercard.png" alt="Mastercard" />
-            <img src="/images/payment/jcb.png" alt="JCB" />
-            <img src="/images/payment/momo.png" alt="MoMo" />
+          <p>© 2025 TechZone - Cửa hàng Điện thoại, Laptop, Phụ kiện chính hãng. Tất cả quyền được bảo lưu.</p>
+          <div className="footer-info">
+            <span>Giá sản phẩm được cập nhật liên tục trên website</span>
+            <div className="payment-methods">
+              <img src="/images/payment/visa.png" alt="Visa" />
+              <img src="/images/payment/mastercard.png" alt="Mastercard" />
+              <img src="/images/payment/jcb.png" alt="JCB" />
+              <img src="/images/payment/momo.png" alt="MoMo" />
+            </div>
           </div>
         </div>
       </div>

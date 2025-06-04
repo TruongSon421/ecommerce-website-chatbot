@@ -278,4 +278,4 @@ asgi_app = WsgiToAsgi(app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:asgi_app", host="localhost", port=6000, reload=True)
+    uvicorn.run("main:asgi_app", host="localhost", port=5500, reload=True)
