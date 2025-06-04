@@ -37,13 +37,11 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
       description: "",
       brand: "",
       images: {} as Record<string, ImageData[]>,
-      colors: [""],
+      colors: [] as string[],
       config: {} as PhoneConfig | LaptopConfig,
       promotions: [] as string[],
       productReviews: [] as ProductReview[],
-      inventories: [
-        { color: null, quantity: 30, originalPrice: null, currentPrice: null },
-      ] as InventoryRequest[],
+      inventories: [] as InventoryRequest[],
     },
   ]);
 
@@ -175,11 +173,11 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
             description: "",
             brand: "",
             images: {},
-            colors: [""],
+            colors: [],
             config: {},
             promotions: [],
             productReviews: [],
-            inventories: [{ color: null, quantity: 30, originalPrice: null, currentPrice: null }],
+            inventories: [],
           },
         ]);
         setProductsToCreate([]);

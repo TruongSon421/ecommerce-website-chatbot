@@ -219,26 +219,57 @@ const ProductForm: React.FC<ProductFormProps> = ({
   const handleColorChange = (colors: string[]) => {
     setFormData((prev) => {
       const newImages = { ...prev.images };
+      
+      // Xóa images của các colors không còn tồn tại hoặc rỗng
       Object.keys(newImages).forEach((color) => {
-        if (!colors.includes(color)) delete newImages[color];
+        if (!colors.includes(color) || color.trim() === "") {
+          delete newImages[color];
+        }
       });
-      colors.forEach((color) => {
-        if (!newImages[color] && color.trim() !== "") {
+      
+      // Chỉ tạo images cho các colors hợp lệ (không rỗng)
+      const validColors = colors.filter(color => color.trim() !== "");
+      validColors.forEach((color) => {
+        if (!newImages[color]) {
           newImages[color] = [{ url: "", title: "" }];
         }
       });
-      const newInventories = colors.map((color, index) => {
-        const existingInventory = formData.inventories[index] || {
+      
+      // Tạo inventories dựa trên số lượng colors
+      let newInventories: InventoryRequest[];
+      
+      if (validColors.length === 0) {
+        // Không có colors hợp lệ
+        newInventories = [];
+      } else if (validColors.length === 1) {
+        // Chỉ có 1 màu -> color = null
+        const existingInventory = prev.inventories.find(inv => inv.color === null) || 
+                                 prev.inventories[0] || {
           color: null,
           quantity: 30,
           originalPrice: null,
           currentPrice: null,
         };
-        return {
+        newInventories = [{
           ...existingInventory,
-          color: color.trim() !== "" ? color : null,
-        };
-      });
+          color: null,
+        }];
+      } else {
+        // Có nhiều màu -> color có giá trị cụ thể
+        newInventories = validColors.map((color) => {
+          const existingInventory = prev.inventories.find(inv => inv.color === color) || {
+            color: color,
+            quantity: 30,
+            originalPrice: null,
+            currentPrice: null,
+          };
+          return {
+            ...existingInventory,
+            color: color,
+          };
+        });
+      }
+      
       return { ...prev, colors, images: newImages, inventories: newInventories };
     });
   };
@@ -284,6 +315,7 @@ const ProductForm: React.FC<ProductFormProps> = ({
       return;
     }
 
+    // Kiểm tra images cho từng color hợp lệ
     for (const color of validColors) {
       const imagesForColor = formData.images[color] || [];
       if (imagesForColor.length === 0) {
@@ -300,31 +332,54 @@ const ProductForm: React.FC<ProductFormProps> = ({
       }
     }
 
-    if (formData.inventories.length !== validColors.length) {
-      setValidationError("Số lượng màu sắc và thông tin kho không khớp.");
-      return;
-    }
-    for (const [index, inventory] of formData.inventories.entries()) {
-      if (inventory.color !== validColors[index]) {
-        setValidationError(
-          `Màu sắc trong thông tin kho phải khớp với danh sách màu sắc.`
-        );
+    // Kiểm tra inventories dựa trên số lượng colors
+    if (validColors.length === 1) {
+      // Sản phẩm có 1 màu -> phải có 1 inventory với color = null
+      if (formData.inventories.length !== 1) {
+        setValidationError("Sản phẩm có 1 màu phải có đúng 1 thông tin kho.");
+        return;
+      }
+      const inventory = formData.inventories[0];
+      if (inventory.color !== null) {
+        setValidationError("Sản phẩm có 1 màu thì thông tin kho không cần phân biệt màu sắc.");
         return;
       }
       if (inventory.quantity <= 0) {
-        setValidationError(
-          `Số lượng cho màu "${inventory.color}" phải lớn hơn 0.`
-        );
+        setValidationError("Số lượng phải lớn hơn 0.");
         return;
       }
-      if (
-        !inventory.currentPrice ||
-        String(inventory.currentPrice).trim() === ""
-      ) {
-        setValidationError(
-          `Giá hiện tại cho màu "${inventory.color}" không được để trống.`
-        );
+      if (!inventory.currentPrice || String(inventory.currentPrice).trim() === "") {
+        setValidationError("Giá hiện tại không được để trống.");
         return;
+      }
+    } else {
+      // Sản phẩm có nhiều màu -> số lượng inventories phải khớp với validColors
+      if (formData.inventories.length !== validColors.length) {
+        setValidationError("Số lượng màu sắc và thông tin kho không khớp.");
+        return;
+      }
+      
+      // Kiểm tra từng inventory
+      for (const [index, inventory] of formData.inventories.entries()) {
+        const expectedColor = validColors[index];
+        if (inventory.color !== expectedColor) {
+          setValidationError(
+            `Màu sắc trong thông tin kho phải khớp với danh sách màu sắc.`
+          );
+          return;
+        }
+        if (inventory.quantity <= 0) {
+          setValidationError(
+            `Số lượng cho màu "${inventory.color}" phải lớn hơn 0.`
+          );
+          return;
+        }
+        if (!inventory.currentPrice || String(inventory.currentPrice).trim() === "") {
+          setValidationError(
+            `Giá hiện tại cho màu "${inventory.color}" không được để trống.`
+          );
+          return;
+        }
       }
     }
 
@@ -515,72 +570,101 @@ const ProductForm: React.FC<ProductFormProps> = ({
                   </button>
                 </div>
               ))}
+            {formData.colors.filter((color) => color.trim() !== "").length === 0 && (
+              <p className="text-gray-500 italic">
+                Vui lòng thêm màu sắc để có thể nhập hình ảnh
+              </p>
+            )}
           </div>
 
           <div>
             <label className="block text-gray-700 font-medium mb-2">
               Thông tin kho
             </label>
-            {formData.inventories.map((inventory, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4"
-              >
-                <div>
-                  <label className="block text-gray-600 text-sm mb-1">
-                    Màu sắc
-                  </label>
-                  <input
-                    type="text"
-                    value={inventory.color || ""}
-                    className="w-full p-2 border rounded-md bg-gray-100"
-                    disabled
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-600 text-sm mb-1">
-                    Số lượng
-                  </label>
-                  <input
-                    type="number"
-                    value={inventory.quantity}
-                    onChange={(e) =>
-                      handleInventoryChange(idx, "quantity", parseInt(e.target.value))
-                    }
-                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    min="1"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-600 text-sm mb-1">
-                    Giá gốc
-                  </label>
-                  <input
-                    type="text"
-                    value={inventory.originalPrice || ""}
-                    onChange={(e) =>
-                      handlePriceChange(idx, "originalPrice", e.target.value)
-                    }
-                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-600 text-sm mb-1">
-                    Giá hiện tại
-                  </label>
-                  <input
-                    type="text"
-                    value={inventory.currentPrice || ""}
-                    onChange={(e) =>
-                      handlePriceChange(idx, "currentPrice", e.target.value)
-                    }
-                    className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-            ))}
+            {formData.inventories.length > 0 ? (
+              <>
+                {formData.colors.filter((color) => color.trim() !== "").length === 1 && (
+                  <div className="mb-3 p-2 bg-blue-50 border-l-4 border-blue-400 text-blue-700 text-sm rounded-md">
+                    <p>💡 Sản phẩm chỉ có 1 màu nên không cần phân biệt màu sắc trong kho</p>
+                  </div>
+                )}
+                {formData.inventories.map((inventory, idx) => {
+                  const validColors = formData.colors.filter((color) => color.trim() !== "");
+                  const isMultiColor = validColors.length > 1;
+                  
+                  return (
+                    <div
+                      key={idx}
+                      className={`grid gap-4 mb-4 ${
+                        isMultiColor 
+                          ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" 
+                          : "grid-cols-1 sm:grid-cols-3"
+                      }`}
+                    >
+                      {isMultiColor && (
+                        <div>
+                          <label className="block text-gray-600 text-sm mb-1">
+                            Màu sắc
+                          </label>
+                          <input
+                            type="text"
+                            value={inventory.color || ""}
+                            className="w-full p-2 border rounded-md bg-gray-100"
+                            disabled
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <label className="block text-gray-600 text-sm mb-1">
+                          Số lượng
+                        </label>
+                        <input
+                          type="number"
+                          value={inventory.quantity}
+                          onChange={(e) =>
+                            handleInventoryChange(idx, "quantity", parseInt(e.target.value))
+                          }
+                          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          min="1"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-600 text-sm mb-1">
+                          Giá gốc
+                        </label>
+                        <input
+                          type="text"
+                          value={inventory.originalPrice || ""}
+                          onChange={(e) =>
+                            handlePriceChange(idx, "originalPrice", e.target.value)
+                          }
+                          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-gray-600 text-sm mb-1">
+                          Giá hiện tại
+                        </label>
+                        <input
+                          type="text"
+                          value={inventory.currentPrice || ""}
+                          onChange={(e) =>
+                            handlePriceChange(idx, "currentPrice", e.target.value)
+                          }
+                          className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <p className="text-gray-500 italic">
+                Vui lòng thêm màu sắc để có thể nhập thông tin kho
+              </p>
+            )}
           </div>
 
           <div>
