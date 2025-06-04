@@ -26,19 +26,26 @@ public class ProductInventory {
     @Column(name = "product_id", nullable = false)
     private String productId;
 
-    @Column(name = "product_name", nullable = true)
+    @NotBlank(message = "Product name không được để trống")
+    @Size(max = 200, message = "Product name phải từ 2-200 ký tự")
+    @Column(name = "product_name", nullable = false, length = 200)
     private String productName;
 
-    @Column(name = "color", nullable = true)
+    @Size(max = 100, message = "Color không quá 100 ký tự")
+    @Column(name = "color", nullable = true, length = 100)
     private String color;
 
-    @Column(name = "quantity", nullable = true)
+    @NotNull(message = "Quantity không được null")
+    @Min(value = 0, message = "Quantity không được âm")
+    @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "original_price", nullable = true)
+    @Min(value = 1, message = "Original price phải lớn hơn 0")
     private Integer originalPrice;
 
-    @Column(name = "current_price", nullable = true)
+    @NotNull(message = "Current price không được null")
+    @Min(value = 1, message = "Current price phải lớn hơn 0")
+    @Column(name = "current_price", nullable = false)
     private Integer currentPrice;
 
     @CreationTimestamp

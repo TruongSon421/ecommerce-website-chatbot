@@ -1,27 +1,29 @@
 import axios from '../config/axios';
-import { CartItem, CartResponse, CheckoutPayload } from '../types/cart';
+import { CartItem, CartResponse, CheckoutPayload, CheckoutResponse, PaymentUrlResponse, PaymentStatusResponse } from '../types/cart';
 import { useCartStore } from '../store/cartStore';
 
-// This new function creates a guest cart ID immediately when needed
-export const initializeGuestCart = async (): Promise<string> => {
+// Guest cart management functions
+export const getGuestId = (): string | null => {
+  return localStorage.getItem('guestId');
+};
+
+export const setGuestId = (guestId: string): void => {
+  localStorage.setItem('guestId', guestId);
+};
+
+export const removeGuestId = (): void => {
+  localStorage.removeItem('guestId');
+};
+
+export const createGuestCart = async (): Promise<CartResponse> => {
   try {
-    // Check if a guest cart ID already exists
-    let guestId = localStorage.getItem('guestCartId');
-    
-    // If no guest cart ID exists, create a new one
-    if (!guestId) {
-      const response = await axios.post<CartResponse>('/guest-carts');
-      guestId = response.data.userId;
-      localStorage.setItem('guestCartId', guestId);
-      console.log('Created new guest cart:', guestId);
-    } else {
-      console.log('Using existing guest cart:', guestId);
-    }
-    
-    return guestId;
+    console.log('Creating new guest cart');
+    const response = await axios.post<CartResponse>('/guest-carts');
+    console.log('Created guest cart:', response.data);
+    return response.data;
   } catch (error: any) {
-    const errorMessage = error.response?.data?.message || error.message || 'Failed to initialize guest cart';
-    console.error('Failed to initialize guest cart:', errorMessage);
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to create guest cart';
+    console.error('Failed to create guest cart:', errorMessage);
     throw new Error(errorMessage);
   }
 };
@@ -41,12 +43,14 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
       console.log('Added item to cart:', response.data);
       await getCartItems(userId);
     } else {
-      // Use the initializeGuestCart function instead of creating a guest cart here
-      const guestId = await initializeGuestCart();
-
+      // For guest users, use guestId-based API
+      const guestId = getGuestId();
+      if (!guestId) {
+        throw new Error('Guest ID not found. Please refresh the page.');
+      }
       const response = await axios.post<CartResponse>(`/guest-carts/${guestId}/items`, { productId, quantity, color: apiColor });
       console.log('Added item to guest cart:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item) => ({
+      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
         ...item,
         color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
       })));
@@ -62,6 +66,7 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
   try {
     let response: { data: CartResponse };
     if (userId.startsWith('guest-')) {
+      // For guest users, use guestId-based API
       response = await axios.get<CartResponse>(`/guest-carts/${userId}`);
     } else {
       console.log('Fetching cart for user:', userId);
@@ -72,7 +77,7 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
       });
     }
     console.log('Fetched cart items:', response.data);
-    const updatedItems = response.data.items.map((item) => ({
+    const updatedItems = response.data.items.map((item: CartItem) => ({
       ...item,
       color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
     }));
@@ -102,9 +107,11 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
       console.log('Updated cart item:', response.data);
       await getCartItems(userId);
     } else {
-      // Use initializeGuestCart to ensure guestId exists
-      const guestId = await initializeGuestCart();
-      
+      // For guest users, use guestId-based API
+      const guestId = getGuestId();
+      if (!guestId) {
+        throw new Error('Guest ID not found. Please refresh the page.');
+      }
       const response = await axios.put(`/guest-carts/${guestId}/items/${productId}`, {}, {
         params: {
           quantity,
@@ -112,7 +119,7 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
         },
       });
       console.log('Updated guest cart item:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item) => ({
+      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
         ...item,
         color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
       })));
@@ -140,16 +147,18 @@ export const removeItemFromCart = async (userId: string, productId: string, colo
       console.log('Removed cart item:', response.data);
       await getCartItems(userId);
     } else {
-      // Use initializeGuestCart to ensure guestId exists
-      const guestId = await initializeGuestCart();
-      
+      // For guest users, use guestId-based API
+      const guestId = getGuestId();
+      if (!guestId) {
+        throw new Error('Guest ID not found. Please refresh the page.');
+      }
       const response = await axios.delete(`/guest-carts/${guestId}/items/${productId}`, {
         params: {
           color: apiColor,
         },
       });
       console.log('Removed guest cart item:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item) => ({
+      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
         ...item,
         color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
       })));
@@ -172,15 +181,13 @@ export const clearCart = async (userId: string, isAuthenticated: boolean): Promi
       console.log('Cleared cart:', response.data);
       await getCartItems(userId);
     } else {
-      const guestId = localStorage.getItem('guestCartId');
+      // For guest users, use guestId-based API
+      const guestId = getGuestId();
       if (!guestId) {
-        console.log('No guest cart to clear');
-        useCartStore.getState().clearCart();
-        return;
+        throw new Error('Guest ID not found. Please refresh the page.');
       }
       await axios.delete(`/guest-carts/${guestId}`);
-      console.log('Cleared guest cart:', guestId);
-      localStorage.removeItem('guestCartId');
+      console.log('Cleared guest cart');
       useCartStore.getState().clearCart();
     }
   } catch (error: any) {
@@ -192,14 +199,13 @@ export const clearCart = async (userId: string, isAuthenticated: boolean): Promi
 
 export const mergeCart = async (userId: string): Promise<void> => {
   try {
-    const guestId = localStorage.getItem('guestCartId');
+    const guestId = getGuestId();
     if (!guestId) {
       console.log('No guest cart to merge');
-      await getCartItems(userId);
       return;
     }
-
-    console.log('Merging guest cart for user:', userId, 'Guest ID:', guestId);
+    
+    console.log('Merging guest cart for user:', userId, 'guestId:', guestId);
     const response = await axios.post<CartResponse>(
       '/carts/merge-guest',
       {},
@@ -208,35 +214,65 @@ export const mergeCart = async (userId: string): Promise<void> => {
           'X-Auth-UserId': userId,
         },
         params: {
-          guestId,
+          guestId: guestId,
         },
       }
     );
     console.log('Cart merge successful:', response.data);
-    const updatedItems = response.data.items.map((item) => ({
+    const updatedItems = response.data.items.map((item: CartItem) => ({
       ...item,
       color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
     }));
     useCartStore.getState().setItems(updatedItems);
-    localStorage.removeItem('guestCartId');
+    
+    // Remove guest ID after successful merge
+    removeGuestId();
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Cart merge failed';
     console.error('Cart merge failed:', errorMessage);
     await getCartItems(userId);
-    localStorage.removeItem('guestCartId');
     throw new Error(errorMessage);
   }
 };
 
-export const checkout = async (payload: CheckoutPayload): Promise<void> => {
+export const checkout = async (payload: CheckoutPayload): Promise<CheckoutResponse> => {
   try {
     console.log('Sending checkout request:', payload);
-    await axios.post('/carts/checkout', payload);
-    console.log('Checkout successful');
+    const response = await axios.post<CheckoutResponse>('/carts/checkout', payload);
+    console.log('Checkout successful:', response.data);
     useCartStore.getState().clearCart();
+    return response.data;
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Checkout failed';
     console.error('Checkout failed:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+// Get payment URL using transaction ID
+export const getPaymentUrl = async (transactionId: string): Promise<PaymentUrlResponse> => {
+  try {
+    console.log('Getting payment URL for transaction:', transactionId);
+    const response = await axios.post<PaymentUrlResponse>(`/payments/url/${transactionId}`);
+    console.log('Payment URL response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to get payment URL';
+    console.error('Failed to get payment URL:', errorMessage);
+    throw new Error(errorMessage);
+  }
+};
+
+// Check payment status
+export const checkPaymentStatus = async (transactionId: string): Promise<PaymentStatusResponse> => {
+  try {
+    console.log('Checking payment status for transaction:', transactionId);
+    const response = await axios.get<PaymentStatusResponse>(`/payments/status/${transactionId}`);
+    console.log('Payment status response:', response.data);
+    return response.data;
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to check payment status';
+    console.error('Failed to check payment status:', errorMessage);
     throw new Error(errorMessage);
   }
 };

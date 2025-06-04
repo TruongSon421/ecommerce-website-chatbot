@@ -1,0 +1,509 @@
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../components/hooks/useAuth';
+import { useCartStore } from '../store/cartStore';
+import { checkout, getPaymentUrl, checkPaymentStatus } from '../services/cartService';
+import { getProvinces, getDistricts, getWards } from '../services/addressService';
+import { CartItem, CartItemIdentity, CheckoutPayload, Province, District, Ward } from '../types/cart';
+
+const CheckoutPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { items, selectedItems } = useCartStore();
+  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(
+    location.state?.selectedItems || []
+  );
+  const [form, setForm] = useState({
+    fullName: '',
+    phone: '',
+    street: '',
+    province: '' as string | number,
+    district: '' as string | number,
+    ward: '' as string | number,
+    paymentMethod: 'COD' as 'COD' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'TRANSFER_BANKING' | 'QR_CODE',
+  });
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | null>(null);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Tải tỉnh/thành phố khi mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      const data = await getProvinces();
+      setProvinces(data);
+    };
+    fetchProvinces();
+  }, []);
+
+  // Tải quận/huyện khi chọn tỉnh
+  useEffect(() => {
+    if (form.province) {
+      const fetchDistricts = async () => {
+        const data = await getDistricts(Number(form.province));
+        setDistricts(data);
+        setForm((prev) => ({ ...prev, district: '', ward: '' }));
+        setWards([]);
+      };
+      fetchDistricts();
+    }
+  }, [form.province]);
+
+  // Tải phường/xã khi chọn quận
+  useEffect(() => {
+    if (form.district) {
+      const fetchWards = async () => {
+        const data = await getWards(Number(form.district));
+        setWards(data);
+        setForm((prev) => ({ ...prev, ward: '' }));
+      };
+      fetchWards();
+    }
+  }, [form.district]);
+
+  // Dự phòng selectedItems từ cartStore
+  useEffect(() => {
+    if (checkoutItems.length === 0 && selectedItems.length > 0) {
+      console.log('Falling back to cartStore selectedItems');
+      setCheckoutItems(items.filter((item) => selectedItems.includes(item.productId)));
+    }
+    if (!user && checkoutItems.length === 0) {
+      navigate('/login');
+    }
+  }, [checkoutItems, selectedItems, items, user, navigate]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      alert('Vui lòng đăng nhập để thanh toán');
+      navigate('/login');
+      return;
+    }
+    if (!form.fullName || !form.phone || !form.street || !form.province || !form.district || !form.ward) {
+      setError('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+
+    // Tạo chuỗi địa chỉ
+    const provinceName = provinces.find((p) => p.code === Number(form.province))?.name || '';
+    const districtName = districts.find((d) => d.code === Number(form.district))?.name || '';
+    const wardName = wards.find((w) => w.code === Number(form.ward))?.name || '';
+    const shippingAddress = `${form.street}, ${wardName}, ${districtName}, ${provinceName}`;
+
+    try {
+      const payload: CheckoutPayload = {
+        checkoutRequest: {
+          userId: user.id,
+          shippingAddress,
+          paymentMethod: form.paymentMethod,
+        },
+        selectedItems: checkoutItems.map((item): CartItemIdentity => ({
+          productId: item.productId,
+          color: item.color,
+        })),
+      };
+      
+      const checkoutResponse = await checkout(payload);
+      setTransactionId(checkoutResponse.transactionId);
+      
+      if (form.paymentMethod === 'COD') {
+        setSuccess(true);
+        setPaymentStatus('SUCCESS');
+      } else {
+        // For non-COD payments, start payment processing
+        setIsProcessingPayment(true);
+        await processPayment(checkoutResponse.transactionId);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Đặt hàng thất bại');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const processPayment = async (txnId: string) => {
+    try {
+      // Poll for payment status first
+      const statusResponse = await checkPaymentStatus(txnId);
+      
+      if (!statusResponse.exists) {
+        // Payment not yet created, continue polling
+        setPaymentStatus('PENDING');
+        startStatusPolling(txnId);
+        return;
+      }
+      
+      setPaymentStatus(statusResponse.status || 'PENDING');
+      
+      // Try to get payment URL if payment exists and is pending
+      if (statusResponse.status === 'PENDING') {
+        try {
+          const urlResponse = await getPaymentUrl(txnId);
+          setPaymentUrl(urlResponse.paymentUrl);
+        } catch (urlError) {
+          console.log('Could not get payment URL, will continue polling status');
+        }
+      }
+      
+      if (statusResponse.status === 'SUCCESS') {
+        setSuccess(true);
+        setIsProcessingPayment(false);
+      } else if (statusResponse.status === 'FAILED' || statusResponse.status === 'EXPIRED') {
+        setError('Thanh toán thất bại hoặc đã hết hạn');
+        setIsProcessingPayment(false);
+      } else {
+        // Continue polling for status updates
+        startStatusPolling(txnId);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Xử lý thanh toán thất bại');
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const startStatusPolling = (txnId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const statusResponse = await checkPaymentStatus(txnId);
+        
+        if (!statusResponse.exists) {
+          // Payment still not created, continue waiting
+          return;
+        }
+        
+        setPaymentStatus(statusResponse.status || 'PENDING');
+        
+        if (statusResponse.status === 'SUCCESS') {
+          setSuccess(true);
+          setIsProcessingPayment(false);
+          clearInterval(interval);
+        } else if (statusResponse.status === 'FAILED' || statusResponse.status === 'EXPIRED') {
+          setError('Thanh toán thất bại hoặc đã hết hạn');
+          setIsProcessingPayment(false);
+          clearInterval(interval);
+        }
+        
+        // Try to get payment URL if payment is pending and we don't have URL yet
+        if (statusResponse.status === 'PENDING' && !paymentUrl) {
+          try {
+            const urlResponse = await getPaymentUrl(txnId);
+            setPaymentUrl(urlResponse.paymentUrl);
+          } catch (urlError) {
+            console.log('Could not get payment URL');
+          }
+        }
+      } catch (err) {
+        console.error('Error polling payment status:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Stop polling after 10 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      if (paymentStatus === 'PENDING') {
+        setError('Thanh toán đã hết thời gian chờ');
+        setIsProcessingPayment(false);
+      }
+    }, 600000);
+  };
+
+  const handlePaymentRedirect = () => {
+    if (paymentUrl) {
+      window.open(paymentUrl, '_blank');
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Đặt hàng thành công!</h1>
+          <p className="text-gray-600 mb-6">Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ liên hệ sớm nhất.</p>
+          {transactionId && (
+            <p className="text-sm text-gray-500 mb-4">Mã giao dịch: {transactionId}</p>
+          )}
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Về trang chủ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isProcessingPayment) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md w-full">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Đang xử lý thanh toán</h1>
+          <p className="text-gray-600 mb-4">Vui lòng đợi trong khi chúng tôi xử lý thanh toán của bạn...</p>
+          
+          {paymentStatus && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Trạng thái: <span className="font-medium">{paymentStatus}</span>
+              </p>
+            </div>
+          )}
+          
+          {paymentUrl && (
+            <button
+              onClick={handlePaymentRedirect}
+              className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium mb-4"
+            >
+              Tiến hành thanh toán
+            </button>
+          )}
+          
+          <button
+            onClick={() => navigate('/')}
+            className="w-full bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+          >
+            Quay lại trang chủ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Thanh toán</h1>
+          <p className="text-gray-600">Hoàn tất đặt hàng của bạn</p>
+        </div>
+        
+        {checkoutItems.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Giỏ hàng trống</h2>
+            <p className="text-gray-600 mb-4">Không có sản phẩm nào để thanh toán</p>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Tiếp tục mua sắm
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Danh sách sản phẩm */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Sản phẩm đã chọn</h2>
+              <div className="space-y-4 mb-6">
+                {checkoutItems.map((item) => (
+                  <div key={`${item.productId}-${item.color}`} className="flex items-center p-4 bg-gray-50 rounded-xl">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{item.productName}</h3>
+                      {item.color !== "Không xác định" && (
+                        <p className="text-sm text-gray-600">Màu: {item.color}</p>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-sm text-gray-600">Số lượng: {item.quantity}</span>
+                        <span className="font-semibold text-blue-600">
+                          {(item.price * item.quantity).toLocaleString('vi-VN')} ₫
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold text-gray-900">Tổng cộng:</span>
+                  <span className="text-2xl font-bold text-blue-600">
+                    {checkoutItems
+                      .reduce((sum, item) => sum + item.price * item.quantity, 0)
+                      .toLocaleString('vi-VN')} ₫
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Form thông tin */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Thông tin thanh toán</h2>
+              {error && (
+                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Họ tên</label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={form.fullName}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={form.phone}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tỉnh/Thành phố</label>
+                  <select
+                    name="province"
+                    value={form.province}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="">Chọn tỉnh/thành phố</option>
+                    {provinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quận/Huyện</label>
+                  <select
+                    name="district"
+                    value={form.district}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    required
+                    disabled={!form.province}
+                  >
+                    <option value="">Chọn quận/huyện</option>
+                    {districts.map((district) => (
+                      <option key={district.code} value={district.code}>
+                        {district.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phường/Xã</label>
+                  <select
+                    name="ward"
+                    value={form.ward}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    required
+                    disabled={!form.district}
+                  >
+                    <option value="">Chọn phường/xã</option>
+                    {wards.map((ward) => (
+                      <option key={ward.code} value={ward.code}>
+                        {ward.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Đường/Địa chỉ chi tiết</label>
+                  <input
+                    type="text"
+                    name="street"
+                    value={form.street}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phương thức thanh toán</label>
+                  <select
+                    name="paymentMethod"
+                    value={form.paymentMethod}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="COD">Thanh toán khi nhận hàng (COD)</option>
+                    <option value="CREDIT_CARD">Thẻ tín dụng</option>
+                    <option value="DEBIT_CARD">Thẻ ghi nợ</option>
+                    <option value="TRANSFER_BANKING">Chuyển khoản ngân hàng</option>
+                    <option value="QR_CODE">QR Code</option>
+                  </select>
+                </div>
+                
+                {form.paymentMethod !== 'COD' && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start">
+                      <svg className="w-5 h-5 text-blue-500 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">Thanh toán trực tuyến</p>
+                        <p className="text-sm text-blue-600 mt-1">
+                          Bạn sẽ được chuyển hướng đến trang thanh toán sau khi xác nhận đơn hàng.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium text-lg"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                        <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                      </svg>
+                      Đang xử lý...
+                    </div>
+                  ) : (
+                    'Đặt hàng'
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CheckoutPage;

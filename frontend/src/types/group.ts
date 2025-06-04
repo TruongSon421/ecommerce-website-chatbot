@@ -1,11 +1,10 @@
 export interface GroupDto {
-  groupId: number;
+  groupId: string;
   groupName: string;
-  image?: string;
   brand?: string;
-  type?: string;
-  orderNumber?: number;
+  image?: string;
   productId?: string;
+  type?: string;
   defaultOriginalPrice?: number;
   defaultCurrentPrice?: number;
-}
+} 

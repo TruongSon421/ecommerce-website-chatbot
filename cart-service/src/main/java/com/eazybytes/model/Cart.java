@@ -22,7 +22,7 @@ public class Cart implements Serializable { // Implement Serializable
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private int id;
 
     @Column(name = "user_id", unique = true, nullable = false)
     private String userId;
@@ -46,7 +46,8 @@ public class Cart implements Serializable { // Implement Serializable
     // Các phương thức addItem, removeItem, clearItems giữ nguyên như cũ
     public void addItem(CartItems item) {
         for (CartItems existingItem : items) {
-            if (Objects.equals(existingItem.getProductId(), item.getProductId())) {
+            if (Objects.equals(existingItem.getProductId(), item.getProductId()) &&
+                Objects.equals(existingItem.getColor(), item.getColor())) {
                 existingItem.setQuantity(existingItem.getQuantity() + item.getQuantity());
                 item.setCart(this); // Đảm bảo mối quan hệ được thiết lập
                 return;
@@ -58,6 +59,11 @@ public class Cart implements Serializable { // Implement Serializable
 
     public void removeItem(String productId) {
         items.removeIf(item -> Objects.equals(item.getProductId(), productId));
+    }
+
+    public void removeItem(String productId, String color) {
+        items.removeIf(item -> Objects.equals(item.getProductId(), productId) && 
+                              Objects.equals(item.getColor(), color));
     }
 
     public void clearItems() {

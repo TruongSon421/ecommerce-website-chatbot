@@ -385,49 +385,51 @@ services:
   #   networks:
   #     - ecommerce_network
 
-  rag-service:
-    build:
-      context: ./chatbot/src/rag
-      dockerfile: Dockerfile
-    container_name: rag-service
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=production
-      - ELASTICSEARCH_HOST=elasticsearch
-      - ELASTICSEARCH_PORT=9200
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    networks:
-      - product_network
-    volumes:
-      - ./app.py:/app/app.py
-      - ./requirements.txt:/app/requirements.txt
-    restart: unless-stopped
-    frontend:
-      build:
-        context: ./frontend
-        dockerfile: Dockerfile
-      container_name: frontend
-      ports:
-        - "5173:5173"
-      depends_on:
-        api-gateway:
-          condition: service_healthy
-      volumes:
-        - ./frontend:/app:z
-        - /app/node_modules
-      command: sh -c "chmod +x /app/node_modules/.bin/vite && npm run dev"
-      user: "0:0"
-      networks:
-        - ecommerce_network
-      healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:5173"]
-        interval: 10s
-        timeout: 5s
-        retries: 5
-        start_period: 30s
+  # rag-service:
+  #   build:
+  #     context: ./chatbot/src/rag
+  #     dockerfile: Dockerfile
+  #   container_name: rag-service
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     - FLASK_ENV=production
+  #     - ELASTICSEARCH_HOST=elasticsearch
+  #     - ELASTICSEARCH_PORT=9200
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+  #   networks:
+  #     - product_network
+  #   volumes:
+  #     - ./app.py:/app/app.py
+  #     - ./requirements.txt:/app/requirements.txt
+  #   restart: unless-stopped
+
+    # frontend:
+    #   build:
+    #     context: ./frontend
+    #     dockerfile: Dockerfile
+    #   container_name: frontend
+    #   ports:
+    #     - "5173:5173"
+    #   depends_on:
+    #     api-gateway:
+    #       condition: service_healthy
+    #   volumes:
+    #     - ./frontend:/app:z
+    #     - /app/node_modules
+    #   command: sh -c "chmod +x /app/node_modules/.bin/vite && npm run dev"
+    #   user: "0:0"
+    #   networks:
+    #     - ecommerce_network
+    #   healthcheck:
+    #     test: ["CMD", "curl", "-f", "http://localhost:5173"]
+    #     interval: 10s
+    #     timeout: 5s
+    #     retries: 5
+    #     start_period: 30s
+    
 volumes:
   spring_ecommerce_mysql_data:
     external: true

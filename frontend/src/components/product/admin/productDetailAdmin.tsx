@@ -387,15 +387,10 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       showNotification('Vui lòng nhập đầy đủ số lượng, giá gốc và giá hiện tại.', 'error');
       return;
     }
-    if (!user?.token) {
-      console.log('No token');
-      showNotification('Không tìm thấy token xác thực.', 'error');
-      return;
-    }
-
+    
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');

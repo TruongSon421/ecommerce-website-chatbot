@@ -21,7 +21,7 @@ interface Product {
   quantities: number[];
 }
 
-function ProductGH() {
+function ProductGHAdmin() {
   const { product_id, type } = useParams<{ product_id: string; type: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,4 +63,4 @@ function ProductGH() {
   );
 }
 
-export default ProductGH;
+export default ProductGHAdmin;

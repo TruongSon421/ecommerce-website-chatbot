@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../../store';
-import { login, register, logout } from '../../store/slices/authSlices';
+import { login, register, logout } from '../../store/slices/authSlices'; 
 import { LoginCredentials, RegisterCredentials, User } from '../../types/auth';
-import { mergeCart, getCartItems } from '../../services/cartService';
-import { useCartStore } from '../../store/cartStore';
+import { useCallback } from 'react';
+import { mergeCart } from '../../services/cartService';
 
 interface UseAuth {
   user: User | null;
@@ -13,84 +12,35 @@ interface UseAuth {
   error: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (credentials: LoginCredentials, isAdminLogin?: boolean) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 export const useAuth = (): UseAuth => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, accessToken, loading: reduxLoading, error } = useSelector((state: RootState) => state.auth);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const { user, accessToken, loading, error } = useSelector((state: RootState) => state.auth);
 
-  // Synchronously check localStorage for initial state
-  let initialUser: User | null = null;
-  let initialAccessToken: string | null = null;
-  let initialRefreshToken: string | null = null;
+  const isAuthenticated = !!user && !!accessToken;
+  const isAdmin = user && user.role === 'admin' || false;
 
-  try {
-    const storedUser = localStorage.getItem('user');
-    const storedAccessToken = localStorage.getItem('accessToken');
-    const storedRefreshToken = localStorage.getItem('refreshToken');
-
-    if (storedUser && storedAccessToken && storedUser !== 'undefined') {
-      const parsedUser = JSON.parse(storedUser);
-      if (parsedUser && typeof parsedUser === 'object' && parsedUser.id && parsedUser.username) {
-        initialUser = parsedUser;
-        initialAccessToken = storedAccessToken;
-        initialRefreshToken = storedRefreshToken || null;
-      }
-    }
-  } catch (err) {
-    console.error('Failed to parse user from localStorage:', err);
-    localStorage.removeItem('user');
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
-
-  // Use initial state if available, otherwise fall back to Redux
-  const currentUser = user || initialUser;
-  const currentAccessToken = accessToken || initialAccessToken;
-  const isAuthenticated = !!currentUser && !!currentAccessToken;
-  const isAdmin = currentUser?.roles?.includes('ADMIN') || false;
-
-  useEffect(() => {
-    if (initialUser && initialAccessToken && !user) {
-      dispatch(
-        login.fulfilled(
-          {
-            user: initialUser,
-            accessToken: initialAccessToken,
-            refreshToken: initialRefreshToken,
-          },
-          'auth/login',
-          { username: '', password: '' }
-        )
-      );
-      // Skip cart fetch for admin users
-      if (!initialUser.roles?.includes('ADMIN')) {
-        getCartItems(initialUser.id).catch((err: unknown) =>
-          console.error('Failed to fetch cart on init:', err)
-        );
-      }
-    }
-    setInitialLoading(false);
-  }, [dispatch, initialUser, initialAccessToken, initialRefreshToken, user]);
-
-  const loginHandler = useCallback(async (credentials: LoginCredentials, isAdminLogin: boolean = false) => {
+  const loginHandler = useCallback(async (credentials: LoginCredentials) => {
     try {
       const result = await dispatch(login(credentials)).unwrap();
-      if (result.user && result.user.id && result.accessToken) {
-        console.log('Login successful, saving accessToken:', result.accessToken);
-        localStorage.setItem('accessToken', result.accessToken);
-        localStorage.setItem('user', JSON.stringify(result.user));
-        localStorage.setItem('refreshToken', result.refreshToken || '');
-        // Skip cart merge for admin users
-        if (!isAdminLogin && !result.user.roles?.includes('ADMIN')) {
+      
+      // After successful login, merge guest cart with user cart (except for admin users)
+      if (result.user?.id && result.user?.role !== 'admin') {
+        try {
           await mergeCart(result.user.id);
+          console.log('Cart merged successfully after login');
+        } catch (mergeError) {
+          console.error('Failed to merge cart after login:', mergeError);
+          // Don't throw error here as login was successful
         }
+      } else if (result.user?.role === 'admin') {
+        console.log('Admin user detected, skipping cart merge');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Login failed:', err);
       throw err;
     }
@@ -99,17 +49,20 @@ export const useAuth = (): UseAuth => {
   const registerHandler = useCallback(async (credentials: RegisterCredentials) => {
     try {
       const result = await dispatch(register(credentials)).unwrap();
-      if (result.user && result.user.id && result.accessToken) {
-        console.log('Register successful, saving accessToken:', result.accessToken);
-        localStorage.setItem('accessToken', result.accessToken);
-        localStorage.setItem('user', JSON.stringify(result.user));
-        localStorage.setItem('refreshToken', result.refreshToken || '');
-        // Skip cart merge for admin users (unlikely for registration, but included for consistency)
-        if (!result.user.roles?.includes('ADMIN')) {
+      
+      // After successful registration, merge guest cart with user cart (except for admin users)
+      if (result.user?.id && result.user?.role !== 'admin') {
+        try {
           await mergeCart(result.user.id);
+          console.log('Cart merged successfully after registration');
+        } catch (mergeError) {
+          console.error('Failed to merge cart after registration:', mergeError);
+          // Don't throw error here as registration was successful
         }
+      } else if (result.user?.role === 'admin') {
+        console.log('Admin user detected, skipping cart merge');
       }
-    } catch (err: unknown) {
+    } catch (err) {
       console.error('Register failed:', err);
       throw err;
     }
@@ -118,21 +71,17 @@ export const useAuth = (): UseAuth => {
   const logoutHandler = useCallback(async () => {
     try {
       await dispatch(logout()).unwrap();
-      useCartStore.getState().clearCart();
-      localStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      console.log('Cleared cart and localStorage on logout');
-    } catch (err: unknown) {
+      // Clear cart store on logout - guest cart will be re-initialized if needed
+    } catch (err) {
       console.error('Logout failed:', err);
       throw err;
     }
   }, [dispatch]);
 
   return {
-    user: currentUser,
-    accessToken: currentAccessToken,
-    loading: reduxLoading || initialLoading,
+    user,
+    accessToken,
+    loading,
     error,
     isAuthenticated,
     isAdmin,

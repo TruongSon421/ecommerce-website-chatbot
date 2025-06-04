@@ -1,206 +1,309 @@
 package com.eazybytes.controller;
 
-import com.eazybytes.dto.CartItemRequest;
-import com.eazybytes.dto.CartResponse;
-import com.eazybytes.dto.CheckoutRequest;
-import com.eazybytes.dto.SagaInitiationResponse;
+import com.eazybytes.config.TestConfig;
+import com.eazybytes.dto.*;
+import com.eazybytes.exception.CartNotFoundException;
+import com.eazybytes.exception.InvalidItemException;
+import com.eazybytes.security.RoleChecker;
 import com.eazybytes.service.CartService;
+import com.eazybytes.service.CartItemIdentifier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CartController.class)
+@ActiveProfiles("test")
+@Import(TestConfig.class)
 class CartControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockBean
     private CartService cartService;
 
-    private CartResponse cartResponse;
-    private CartItemRequest cartItemRequest;
-    private CheckoutRequest checkoutRequest;
+    @MockBean
+    private RoleChecker roleChecker;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private CartResponse testCartResponse;
+    private CartItemRequest testCartItemRequest;
 
     @BeforeEach
     void setUp() {
-        cartResponse = new CartResponse("user123", 100, Collections.emptyList());
-        cartItemRequest = new CartItemRequest("prod1", 2, "red");
-        checkoutRequest = new CheckoutRequest("user123", "123 Main St", "credit_card");
+        List<CartItemResponse> items = new ArrayList<>();
+        items.add(new CartItemResponse("product1", "Test Product", 1000, 2, "red", true));
+        
+        testCartResponse = new CartResponse("testUser", 2000, items);
+        testCartItemRequest = new CartItemRequest("product1", 2, "red");
+
+        when(roleChecker.hasRole("USER")).thenReturn(true);
+        when(roleChecker.getCurrentUserId()).thenReturn("testUser");
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void getCartByUserId_Success() throws Exception {
-        when(cartService.getCartByUserId("user123")).thenReturn(cartResponse);
+    @WithMockUser
+    void testGetCart() throws Exception {
+        // Given
+        when(cartService.getCartByUserId("testUser")).thenReturn(testCartResponse);
 
-        mockMvc.perform(get("/cart")
-                .accept(MediaType.APPLICATION_JSON))
+        // When & Then
+        mockMvc.perform(get("/api/carts")
+                .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"))
-                .andExpect(jsonPath("$.totalPrice").value(100));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"))
+                .andExpect(jsonPath("$.totalPrice").value(2000))
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items[0].productId").value("product1"));
+
+        verify(cartService).getCartByUserId("testUser");
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void addItemToCart_Success() throws Exception {
-        when(cartService.addItemToCart(any(), any())).thenReturn(cartResponse);
+    @WithMockUser
+    void testAddItemToCart() throws Exception {
+        // Given
+        when(cartService.addItemToCart(eq("testUser"), any(CartItemRequest.class)))
+                .thenReturn(testCartResponse);
 
-        mockMvc.perform(post("/cart/add")
+        // When & Then
+        mockMvc.perform(post("/api/carts/items")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(cartItemRequest))
-                .accept(MediaType.APPLICATION_JSON))
+                .content(objectMapper.writeValueAsString(testCartItemRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"))
+                .andExpect(jsonPath("$.totalPrice").value(2000));
+
+        verify(cartService).addItemToCart(eq("testUser"), any(CartItemRequest.class));
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void updateCartItem_Success() throws Exception {
-        when(cartService.updateCartItem(any(), any(), any(), any())).thenReturn(cartResponse);
+    @WithMockUser
+    void testUpdateCartItem() throws Exception {
+        // Given
+        when(cartService.updateCartItem("testUser", "product1", 5, "red"))
+                .thenReturn(testCartResponse);
 
-        mockMvc.perform(put("/cart/update/prod1")
-                .param("quantity", "3")
-                .param("color", "blue")
-                .accept(MediaType.APPLICATION_JSON))
+        // When & Then
+        mockMvc.perform(put("/api/carts/items/product1")
+                .with(csrf())
+                .param("quantity", "5")
+                .param("color", "red"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"));
+
+        verify(cartService).updateCartItem("testUser", "product1", 5, "red");
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void removeItemFromCart_Success() throws Exception {
-        when(cartService.removeItemFromCart(any(), any(), any())).thenReturn(cartResponse);
+    @WithMockUser
+    void testRemoveItemFromCart() throws Exception {
+        // Given
+        when(cartService.removeItemFromCart("testUser", "product1", "red"))
+                .thenReturn(testCartResponse);
 
-        mockMvc.perform(delete("/cart/remove/prod1")
-                .param("color", "red")
-                .accept(MediaType.APPLICATION_JSON))
+        // When & Then
+        mockMvc.perform(delete("/api/carts/items/product1")
+                .with(csrf())
+                .param("color", "red"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"));
+
+        verify(cartService).removeItemFromCart("testUser", "product1", "red");
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void clearCart_Success() throws Exception {
-        mockMvc.perform(delete("/cart/clear")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+    @WithMockUser
+    void testClearCart() throws Exception {
+        // Given
+        doNothing().when(cartService).clearCart("testUser");
+
+        // When & Then
+        mockMvc.perform(delete("/api/carts")
+                .with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(cartService).clearCart("testUser");
     }
 
     @Test
-    @WithMockUser(username = "user123")
-    void initiateCheckoutSaga_Success() throws Exception {
-        SagaInitiationResponse sagaResponse = new SagaInitiationResponse("tx123", "Checkout initiated");
-        when(cartService.initiateCheckoutSaga(any(), any())).thenReturn(sagaResponse);
+    @WithMockUser
+    void testMergeGuestCart() throws Exception {
+        // Given
+        List<CartItemRequest> guestItems = List.of(testCartItemRequest);
+        when(cartService.mergeListItemToCart(eq("testUser"), anyList()))
+                .thenReturn(testCartResponse);
 
-        mockMvc.perform(post("/cart/checkout")
+        // When & Then
+        mockMvc.perform(post("/api/carts/merge")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(checkoutRequest))
-                .accept(MediaType.APPLICATION_JSON))
+                .content(objectMapper.writeValueAsString(guestItems)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.transactionId").value("tx123"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"));
+
+        verify(cartService).mergeListItemToCart(eq("testUser"), anyList());
     }
 
     @Test
     @WithMockUser
-    void createCart_Success() throws Exception {
-        when(cartService.createCart(any())).thenReturn(cartResponse);
+    void testMergeGuestCartToUserCart() throws Exception {
+        // Given
+        when(cartService.mergeGuestCartToUserCart("testUser", "guest123"))
+                .thenReturn(testCartResponse);
 
-        mockMvc.perform(post("/cart/create")
-                .accept(MediaType.APPLICATION_JSON))
+        // When & Then
+        mockMvc.perform(post("/api/carts/merge-guest")
+                .with(csrf())
+                .param("guestId", "guest123"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.userId").value("testUser"));
+
+        verify(cartService).mergeGuestCartToUserCart("testUser", "guest123");
     }
 
     @Test
     @WithMockUser
-    void createGuestCart_Success() throws Exception {
-        when(cartService.createGuestCart(any())).thenReturn(cartResponse);
+    void testAddItemToCart_InvalidItem() throws Exception {
+        // Given
+        when(cartService.addItemToCart(eq("testUser"), any(CartItemRequest.class)))
+                .thenThrow(new InvalidItemException("Invalid item"));
 
-        mockMvc.perform(post("/cart/guest/create")
-                .param("guestId", "guest123")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
-    }
-
-    @Test
-    @WithMockUser
-    void getGuestCartById_Success() throws Exception {
-        when(cartService.getGuestCartById(any())).thenReturn(cartResponse);
-
-        mockMvc.perform(get("/cart/guest/guest123")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
-    }
-
-    @Test
-    @WithMockUser
-    void addItemToGuestCart_Success() throws Exception {
-        when(cartService.addItemToGuestCart(any(), any())).thenReturn(cartResponse);
-
-        mockMvc.perform(post("/cart/guest/add")
-                .param("guestId", "guest123")
+        // When & Then
+        mockMvc.perform(post("/api/carts/items")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(cartItemRequest))
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+                .content(objectMapper.writeValueAsString(testCartItemRequest)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
     @WithMockUser
-    void updateGuestCartItem_Success() throws Exception {
-        when(cartService.updateGuestCartItem(any(), any(), any(), any())).thenReturn(cartResponse);
+    void testGetCart_CartNotFound() throws Exception {
+        // Given
+        when(cartService.getCartByUserId("testUser"))
+                .thenThrow(new CartNotFoundException("Cart not found"));
 
-        mockMvc.perform(put("/cart/guest/update/prod1")
-                .param("guestId", "guest123")
-                .param("quantity", "3")
-                .param("color", "blue")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+        // When & Then
+        mockMvc.perform(get("/api/carts")
+                .with(csrf()))
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
     @WithMockUser
-    void removeItemFromGuestCart_Success() throws Exception {
-        when(cartService.removeItemFromGuestCart(any(), any(), any())).thenReturn(cartResponse);
+    void testMergeGuestCart_CartNotFound() throws Exception {
+        // Given
+        List<CartItemRequest> guestItems = List.of(testCartItemRequest);
+        when(cartService.mergeListItemToCart(eq("testUser"), anyList()))
+                .thenThrow(new CartNotFoundException("Cart not found"));
 
-        mockMvc.perform(delete("/cart/guest/remove/prod1")
-                .param("guestId", "guest123")
-                .param("color", "red")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+        // When & Then
+        mockMvc.perform(post("/api/carts/merge")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(guestItems)))
+                .andExpect(status().isBadRequest());
+
+        verify(cartService).mergeListItemToCart(eq("testUser"), anyList());
     }
 
     @Test
     @WithMockUser
-    void mergeGuestCartToUserCart_Success() throws Exception {
-        when(cartService.mergeGuestCartToUserCart(any(), any())).thenReturn(cartResponse);
+    void testMergeGuestCartToUserCart_InvalidItem() throws Exception {
+        // Given
+        when(cartService.mergeGuestCartToUserCart("testUser", "guest123"))
+                .thenThrow(new InvalidItemException("Invalid item"));
 
-        mockMvc.perform(post("/cart/merge")
-                .param("guestId", "guest123")
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value("user123"));
+        // When & Then
+        mockMvc.perform(post("/api/carts/merge-guest")
+                .with(csrf())
+                .param("guestId", "guest123"))
+                .andExpect(status().isBadRequest());
+
+        verify(cartService).mergeGuestCartToUserCart("testUser", "guest123");
     }
-}
+
+    @Test
+    @WithMockUser
+    void testInitiateCheckout() throws Exception {
+        // Given
+        CheckoutRequest checkoutRequest = new CheckoutRequest();
+        List<CartItemIdentifier> selectedItems = new ArrayList<>();
+        CheckoutRequestWrapper wrapper = new CheckoutRequestWrapper();
+        wrapper.setCheckoutRequest(checkoutRequest);
+        wrapper.setSelectedItems(selectedItems);
+        
+        SagaInitiationResponse sagaResponse = new SagaInitiationResponse("saga123", "Success");
+        when(cartService.initiateCheckoutSaga(any(CheckoutRequest.class), anyList()))
+                .thenReturn(sagaResponse);
+
+        // When & Then
+        mockMvc.perform(post("/api/carts/checkout")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(wrapper)))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.sagaId").value("saga123"))
+                .andExpect(jsonPath("$.message").value("Success"));
+
+        verify(cartService).initiateCheckoutSaga(any(CheckoutRequest.class), anyList());
+    }
+
+    @Test
+    @WithMockUser
+    void testInitiateCheckout_CartNotFound() throws Exception {
+        // Given
+        CheckoutRequest checkoutRequest = new CheckoutRequest();
+        List<CartItemIdentifier> selectedItems = new ArrayList<>();
+        CheckoutRequestWrapper wrapper = new CheckoutRequestWrapper();
+        wrapper.setCheckoutRequest(checkoutRequest);
+        wrapper.setSelectedItems(selectedItems);
+        
+        when(cartService.initiateCheckoutSaga(any(CheckoutRequest.class), anyList()))
+                .thenThrow(new CartNotFoundException("Cart not found"));
+
+        // When & Then
+        mockMvc.perform(post("/api/carts/checkout")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(wrapper)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Cart not found"));
+
+        verify(cartService).initiateCheckoutSaga(any(CheckoutRequest.class), anyList());
+    }
+
+    @Test
+    void testUnauthorizedAccess() throws Exception {
+        // When & Then
+        mockMvc.perform(get("/api/carts"))
+                .andExpect(status().isUnauthorized());
+    }
+} 

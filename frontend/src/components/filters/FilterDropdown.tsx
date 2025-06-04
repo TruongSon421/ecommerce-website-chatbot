@@ -23,12 +23,25 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   onApply,
   isLoading,
 }) => {
+  // State to control custom price range visibility
+  const [showCustomPriceRange, setShowCustomPriceRange] = useState(true);
+  
   // Debounced price range change
   const debouncedPriceChange = debounce((newValue: number[]) => {
     onPriceRangeChange(newValue);
   }, 300);
 
   const handlePriceRangeChange = (event: Event, newValue: number | number[]) => {
+    // Clear any selected priceRanges when user interacts with the custom price range slider
+    if (selectedFilters.priceRanges && selectedFilters.priceRanges.length > 0) {
+      selectedFilters.priceRanges.forEach(value => {
+        onFilterChange('priceRanges', value); // This will toggle/remove the selected value
+      });
+    }
+    
+    // Ensure custom price range is visible
+    setShowCustomPriceRange(true);
+    
     debouncedPriceChange(newValue as number[]);
   };
 
@@ -45,6 +58,17 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   // Xử lý thay đổi từ input
   const handleInputChange = (type: 'min' | 'max', value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
+    
+    // Clear any selected priceRanges when user interacts with the custom price inputs
+    if (selectedFilters.priceRanges && selectedFilters.priceRanges.length > 0) {
+      selectedFilters.priceRanges.forEach(value => {
+        onFilterChange('priceRanges', value); // This will toggle/remove the selected value
+      });
+    }
+    
+    // Ensure custom price range is visible
+    setShowCustomPriceRange(true);
+    
     if (type === 'min') {
       setInputMinPrice(numericValue);
       const min = numericValue ? parseInt(numericValue, 10) : 300000;
@@ -62,6 +86,16 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
 
   // Xử lý khi input mất focus để đảm bảo giá trị hợp lệ
   const handleInputBlur = (type: 'min' | 'max') => {
+    // Clear any selected priceRanges when user finishes editing the custom price inputs
+    if (selectedFilters.priceRanges && selectedFilters.priceRanges.length > 0) {
+      selectedFilters.priceRanges.forEach(value => {
+        onFilterChange('priceRanges', value); // This will toggle/remove the selected value
+      });
+    }
+    
+    // Ensure custom price range is visible
+    setShowCustomPriceRange(true);
+    
     let min = parseInt(inputMinPrice, 10) || 300000;
     let max = parseInt(inputMaxPrice, 10) || 45000000;
 
@@ -91,20 +125,51 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   };
 
   // Hàm hiển thị nhãn cho bộ lọc
-  const getFilterLabel = (key: string, value: string) => {
-    // Xử lý đặc biệt cho needs
-    if (key === 'needs' && currentFilterData.needs?.[0]?.options) {
-      const option = currentFilterData.needs[0].options.find(
-        (opt: { value: string }) => opt.value === value
-      );
-      return option?.label || value;
+  const getFilterLabel = (key: string, value: string): string => {
+    // Tìm trong tất cả các filter của key
+    const filterSections = Object.values(currentFilterData);
+    
+    for (const section of filterSections as any[]) {
+      for (const filter of section) {
+        if (filter.key === key) {
+          const option = filter.options?.find((opt: { value: string; label: string }) => opt.value === value);
+          if (option) return option.label;
+        }
+      }
     }
-    // Xử lý các danh mục khác
-    const filter = currentFilterData[key]?.[0];
-    if (!filter) return value;
-    const option = filter.options?.find((opt: { value: string }) => opt.value === value);
-    return option?.label || value;
+    
+    // Nếu không tìm thấy label, loại bỏ prefix nếu có dấu '_'
+    if (value.includes('_')) {
+      // Split by underscore, remove the first part (prefix), join with space
+      // and capitalize first letter of each word
+      return value
+        .split('_')
+        .slice(1)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    
+    return value;
   };
+
+  // Toggle custom price range visibility
+  const toggleCustomPriceRange = () => {
+    // If showing custom price range, clear any selected price ranges
+    if (selectedFilters.priceRanges && selectedFilters.priceRanges.length > 0) {
+      selectedFilters.priceRanges.forEach(value => {
+        onFilterChange('priceRanges', value);
+      });
+    }
+    
+    setShowCustomPriceRange(true);
+  };
+
+  // Update showCustomPriceRange when priceRanges selection changes
+  React.useEffect(() => {
+    if (selectedFilters.priceRanges && selectedFilters.priceRanges.length > 0) {
+      setShowCustomPriceRange(false);
+    }
+  }, [selectedFilters.priceRanges]);
 
   return (
     <div className="absolute z-10 mt-2 w-[600px] max-w-[95vw] bg-white border border-gray-300 rounded-md shadow-lg p-6">
@@ -129,9 +194,33 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
               </span>
             ))
           )}
-          {priceRange[0] !== 300000 || priceRange[1] !== 45000000 ? (
+          {/* Hiển thị label cho khoảng giá nếu chọn từ filter priceRanges */}
+          {selectedFilters.priceRanges && selectedFilters.priceRanges.length === 1 ? (
+            (() => {
+              const priceValue = selectedFilters.priceRanges[0];
+              // Tìm label trong filterData
+              const priceFilter = (currentFilterData.priceRanges || []).flatMap((f: any) => f.options || []);
+              const found = priceFilter.find((opt: any) => opt.value === priceValue);
+              return found ? (
+                <span className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">
+                  {found.label}
+                  <button
+                    onClick={() => onFilterChange('priceRanges', priceValue)}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                    aria-label="Remove price range"
+                  >
+                    ×
+                  </button>
+                </span>
+              ) : null;
+            })()
+          ) : null}
+          {/* Nếu không chọn khoảng giá preset, hiển thị khoảng giá custom */}
+          {(!selectedFilters.priceRanges || selectedFilters.priceRanges.length === 0) && (priceRange[0] !== 300000 || priceRange[1] !== 45000000) ? (
             <span className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">
-              Giá: {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
+              {priceRange[0] === priceRange[1]
+                ? `Giá: ${formatPrice(priceRange[0])}`
+                : `Giá: ${formatPrice(priceRange[0])} - ${formatPrice(priceRange[1])}`}
               <button
                 onClick={handleRemovePriceRange}
                 className="ml-1 text-blue-600 hover:text-blue-800"
@@ -163,60 +252,88 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
             section="priceRanges"
             currentFilterData={currentFilterData}
             selectedFilters={selectedFilters}
-            onFilterChange={onFilterChange}
+            onFilterChange={(key, value) => {
+              // If selecting a price range, hide custom price range
+              if (key === 'priceRanges') {
+                // If already selected, we're toggling it off
+                const isSelected = (selectedFilters[key] || []).includes(value);
+                if (!isSelected) {
+                  setShowCustomPriceRange(false);
+                } else {
+                  setShowCustomPriceRange(true);
+                }
+              }
+              onFilterChange(key, value);
+            }}
+            onPriceRangeChange={onPriceRangeChange}
           />
-          {/* Price Range Slider */}
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold mb-2">Hoặc chọn mức giá phù hợp với bạn</h3>
-            <div className="flex items-center gap-2 mb-3">
-              <TextField
-                value={inputMinPrice.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                onChange={(e) => handleInputChange('min', e.target.value)}
-                onBlur={() => handleInputBlur('min')}
-                placeholder="300.000"
-                variant="outlined"
-                size="small"
-                sx={{ width: '120px' }}
-                inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
-              />
-              <span>-</span>
-              <TextField
-                value={inputMaxPrice.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
-                onChange={(e) => handleInputChange('max', e.target.value)}
-                onBlur={() => handleInputBlur('max')}
-                placeholder="45.000.000"
-                variant="outlined"
-                size="small"
-                sx={{ width: '120px' }}
-                inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+          
+          {/* Custom Price Range Section - Show only if no predefined price range is selected */}
+          {showCustomPriceRange ? (
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold mb-2">Hoặc chọn mức giá phù hợp với bạn</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <TextField
+                  value={inputMinPrice.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                  onChange={(e) => handleInputChange('min', e.target.value)}
+                  onBlur={() => handleInputBlur('min')}
+                  placeholder="300.000"
+                  variant="outlined"
+                  size="small"
+                  sx={{ width: '120px' }}
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                />
+                <span>-</span>
+                <TextField
+                  value={inputMaxPrice.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                  onChange={(e) => handleInputChange('max', e.target.value)}
+                  onBlur={() => handleInputBlur('max')}
+                  placeholder="45.000.000"
+                  variant="outlined"
+                  size="small"
+                  sx={{ width: '120px' }}
+                  inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                />
+              </div>
+              <Slider
+                value={priceRange}
+                onChange={handlePriceRangeChange}
+                valueLabelDisplay="off"
+                min={300000}
+                max={45000000}
+                step={100000}
+                sx={{
+                  color: '#3b82f6',
+                  height: 6,
+                  '& .MuiSlider-thumb': {
+                    height: 16,
+                    width: 16,
+                    backgroundColor: '#fff',
+                    border: '2px solid currentColor',
+                  },
+                  '& .MuiSlider-track': {
+                    height: 6,
+                  },
+                  '& .MuiSlider-rail': {
+                    height: 6,
+                    backgroundColor: '#e5e7eb',
+                  },
+                }}
               />
             </div>
-            <Slider
-              value={priceRange}
-              onChange={handlePriceRangeChange}
-              valueLabelDisplay="off"
-              min={300000}
-              max={45000000}
-              step={100000}
-              sx={{
-                color: '#3b82f6',
-                height: 6,
-                '& .MuiSlider-thumb': {
-                  height: 16,
-                  width: 16,
-                  backgroundColor: '#fff',
-                  border: '2px solid currentColor',
-                },
-                '& .MuiSlider-track': {
-                  height: 6,
-                },
-                '& .MuiSlider-rail': {
-                  height: 6,
-                  backgroundColor: '#e5e7eb',
-                },
-              }}
-            />
-          </div>
+          ) : (
+            <div className="mb-4">
+              <button 
+                onClick={toggleCustomPriceRange}
+                className="text-blue-500 hover:text-blue-700 font-medium flex items-center p-2 border border-blue-300 rounded-md hover:bg-blue-50 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Hoặc chọn mức giá phù hợp với bạn
+              </button>
+            </div>
+          )}
         </div>
         <div className="w-full md:w-1/2">
           <FilterSection

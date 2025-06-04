@@ -20,25 +20,46 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 50)
+    @NotBlank(message = "Username không được để trống")
+    @Size(min = 3, max = 50, message = "Username phải có độ dài từ 3-50 ký tự")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "Username chỉ được chứa chữ cái, số và dấu gạch dưới")
     private String username;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 100)
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không đúng định dạng")
+    @Size(max = 100, message = "Email không được vượt quá 100 ký tự")
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
+    @NotBlank(message = "Password không được để trống")
+    @Size(min = 8, message = "Password phải có ít nhất 8 ký tự")
     private String password;
 
+    @Column(length = 50)
+    @Size(max = 50, message = "Tên không được vượt quá 50 ký tự")
+    @Pattern(regexp = "^[\\p{L}\\s]*$", message = "Tên chỉ được chứa chữ cái và khoảng trắng")
     private String firstName;
-    private String lastName;
-    private String phoneNumber;
 
-    @Column(nullable = true)
-    private Boolean isActive;
+    @Column(length = 50)
+    @Size(max = 50, message = "Họ không được vượt quá 50 ký tự")
+    @Pattern(regexp = "^[\\p{L}\\s]*$", message = "Họ chỉ được chứa chữ cái và khoảng trắng")
+    private String lastName;
+
+    @Column
+    @Min(value = 1000000000L, message = "Số điện thoại phải có ít nhất 10 chữ số")
+    @Max(value = 99999999999999L, message = "Số điện thoại không được vượt quá 14 chữ số")
+    private Long phoneNumber;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean isActive = true;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

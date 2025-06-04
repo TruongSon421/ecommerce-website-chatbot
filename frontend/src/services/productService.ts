@@ -1,7 +1,9 @@
 // src/api/productApi.ts
 import api from '../config/axios';
-import { ProductCreateRequest, GroupVariantRequest } from '../types/product';
-import { GroupProductDto } from '../types/product';
+import { ProductCreateRequest, GroupVariantRequest, GroupProductDto } from '../types/product';
+
+
+
 
 export const searchProducts = async (query: string): Promise<GroupProductDto[]> => {
   try {

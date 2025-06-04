@@ -35,6 +35,7 @@ public class OrderServiceImpl implements OrderService {
 
         try {
             Order order = new Order();
+            order.setTransactionId(event.getTransactionId());
             order.setUserId(event.getUserId());
             order.setShippingAddress(event.getShippingAddress());
             order.setPaymentMethod(Order.PaymentMethod.valueOf(event.getPaymentMethod()));
@@ -400,5 +401,17 @@ public class OrderServiceImpl implements OrderService {
         return items.stream()
                 .mapToInt(item -> item.getPrice() * item.getQuantity())
                 .sum();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Order getOrderByTransactionId(String transactionId) {
+        log.info("Fetching order by transactionId: {}", transactionId);
+        return orderRepository.findByTransactionId(transactionId)
+            .orElseThrow(() -> {
+                log.warn("Order not found for transactionId: {}", transactionId);
+                // Consider creating a specific OrderNotFoundByTransactionIdException
+                return new RuntimeException("Order not found with transaction ID: " + transactionId);
+            });
     }
 }
