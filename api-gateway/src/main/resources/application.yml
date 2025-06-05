@@ -51,6 +51,14 @@ spring:
           filters:
             - Authentication    # Thêm filter
 
+        - id: product-review-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/reviews/**
+          filters:
+            - Authentication    # Thêm filter
+
+
         - id: order-service
           uri: lb://order-service
           predicates:

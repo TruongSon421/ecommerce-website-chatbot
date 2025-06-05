@@ -65,7 +65,7 @@ vnpay:
   tmnCode: ZIRF5U94
   hashSecret: C1A2GX4L9U5Z73NDYJT1QU6PQ61TP1HO
   url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-  ipnUrl:  https://f96b-101-99-36-202.ngrok-free.app/api/v1/payment/vnpay/ipn
+  ipnUrl:  https://3da5-14-186-90-186.ngrok-free.app/api/v1/payment/vnpay/ipn
   returnUrl: http:localhost:8070/api/v1/payment/vnpay/return
   frontendReturnUrlBase: http://localhost:5173
   version: 2.1.0

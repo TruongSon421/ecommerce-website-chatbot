@@ -15,7 +15,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
-    @Value("${NGROK_BASE_URL:https://f96b-101-99-36-202.ngrok-free.app}")
+    @Value("${NGROK_BASE_URL:https://3da5-14-186-90-186.ngrok-free.app}")
     private String ngrokBaseUrl;
 
     @Value("${FRONTEND_URL:http://localhost:5173}")

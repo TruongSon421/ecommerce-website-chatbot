@@ -1,0 +1,15 @@
+[mysqld]
+max_connections = 500
+max_user_connections = 450
+wait_timeout = 600
+interactive_timeout = 600
+connect_timeout = 60
+
+# Tăng buffer pool cho performance
+innodb_buffer_pool_size = 1G
+innodb_log_file_size = 256M
+innodb_flush_log_at_trx_commit = 2
+
+# Tối ưu cho nhiều connections
+thread_cache_size = 16
+table_open_cache = 2000 

@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 @Component
 public class RouterValidator {
     public static final List<String> openApiEndpoints = List.of(
+            "/api/internal/blacklist",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh-token",
@@ -36,6 +37,10 @@ public class RouterValidator {
             "/api/guest-carts/{guestId}/items",
             "/api/guest-carts/{guestId}/items/{productId}",
 
+            // Review endpoints - public access for viewing reviews
+            "/api/reviews/product/{productId}",
+            "/api/reviews/product/{productId}/stats",
+            "/api/reviews/product/{productId}/overview",
 
             "/api/payments/status/{transactionId}",
             "/api/payments/url/{transactionId}",
