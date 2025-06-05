@@ -48,7 +48,20 @@ public class ProductService {
 
     public ProductResponse getProductById(String type, String id) {
         BaseProduct product = findProductById(id);
-        List<InventoryDto> inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
+        if (!product.getType().equals(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product type: " + type);
+        }
+        
+        List<InventoryDto> inventoryDtos;
+        try {
+            inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
+            if (inventoryDtos == null) {
+                inventoryDtos = new ArrayList<>();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get inventory data for product {}: {}. Using empty inventory.", id, e.getMessage());
+            inventoryDtos = new ArrayList<>();
+        }
 
         return mapToProductResponse(type, product, inventoryDtos);
     }
@@ -177,9 +190,7 @@ public class ProductService {
         }
     }
 
-    public ProductResponse updateProduct(String id, ProductWithInventoryRequest request) {
-        ProductRequest productRequest = request.getProductRequest();
-        List<InventoryDto> inventoryRequests = request.getInventoryRequests();
+    public BaseProduct updateProduct(String id, ProductRequest productRequest) {
         BaseProduct product = findProductById(id);
         String productType = product.getType();
 
@@ -214,11 +225,7 @@ public class ProductService {
 
         BaseProduct updatedProduct = productRepository.save(product);
 
-        inventoryClient.deleteInventoriesByProductId(id);
-
-        List<InventoryDto> inventoryDtos = createInventories(updatedProduct, inventoryRequests);
-
-        return mapToProductResponse(productType, updatedProduct, inventoryDtos);
+        return updatedProduct;
     }
 
 
@@ -235,7 +242,42 @@ public class ProductService {
     }
 
     public void deleteProduct(String id) {
-        productRepository.deleteById(id);
+        try {
+            productRepository.deleteById(id);
+            log.info("Successfully deleted product from database: {}", id);
+        } catch (Exception e) {
+            log.error("Error deleting product ID {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to delete product: " + id, e);
+        }
+    }
+    
+    public DeleteGroupDto deleteProductGroup(DeleteGroupDto request) {
+        Integer groupId = request.getGroupId();
+        List<String> productIds = request.getProductIds();
+        try {
+            
+            if (!productIds.isEmpty()) {
+                // 2. Xóa tất cả inventories
+                inventoryClient.deleteInventoriesByProductIds(productIds);
+                log.info("Successfully deleted inventories for group ID: {}", groupId);
+                
+                // 3. Xóa tất cả products
+                productRepository.deleteAllById(productIds);
+                log.info("Successfully deleted {} products for group ID: {}", productIds.size(), groupId);
+            }
+            
+            // 4. Xóa tất cả liên kết GroupProduct
+            inventoryClient.deleteGroupProductsByGroupId(groupId);
+            log.info("Successfully deleted group-product links for group ID: {}", groupId);
+            
+            // 5. Xóa Group (sẽ được xử lý ở Group Service nếu cần)
+            log.info("Successfully completed group deletion process for group ID: {}", groupId);
+            
+        } catch (Exception e) {
+            log.error("Error in deleteProductGroup for group ID {}: {}", groupId, e.getMessage());
+            throw new RuntimeException("Failed to delete product group: " + groupId, e);
+        }
+        return request;
     }
 
     private ProductResponse mapToProductResponse(String type, BaseProduct product, List<InventoryDto> inventoryDtos) {
@@ -291,7 +333,7 @@ public class ProductService {
         phone.setScreenProtection(request.getScreenProtection());
 
         // Pin và sạc
-        phone.setBatteryCapactity(request.getBatteryCapactity());
+        phone.setBatteryCapacity(request.getBatteryCapacity());
         phone.setBatteryType(request.getBatteryType());
         phone.setMaxChargingPower(request.getMaxChargingPower());
         phone.setBatteryFeatures(request.getBatteryFeatures());
@@ -349,7 +391,7 @@ public class ProductService {
         phone.setScreenProtection(request.getScreenProtection());
 
         // Pin và sạc
-        phone.setBatteryCapactity(request.getBatteryCapactity());
+        phone.setBatteryCapacity(request.getBatteryCapacity());
         phone.setBatteryType(request.getBatteryType());
         phone.setMaxChargingPower(request.getMaxChargingPower());
         phone.setBatteryFeatures(request.getBatteryFeatures());
@@ -477,7 +519,7 @@ public class ProductService {
         setBaseProductFields(backupCharger, request);
 
         // Thiết lập các trường riêng của BackupCharger
-        backupCharger.setBatteryCapactity(request.getBatteryCapactity());
+        backupCharger.setBatteryCapacity(request.getBatteryCapacity());
         backupCharger.setChargingTime(request.getChargingTime());
         backupCharger.setBatteryCellType(request.getBatteryCellType());
         backupCharger.setTechnologyFeatures(request.getTechnologyFeatures());
@@ -497,7 +539,7 @@ public class ProductService {
         updateBaseProductFields(backupCharger, request);
 
         // Update BackupCharger specific fields
-        backupCharger.setBatteryCapactity(request.getBatteryCapactity());
+        backupCharger.setBatteryCapacity(request.getBatteryCapacity());
         backupCharger.setChargingTime(request.getChargingTime());
         backupCharger.setBatteryCellType(request.getBatteryCellType());
         backupCharger.setTechnologyFeatures(request.getTechnologyFeatures());

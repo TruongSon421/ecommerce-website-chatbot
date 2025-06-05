@@ -36,3 +36,15 @@ logging:
 
 inventory-service:
   url: http://localhost:8100
+
+order-service:
+    url: http://localhost:8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
