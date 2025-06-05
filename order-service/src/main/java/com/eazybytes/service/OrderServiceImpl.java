@@ -3,6 +3,7 @@ package com.eazybytes.service;
 import com.eazybytes.dto.CartItemIdentifier;
 import com.eazybytes.dto.CartItemResponse;
 import com.eazybytes.dto.OrderConfirmationNotification;
+import com.eazybytes.dto.UserPurchaseHistoryResponseDto;
 import com.eazybytes.event.OrderEventProducer;
 import com.eazybytes.event.model.*;
 import com.eazybytes.model.Order;
@@ -11,11 +12,16 @@ import com.eazybytes.repository.OrderRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -42,14 +48,18 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(Order.OrderStatus.RESERVING); // Trạng thái ban đầu
 
             List<OrderItem> items = event.getCartItems().stream()
-                    .map(item -> new OrderItem(
-                            item.getProductId(),
-                            normalizeColor(item.getColor()),
-                            item.getProductName(),
-                            item.getQuantity(),
-                            (int)item.getPrice()))
+                    .map(item -> {
+                        OrderItem orderItem = new OrderItem(
+                                item.getProductId(),
+                                normalizeColor(item.getColor()),
+                                item.getProductName(),
+                                item.getQuantity(),
+                                (int)item.getPrice());
+                        orderItem.setOrder(order); // Explicitly set the order relationship
+                        return orderItem;
+                    })
                     .collect(Collectors.toList());
-            items.forEach(order::addItem);
+            order.getItems().addAll(items);
             order.setTotalAmount(calculateTotalPrice(items));
 
             Order savedOrder = orderRepository.save(order);
@@ -292,6 +302,13 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
     }
 
+    // Method to get order with items for admin operations that need items data
+    @Transactional(readOnly = true)
+    public Order getOrderByIdWithItems(Long orderId) {
+        return orderRepository.findByIdWithItems(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found: " + orderId));
+    }
+
     @Override
     public List<Order> getOrdersByUserId(String userId) {
         return orderRepository.findByUserId(userId);
@@ -300,7 +317,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void cancelOrder(Long orderId) {
-        Order order = getOrderById(orderId);
+        Order order = getOrderByIdWithItems(orderId); // Use WithItems version since we access order.getItems()
         
         // Check if we can cancel this order
         if (order.getStatus() == Order.OrderStatus.FAILED || 
@@ -351,7 +368,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public void confirmOrder(Long orderId) {
-        Order order = getOrderById(orderId);
+        Order order = getOrderByIdWithItems(orderId); // Use WithItems version since we access order.getItems()
         if (order.getStatus() != Order.OrderStatus.PROCESSING) {
             throw new RuntimeException("Order must be in PROCESSING status to confirm: " + orderId);
         }
@@ -367,7 +384,7 @@ public class OrderServiceImpl implements OrderService {
     // Xử lý timeout (giả định dùng scheduler hoặc Kafka retry)
     @Transactional
     public void handlePaymentPendingTimeout(Long orderId, String transactionId) {
-        Order order = getOrderById(orderId);
+        Order order = getOrderByIdWithItems(orderId); // Use WithItems version since we access order.getItems()
         if (order.getStatus() == Order.OrderStatus.PAYMENT_PENDING) {
             log.info("Timeout detected for orderId: {}", orderId);
             order.setStatus(Order.OrderStatus.FAILED);
@@ -392,10 +409,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng
-    private String normalizeColor(String color) {
-        return (color == null || color.trim().isEmpty()) ? "default" : color;
-    }
+    
 
     private Integer calculateTotalPrice(List<OrderItem> items) {
         return items.stream()
@@ -407,11 +421,203 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public Order getOrderByTransactionId(String transactionId) {
         log.info("Fetching order by transactionId: {}", transactionId);
-        return orderRepository.findByTransactionId(transactionId)
+        return orderRepository.findByTransactionIdWithItems(transactionId)
             .orElseThrow(() -> {
                 log.warn("Order not found for transactionId: {}", transactionId);
                 // Consider creating a specific OrderNotFoundByTransactionIdException
                 return new RuntimeException("Order not found with transaction ID: " + transactionId);
             });
+    }
+
+    // New admin methods implementation
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Order> getAllOrdersForAdmin(Pageable pageable, String status, String userId, String transactionId) {
+        log.info("Fetching orders for admin with filters - status: {}, userId: {}, transactionId: {}", 
+                status, userId, transactionId);
+        
+        if (status != null && userId != null && transactionId != null) {
+            return orderRepository.findByStatusAndUserIdAndTransactionIdContainingWithItems(
+                Order.OrderStatus.valueOf(status), userId, transactionId, pageable);
+        } else if (status != null && userId != null) {
+            return orderRepository.findByStatusAndUserIdWithItems(Order.OrderStatus.valueOf(status), userId, pageable);
+        } else if (status != null && transactionId != null) {
+            return orderRepository.findByStatusAndTransactionIdContainingWithItems(
+                Order.OrderStatus.valueOf(status), transactionId, pageable);
+        } else if (userId != null && transactionId != null) {
+            return orderRepository.findByUserIdAndTransactionIdContainingWithItems(userId, transactionId, pageable);
+        } else if (status != null) {
+            return orderRepository.findByStatusWithItems(Order.OrderStatus.valueOf(status), pageable);
+        } else if (userId != null) {
+            return orderRepository.findByUserIdWithItems(userId, pageable);
+        } else if (transactionId != null) {
+            return orderRepository.findByTransactionIdContainingWithItems(transactionId, pageable);
+        } else {
+            return orderRepository.findAllWithItems(pageable);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateOrderStatus(Long orderId, String status) {
+        log.info("Admin updating order {} status to {}", orderId, status);
+        
+        Order order = getOrderById(orderId);
+        Order.OrderStatus newStatus = Order.OrderStatus.valueOf(status);
+        Order.OrderStatus currentStatus = order.getStatus();
+        
+        // Validate status transition
+        if (!isValidStatusTransition(currentStatus, newStatus)) {
+            throw new RuntimeException("Invalid status transition from " + currentStatus + " to " + newStatus);
+        }
+        
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+        
+        log.info("Order {} status updated from {} to {}", orderId, currentStatus, newStatus);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getOrderStatistics() {
+        log.info("Fetching order statistics for admin dashboard");
+        
+        Map<String, Object> statistics = new HashMap<>();
+        
+        // Total orders count
+        long totalOrders = orderRepository.count();
+        statistics.put("totalOrders", totalOrders);
+        
+        // Orders by status
+        Map<String, Long> ordersByStatus = new HashMap<>();
+        for (Order.OrderStatus status : Order.OrderStatus.values()) {
+            long count = orderRepository.countByStatus(status);
+            ordersByStatus.put(status.name(), count);
+        }
+        statistics.put("ordersByStatus", ordersByStatus);
+        
+        // Recent orders (last 30 days)
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        long recentOrders = orderRepository.countByCreatedAtAfter(thirtyDaysAgo);
+        statistics.put("recentOrders", recentOrders);
+        
+        // Total revenue from completed orders
+        Integer totalRevenue = orderRepository.sumTotalAmountByStatus(Order.OrderStatus.PAYMENT_COMPLETED);
+        statistics.put("totalRevenue", totalRevenue != null ? totalRevenue : 0);
+        
+        // Revenue this month
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+        Integer monthlyRevenue = orderRepository.sumTotalAmountByStatusAndCreatedAtAfter(
+                Order.OrderStatus.PAYMENT_COMPLETED, startOfMonth);
+        statistics.put("monthlyRevenue", monthlyRevenue != null ? monthlyRevenue : 0);
+        
+        log.info("Order statistics calculated successfully");
+        return statistics;
+    }
+
+    private boolean isValidStatusTransition(Order.OrderStatus current, Order.OrderStatus target) {
+        // Define valid status transitions
+        switch (current) {
+            case CREATED:
+                return target == Order.OrderStatus.RESERVING || target == Order.OrderStatus.CANCELLED;
+            case RESERVING:
+                return target == Order.OrderStatus.PAYMENT_PENDING || 
+                       target == Order.OrderStatus.FAILED || 
+                       target == Order.OrderStatus.CANCELLED;
+            case PAYMENT_PENDING:
+                return target == Order.OrderStatus.PAYMENT_COMPLETED || 
+                       target == Order.OrderStatus.PAYMENT_FAILED ||
+                       target == Order.OrderStatus.CANCELLED;
+            case PAYMENT_COMPLETED:
+                return target == Order.OrderStatus.PROCESSING;
+            case PROCESSING:
+                return target == Order.OrderStatus.SHIPPED;
+            case SHIPPED:
+                return target == Order.OrderStatus.DELIVERED;
+            case DELIVERED:
+                return false; // Final state
+            case FAILED:
+            case PAYMENT_FAILED:
+            case CANCELLED:
+                return false; // Final states
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkIfUserPurchasedProduct(String userId, String productId, String color) {
+        log.info("Checking if user {} has purchased product {} with color {}", userId, productId, color);
+        
+        // Normalize color
+        String normalizedColor = normalizeColor(color);
+        
+        // Kiểm tra xem user có đơn hàng nào chứa sản phẩm này với màu và trạng thái DELIVERED không
+        List<Order> deliveredOrders = orderRepository.findByUserIdAndStatusWithItems(userId, Order.OrderStatus.PAYMENT_COMPLETED);
+        
+        boolean hasPurchased = deliveredOrders.stream()
+                .flatMap(order -> order.getItems().stream())
+                .anyMatch(item -> item.getProductId().equals(productId) && 
+                         normalizeColor(item.getColor()).equals(normalizedColor));
+        
+        log.info("User {} {} purchased product {} with color {}", 
+                userId, hasPurchased ? "has" : "has not", productId, normalizedColor);
+        return hasPurchased;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<UserPurchaseHistoryResponseDto> getUserPurchaseHistory(String userId, Pageable pageable, String status) {
+        log.info("Fetching purchase history for user: {} with status filter: {}", userId, status);
+        
+        Page<Order> orders;
+        if (status != null && !status.trim().isEmpty()) {
+            // Filter by status if provided
+            Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+            orders = orderRepository.findByUserIdAndStatusWithItems(userId, orderStatus, pageable);
+        } else {
+            // Get all orders for user
+            orders = orderRepository.findByUserIdWithItems(userId, pageable);
+        }
+        
+        // Convert to DTO
+        return orders.map(this::convertToUserPurchaseHistoryDto);
+    }
+    
+    private UserPurchaseHistoryResponseDto convertToUserPurchaseHistoryDto(Order order) {
+        // Convert order items to CartItemResponse
+        List<CartItemResponse> itemDtos = order.getItems().stream()
+                .map(item -> new CartItemResponse(
+                        item.getProductId(),
+                        item.getProductName(),
+                        item.getPrice(),
+                        item.getQuantity(),
+                        item.getColor(),
+                        true // Assume available since it was purchased
+                ))
+                .collect(Collectors.toList());
+        
+        // Create DTO
+        UserPurchaseHistoryResponseDto dto = new UserPurchaseHistoryResponseDto(
+                order.getId().toString(),
+                order.getTransactionId(),
+                order.getTotalAmount(),
+                order.getStatus() != null ? order.getStatus().name() : null,
+                order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null,
+                order.getShippingAddress(),
+                order.getCreatedAt(),
+                order.getUpdatedAt()
+        );
+        
+        // Set items
+        dto.setItems(itemDtos);
+        
+        return dto;
+    }
+    
+    // Helper để chuẩn hóa color thành "default" khi null hoặc rỗng (duplicate method for review check)
+    private String normalizeColor(String color) {
+        return (color == null || color.trim().isEmpty()) ? "default" : color.trim();
     }
 }

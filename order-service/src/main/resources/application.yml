@@ -16,6 +16,18 @@ spring:
       username: tiendoan
       password: tiendoan
       driver-class-name: com.mysql.cj.jdbc.Driver
+      # HikariCP Configuration - Giảm pool size để tránh too many connections
+      hikari:
+        maximum-pool-size: 5
+        minimum-idle: 2
+        idle-timeout: 300000
+        connection-timeout: 30000
+        leak-detection-threshold: 60000
+        max-lifetime: 1800000
+        connection-test-query: SELECT 1
+        auto-commit: false
+        pool-name: OrderServiceHikariCP
+        register-mbeans: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,6 +35,21 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
+        connection.provider_disables_autocommit: true
+        jdbc.batch_size: 10
+        order_inserts: true
+        order_updates: true
+        jdbc.lob.non_contextual_creation: true
+        current_session_context_class: org.springframework.orm.hibernate5.SpringSessionContext
+        transaction.auto_close_session: true
+        transaction.flush_before_completion: true
+        format_sql: true
+        connection.release_mode: after_transaction
+        connection.autocommit: false
+        jdbc.time_zone: UTC
+        enable_lazy_load_no_trans: false
+    open-in-view: false
+    database-platform: org.hibernate.dialect.MySQL8Dialect
 
   
 
