@@ -15,6 +15,7 @@ services:
     volumes:
       - spring_ecommerce_mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql-config.cnf:/etc/mysql/conf.d/custom.cnf
     networks:
       - ecommerce_network
     healthcheck:
@@ -23,6 +24,7 @@ services:
       timeout: 5s
       retries: 5
 
+  
   postgres:
     image: postgres:16
     container_name: postgres
@@ -55,7 +57,7 @@ services:
       - MONGO_INITDB_DATABASE=products
     volumes:
       - spring_ecommerce_mongodb_data:/data/db
-      # - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./init-mongo-reviews.js:/docker-entrypoint-initdb.d/init-mongo-reviews.js:ro
     networks:
       - ecommerce_network
     healthcheck:
@@ -166,8 +168,7 @@ services:
     image: confluentinc/cp-kafka:latest
     container_name: kafka
     depends_on:
-      zookeeper:
-        condition: service_healthy
+      - zookeeper
     ports:
       - "9092:9092"
     environment:
@@ -177,7 +178,12 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - ecommerce_network
 
@@ -290,7 +296,8 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-      
+      kafka:
+        condition: service_healthy
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_inventory?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=tiendoan
@@ -332,8 +339,62 @@ services:
       retries: 10
       start_period: 90s  # Increased for stability
 
+  order-service:
+    image: tiendn274/kltn-order-service:latest
+    container_name: order-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s  # Increased for stability
 
-
+  payment-service:
+    image: tiendn274/kltn-payment-service:latest
+    container_name: payment-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - NGROK_BASE_URL=https://f96b-101-99-36-202.ngrok-free.app
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 10s
+      timeout: 5s
   api-gateway:
     image: tiendn274/kltn-api-gateway:latest
     container_name: api-gateway
@@ -352,6 +413,10 @@ services:
         condition: service_healthy
       cart-service:
         condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
@@ -366,24 +431,27 @@ services:
       retries: 5
       start_period: 30s
 
-  # chatbot:
-  #   build:
-  #     context: ./chatbot
-  #     dockerfile: Dockerfile
-  #   container_name: chatbot
-  #   ports:
-  #     - "6000:6000"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   volumes:
-  #     - ./chatbot/src:/app
-  #     - /home/kltn2025/.cache/huggingface:/root/.cache/huggingface
-  #   environment:
-  #     - LANGUAGE_MODEL_PATH=/root/.cache/huggingface/hub/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
-  #   command: python app.py
-  #   networks:
-  #     - ecommerce_network
+  chatbot:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile
+    container_name: chatbot
+    ports:
+      - "5500:5500"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+    volumes:
+      - ./chatbot/src:/app
+      - /home/kltn2025/models--facebook--fasttext-language-identification:/root/.cache/models--facebook--fasttext-language-identification
+    environment:
+      - LANGUAGE_MODEL_PATH=/root/.cache/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
+    command: python main.py  # Thay đổi từ app.py thành main.py
+    networks:
+      - ecommerce_network
 
   # rag-service:
   #   build:

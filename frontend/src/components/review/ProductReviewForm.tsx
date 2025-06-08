@@ -56,14 +56,14 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
       if (isEditing) {
         const updateRequest: UpdateReviewRequest = {
           rating,
-          comment: comment.trim()
+          content: comment.trim()
         };
         review = await updateReview(existingReview.id!, updateRequest);
               } else {
           const reviewRequest: CreateReviewRequest = {
             productId: product.productId,
             rating,
-            comment: comment.trim(),
+            content: comment.trim(),
             color: product.color
           };
           review = await createReview(reviewRequest);

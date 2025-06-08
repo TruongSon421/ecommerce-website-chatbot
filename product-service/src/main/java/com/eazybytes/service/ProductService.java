@@ -51,7 +51,17 @@ public class ProductService {
         if (!product.getType().equals(type)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product type: " + type);
         }
-        List<InventoryDto> inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
+        
+        List<InventoryDto> inventoryDtos;
+        try {
+            inventoryDtos = inventoryClient.getProductColorVariants(id).getBody();
+            if (inventoryDtos == null) {
+                inventoryDtos = new ArrayList<>();
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get inventory data for product {}: {}. Using empty inventory.", id, e.getMessage());
+            inventoryDtos = new ArrayList<>();
+        }
 
         return mapToProductResponse(type, product, inventoryDtos);
     }

@@ -1,5 +1,7 @@
 package com.eazybytes.model;
 
+import com.eazybytes.converter.AddressTypeConverter;
+import jakarta.validation.constraints.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -44,7 +46,8 @@ public class Address {
     @NotNull(message = "Trạng thái mặc định không được null")
     private Boolean isDefault = false;
 
-    @Enumerated(EnumType.STRING)
+    // Use the custom converter instead of @Enumerated
+    @Convert(converter = AddressTypeConverter.class)
     @Column(name = "address_type", length = 20)
     @NotNull(message = "Loại địa chỉ không được để trống")
     @Builder.Default

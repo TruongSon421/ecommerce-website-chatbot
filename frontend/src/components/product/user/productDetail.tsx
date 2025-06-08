@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import BannerSection from '../../layout/bannerSection';
-import ProductReview from '../productReview';
 import ProductSpecifications from '../productSpecifications';
 import ProductReviews from '../ProductReviews';
 import ENV from '../../../config/env';
@@ -9,24 +7,38 @@ import { useAuth } from '../../hooks/useAuth';
 import { addItemToCart } from '../../../services/cartService';
 import { useNotification } from '../../common/Notification';
 import { CartItem } from '../../../types/cart';
-import { GroupVariantResponse, Variant, Product, Specification, Image } from '../../../types/product';
+import { GroupVariantResponse, Variant, Product, ImageData } from '../../../types/product';
 
-interface ProductReview {
+interface ProductReviewType {
   title: string;
   content: string;
 }
 
-// Extend Product interface if needed
-interface ExtendedProduct extends Product {
-  productReviews?: ProductReview[];
+interface ProductSpecification {
+  name?: string;
+  ori_name?: string;
+  value: string | string[];
 }
 
-const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct }) => {
+// Type for extended product properties
+type ExtendedProductProperties = {
+  current_prices?: number[];
+  original_prices?: number[];
+  quantities?: number[];
+  images?: Record<string, ImageData[]>;
+  isNew?: boolean;
+  promotions?: string[];
+  specifications?: ProductSpecification[];
+  productReviews?: ProductReviewType[];
+  release?: string;
+}
+
+const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> = ({ product: initialProduct }) => {
   const navigate = useNavigate();
   const { productId: urlProductId } = useParams<{ productId: string }>();
   const { isAuthenticated, user } = useAuth();
   const { showNotification } = useNotification();
-  const [product, setProduct] = useState<Product>(initialProduct);
+  const [product, setProduct] = useState<Product & ExtendedProductProperties>(initialProduct);
   const [groupData, setGroupData] = useState<GroupVariantResponse | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>('default');
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
@@ -52,7 +64,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      const data: Product = await response.json();
+      const data: Product & ExtendedProductProperties = await response.json();
       console.log('Fetched product:', data);
       setProduct(data);
       setRetryCount(0);
@@ -190,17 +202,17 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
     ? product.colors.indexOf(selectedColor)
     : -1;
 
-  const currentPrice = colorIndex >= 0 && product.current_prices[colorIndex]
-    ? product.current_prices[colorIndex]
-    : product.current_prices[0] || 0;
+  const currentPrice = (product.current_prices && colorIndex >= 0 && product.current_prices[colorIndex])
+    ? product.current_prices![colorIndex]
+    : (product.current_prices && product.current_prices[0]) || 0;
 
-  const originalPrice = colorIndex >= 0 && product.original_prices[colorIndex]
-    ? product.original_prices[colorIndex]
-    : product.original_prices[0] || 0;
+  const originalPrice = (product.original_prices && colorIndex >= 0 && product.original_prices[colorIndex])
+    ? product.original_prices![colorIndex]
+    : (product.original_prices && product.original_prices[0]) || 0;
 
-  const quantity = colorIndex >= 0 && product.quantities[colorIndex]
-    ? product.quantities[colorIndex]
-    : product.quantities[0] || 0;
+  const quantity = (product.quantities && colorIndex >= 0 && product.quantities[colorIndex])
+    ? product.quantities![colorIndex]
+    : (product.quantities && product.quantities[0]) || 0;
 
   const imageSrc = product.images
     ? product.images[selectedColor] || product.images['default'] || []
@@ -289,7 +301,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
                     variants={groupData?.variants || []}
                     selectedVariantIndex={selectedVariantIndex}
                     onVariantChange={handleVariantChange}
-                    colorOptions={product.colors}
+                    colorOptions={product.colors || []}
                     selectedColor={selectedColor}
                     onColorChange={handleColorChange}
                   />
@@ -318,7 +330,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
 
       {/* Promotions */}
       {!isProductLoading && !productError && (
-        <Promotions promotions={product.promotions} />
+        <Promotions promotions={(product as Product & ExtendedProductProperties).promotions || []} />
       )}
 
       {/* Tabs Section */}
@@ -328,6 +340,7 @@ const ProductDetail: React.FC<{ product: Product }> = ({ product: initialProduct
             activeTab={activeTab}
             onTabChange={setActiveTab}
             product={product}
+            selectedColor={selectedColor}
           />
         </div>
       )}
@@ -530,7 +543,7 @@ function getColorCode(colorName: string | null | undefined): string {
 }
 
 interface ProductImageGalleryProps {
-  thumbnails: Image[];
+  thumbnails: ImageData[];
 }
 
 const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({ thumbnails }) => {
@@ -750,19 +763,20 @@ interface KeyFeaturesProps {
 }
 
 const KeyFeatures: React.FC<KeyFeaturesProps> = ({ product }) => {
-  if (!product.specifications || product.specifications.length === 0) {
+  const productWithSpecs = product as Product & ExtendedProductProperties;
+  if (!productWithSpecs.specifications || productWithSpecs.specifications.length === 0) {
     return null;
   }
 
   // Get first few important specifications
-  const keySpecs = product.specifications.slice(0, 4);
+  const keySpecs = productWithSpecs.specifications.slice(0, 4);
 
   return (
     <div className="mt-8 border-t border-gray-200 pt-8">
       <h3 className="text-sm font-medium text-gray-900">Thông số nổi bật</h3>
       <div className="mt-4 prose prose-sm text-gray-500">
         <ul className="space-y-2">
-          {keySpecs.map((spec, index) => (
+          {keySpecs.map((spec: ProductSpecification, index: number) => (
             <li key={index} className="flex">
               <span className="flex-shrink-0 w-1/3 font-medium text-gray-900">
                 {spec.name || spec.ori_name}:
@@ -783,13 +797,15 @@ interface ProductTabsProps {
   activeTab: 'overview' | 'specifications' | 'reviews';
   onTabChange: (tab: 'overview' | 'specifications' | 'reviews') => void;
   product: Product;
+  selectedColor: string;
 }
 
-const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, product }) => {
+const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, product, selectedColor }) => {
+  const productWithSpecs = product as Product & ExtendedProductProperties;
   const tabs = [
     { id: 'overview', name: 'Tổng quan', count: null },
-    { id: 'specifications', name: 'Thông số kỹ thuật', count: product.specifications?.length || 0 },
-    { id: 'reviews', name: 'Bài viết đánh giá', count: product.productReviews?.length || 0 },
+    { id: 'specifications', name: 'Thông số kỹ thuật', count: productWithSpecs.specifications?.length || 0 },
+    { id: 'reviews', name: 'Bài viết đánh giá', count: productWithSpecs.productReviews?.length || 0 },
   ] as const;
 
   return (
@@ -838,7 +854,7 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, produ
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Thời điểm ra mắt</dt>
-                    <dd className="text-sm text-gray-900">{product.release || 'Chưa cập nhật'}</dd>
+                    <dd className="text-sm text-gray-900">{productWithSpecs.release || 'Chưa cập nhật'}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Loại sản phẩm</dt>
@@ -852,14 +868,20 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, produ
 
         {activeTab === 'specifications' && (
           <div>
-            <ProductSpecifications specifications={product.specifications} />
+            <ProductSpecifications 
+              specifications={
+                (productWithSpecs.specifications || []).map(spec => ({
+                  name: spec.name || spec.ori_name || '',
+                  value: spec.value
+                }))
+              } 
+            />
           </div>
         )}
 
         {activeTab === 'reviews' && (
           <div>
-            <ProductReviewsSection productReviews={product.productReviews || []} />
-            <ProductReview />
+            <ProductReviewsSection productReviews={productWithSpecs.productReviews || []} />
             <ProductReviews 
               productId={product.productId} 
               selectedColor={selectedColor}

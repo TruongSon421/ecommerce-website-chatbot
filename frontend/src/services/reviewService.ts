@@ -51,7 +51,16 @@ export const getProductReviews = async (
   const response = await api.get(`${BASE_URL}/product/${productId}`, {
     params: { page, size, sortBy, sortDir }
   });
-  return response.data;
+  
+  // Transform backend response to frontend format
+  const transformedContent = response.data.content.map((review: BackendReviewResponse) => 
+    transformBackendReview(review)
+  );
+  
+  return {
+    ...response.data,
+    content: transformedContent
+  };
 };
 
 /**
@@ -82,7 +91,19 @@ export const getProductReviewOverview = async (
   }
   
   const response = await api.get(`${BASE_URL}/product/${productId}/overview?${params}`);
-  return response.data;
+  
+  // Transform backend response to frontend format
+  const transformedContent = response.data.reviews.content.map((review: BackendReviewResponse) => 
+    transformBackendReview(review)
+  );
+  
+  return {
+    ...response.data,
+    reviews: {
+      ...response.data.reviews,
+      content: transformedContent
+    }
+  };
 };
 
 /**
@@ -91,10 +112,25 @@ export const getProductReviewOverview = async (
 export const getUserReviews = async (
   page: number = 0,
   size: number = 10
-): Promise<PaginatedReviews> => {
+): Promise<ReviewResponse[]> => {
   const response = await api.get('/reviews/user', {
     params: { page, size }
   });
+  
+  // Transform backend response to frontend format if needed
+  if (Array.isArray(response.data)) {
+    // If direct array response
+    return response.data.map((review: BackendReviewResponse) => 
+      transformBackendReview(review)
+    );
+  } else if (response.data.content) {
+    // If paginated response
+    const transformedContent = response.data.content.map((review: BackendReviewResponse) => 
+      transformBackendReview(review)
+    );
+    return transformedContent;
+  }
+  
   return response.data;
 };
 
@@ -190,14 +226,11 @@ export const toggleReviewVisibility = async (reviewId: string, visible: boolean)
   return response.data;
 };
 
-// Get user's review for a specific product in an order (mock implementation)
+// Get user's review for a specific product in an order
 export const getUserReview = async (orderId: string, productId: string): Promise<ReviewResponse | null> => {
   try {
-    // This would be implemented based on actual API structure
-    const response = await api.get(`/reviews/user-review`, {
-      params: { orderId, productId }
-    });
-    return response.data;
+    const response = await api.get(`/reviews/order/${orderId}/product/${productId}`);
+    return transformBackendReview(response.data);
   } catch (error: any) {
     if (error.response?.status === 404) {
       return null; // No review found

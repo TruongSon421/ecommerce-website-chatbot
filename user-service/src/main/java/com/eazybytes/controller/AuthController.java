@@ -40,8 +40,6 @@ public class AuthController {
     private final UserDetailsServiceImpl userDetailsService;
     private final RestTemplate restTemplate;
 
-
-
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager
@@ -81,12 +79,17 @@ public class AuthController {
         User user = User.builder()
                 .username(signUpRequest.getUsername())
                 .email(signUpRequest.getEmail())
+                .firstName(signUpRequest.getFirstName()) // Add if SignupRequest has these fields
+                .lastName(signUpRequest.getLastName())   // Add if SignupRequest has these fields
+                .phoneNumber(signUpRequest.getPhoneNumber()) // Add if SignupRequest has this field
                 .password(encoder.encode(signUpRequest.getPassword()))
+                .isActive(true)
                 .build();
 
         Set<Role> roles = new HashSet<>();
-        Role userRole = roleRepository.findByName(ERole.ROLE_USER.name())
-        .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+        // Fixed: Use ERole enum directly instead of .name()
+        Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
         roles.add(userRole);
 
         user.setRoles(roles);
@@ -94,7 +97,6 @@ public class AuthController {
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
-
 
     @PostMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@RequestBody TokenRefreshRequest request) {
@@ -108,12 +110,17 @@ public class AuthController {
             String newRefreshToken = jwtUtils.generateRefreshToken(userDetails);
 
             BlacklistRequest blacklistRequest = new BlacklistRequest(requestRefreshToken);
-            restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", blacklistRequest, Void.class);
+            try {
+                restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", blacklistRequest, Void.class);
+            } catch (Exception e) {
+                // Log error but don't fail the refresh operation
+                System.err.println("Failed to blacklist old refresh token: " + e.getMessage());
+            }
 
             return ResponseEntity.ok(new TokenRefreshResponse(newAccessToken, newRefreshToken));
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Invalid refresh token"));
     }
 
     @PostMapping("/logout")
@@ -121,14 +128,40 @@ public class AuthController {
             @RequestHeader("Authorization") String token,
             @RequestHeader(value = "X-Refresh-Token", required = false) String refreshToken) {
 
-        BlacklistRequest accessTokenRequest = new BlacklistRequest(token);
-        restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", accessTokenRequest, Void.class);
+        try {
+            BlacklistRequest accessTokenRequest = new BlacklistRequest(token);
+            restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", accessTokenRequest, Void.class);
 
-        if (refreshToken != null && !refreshToken.isEmpty()) {
-            BlacklistRequest refreshTokenRequest = new BlacklistRequest(refreshToken);
-            restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", refreshTokenRequest, Void.class);
+            if (refreshToken != null && !refreshToken.isEmpty()) {
+                BlacklistRequest refreshTokenRequest = new BlacklistRequest(refreshToken);
+                restTemplate.postForEntity("http://api-gateway/api/internal/blacklist", refreshTokenRequest, Void.class);
+            }
+        } catch (Exception e) {
+            // Log error but still return success for user experience
+            System.err.println("Failed to blacklist tokens: " + e.getMessage());
         }
 
         return ResponseEntity.ok(new MessageResponse("Logged out successfully"));
+    }
+
+    // Helper method to validate and convert role string to ERole
+    private ERole convertToERole(String roleName) {
+        try {
+            return ERole.valueOf(roleName);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Error: Invalid role name: " + roleName);
+        }
+    }
+
+    // Helper method to get user role safely
+    private Role getUserRole() {
+        return roleRepository.findByName(ERole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Default user role not found. Please ensure roles are initialized."));
+    }
+
+    // Helper method to get admin role safely
+    private Role getAdminRole() {
+        return roleRepository.findByName(ERole.ROLE_ADMIN)
+                .orElseThrow(() -> new RuntimeException("Error: Admin role not found."));
     }
 }
