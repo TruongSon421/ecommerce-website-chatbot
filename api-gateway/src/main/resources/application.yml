@@ -51,6 +51,13 @@ spring:
           filters:
             - Authentication    # Thêm filter
 
+        - id: product-review-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/reviews/**
+          filters:
+            - Authentication    # Thêm filter
+
         - id: order-service
           uri: lb://order-service
           predicates:
@@ -99,6 +106,13 @@ spring:
           predicates:
             - Path=/api/v1/payment/vnpay/ipn, /api/v1/payment/vnpay/return
 
+        # - id: chatbot-service
+        #   uri: http://host.docker.internal:5500  # Thay vì http://chatbot:5500
+        #   predicates:
+        #     - Path=/api/chatbot/**
+        #   filters:
+        #     - RewritePath=/api/chatbot/(?<path>.*), /${path}
+        #     - Authentication
 eureka:
   client:
     serviceUrl:

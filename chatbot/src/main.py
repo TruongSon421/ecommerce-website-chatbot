@@ -33,7 +33,19 @@ load_dotenv()
 
 # Khởi tạo Flask và MySQL
 app = create_flask_app()
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:5173"}})  # Enable CORS for /api/* endpoints
+CORS(app, resources={
+    r"/*": {  # Thay đổi từ r"/api/*" thành r"/*"
+        "origins": [
+            "http://localhost:5173",
+            "http://localhost:8070",  # API Gateway
+            "http://host.docker.internal:8070",  # API Gateway từ Docker perspective
+            "https://dca8-42-116-6-46.ngrok-free.app",
+            "https://*.ngrok-free.app"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Khởi tạo DatabaseSessionService với PostgreSQL
 db_url = os.getenv("POSTGRES_DB_URL")
@@ -108,7 +120,7 @@ async def call_agent_async(user_id: str, session_id: str, access_token: str, que
 
     return final_response_text
 
-@app.route('/api/query', methods=['POST'])
+@app.route('/query', methods=['POST'])
 async def handle_query():
     """Xử lý request POST chứa user_id, session_id, và query với filter."""
     try:
@@ -213,7 +225,7 @@ async def test():
     logging.info("Test endpoint accessed")
     return jsonify({"message": "hello"})
 
-@app.route('/api/test-filter', methods=['POST'])
+@app.route('/test-filter', methods=['POST'])
 async def test_filter():
     """Test endpoint để kiểm tra filter functionality."""
     try:

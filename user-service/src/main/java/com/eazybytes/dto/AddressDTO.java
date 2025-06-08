@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
-
+import com.eazybytes.model.AddressType;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -18,10 +18,10 @@ public class AddressDTO {
     private String ward;
     @NotBlank(message = "Street is required")
     private String street;
-    private String addressType;
+    private AddressType addressType;
     @NotBlank(message = "Receiver name is required")
     private String receiverName;
     @NotBlank(message = "Receiver phone is required")
-    private String receiverPhone;
+    private Long receiverPhone;
     private Boolean isDefault;
 }

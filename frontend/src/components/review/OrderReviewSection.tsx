@@ -9,6 +9,7 @@ interface OrderReviewSectionProps {
   orderId: string;
   items: OrderItem[];
   orderStatus: string;
+  onReviewUpdate?: () => void;
 }
 
 interface ProductReviewInfo {
@@ -21,7 +22,8 @@ interface ProductReviewInfo {
 const OrderReviewSection: React.FC<OrderReviewSectionProps> = ({
   orderId,
   items,
-  orderStatus
+  orderStatus,
+  onReviewUpdate
 }) => {
   const [productReviews, setProductReviews] = useState<ProductReviewInfo[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<OrderItem | null>(null);
@@ -77,6 +79,11 @@ const OrderReviewSection: React.FC<OrderReviewSectionProps> = ({
         ? { ...info, review }
         : info
     ));
+    
+    // Notify parent component about the review update
+    if (onReviewUpdate) {
+      onReviewUpdate();
+    }
   };
 
   const renderStars = (rating: number) => {

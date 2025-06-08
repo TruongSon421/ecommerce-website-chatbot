@@ -6,6 +6,7 @@ import com.eazybytes.dto.product.ProductRequest;
 import com.eazybytes.dto.product.ProductResponse;
 import com.eazybytes.model.BaseProduct;
 import com.eazybytes.service.ProductService;
+import com.eazybytes.service.ProductReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,11 +26,28 @@ import java.util.*;
 public class ProductController {
     private final ProductService productService;
     private final InventoryClient inventoryClient;
+    private final ProductReviewService reviewService;
 
     @GetMapping("/get/{type}/{id}")
     @ResponseStatus(HttpStatus.OK)
     public ProductResponse getProduct(@PathVariable String type, @PathVariable String id) {
-        return productService.getProductById(type, id);
+        ProductResponse product = productService.getProductById(type, id);
+        // Thêm thống kê đánh giá vào response
+        Map<String, Object> reviewStats = reviewService.getProductReviewStats(id);
+        // Có thể extend ProductResponse để include reviewStats hoặc trả về Map
+        return product;
+    }
+
+    @GetMapping("/get/{type}/{id}/with-reviews")
+    @ResponseStatus(HttpStatus.OK)
+    public Map<String, Object> getProductWithReviews(@PathVariable String type, @PathVariable String id) {
+        ProductResponse product = productService.getProductById(type, id);
+        Map<String, Object> reviewStats = reviewService.getProductReviewStats(id);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("product", product);
+        response.put("reviewStats", reviewStats);
+        return response;
     }
 
     @PostMapping("/create")

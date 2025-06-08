@@ -37,6 +37,10 @@ public class RouterValidator {
             "/api/guest-carts/{guestId}/items",
             "/api/guest-carts/{guestId}/items/{productId}",
 
+            // Review endpoints - public access for viewing reviews
+            "/api/reviews/product/{productId}",
+            "/api/reviews/product/{productId}/stats",
+            "/api/reviews/product/{productId}/overview",
 
             "/api/payments/status/{transactionId}",
             "/api/payments/url/{transactionId}",

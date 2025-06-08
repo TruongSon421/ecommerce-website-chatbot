@@ -26,7 +26,7 @@ public class CreateUserDTO {
 
     private String firstName;
     private String lastName;
-    private String phoneNumber;
+    private Long phoneNumber;
     private Boolean isActive;
     private Set<String> roleNames;
     private List<AddressDTO> addresses;

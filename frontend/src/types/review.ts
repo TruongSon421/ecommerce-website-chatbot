@@ -34,13 +34,15 @@ export interface BackendReviewResponse {
 export interface CreateReviewRequest {
   productId: string;
   rating: number;
-  comment: string;
+  content: string;
   color: string;
+  title?: string;
 }
 
 export interface UpdateReviewRequest {
   rating: number;
-  comment: string;
+  content: string;
+  title?: string;
 }
 
 // Frontend normalized interface

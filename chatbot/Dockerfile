@@ -1,12 +1,17 @@
-# Dockerfile
-FROM python:3.9-slim
+# Sử dụng base image có sẵn build tools
+FROM python:3.11
 
 WORKDIR /app
 
-# Install system dependencies
+# Install additional dependencies nếu cần
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc python3-dev && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake && \
     rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --upgrade pip
 
 # Install Python dependencies
 COPY requirements.txt .
@@ -16,12 +21,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./src .
 
 # Environment variables
-ENV FLASK_APP=app.py
 ENV PYTHONPATH=/app
 
-# Install Gunicorn
-RUN pip install gunicorn
+EXPOSE 5500
 
-EXPOSE 5000
-
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "4", "--threads", "2", "app:app"]
+CMD ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "5500"]

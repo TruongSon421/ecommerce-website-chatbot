@@ -1,3 +1,29 @@
-mysql-connector-python==9.2.0
-llama-index-llms-google-genai
-duckduckgo_search
+flask==2.3.3
+flask-cors==4.0.0
+uvicorn==0.34.2
+asgiref==3.7.2
+
+python-dotenv==1.0.0
+
+# Database Drivers
+psycopg2-binary==2.9.7
+mysql-connector-python==8.1.0
+
+google-adk==0.5.0
+
+transformers==4.35.0
+torch==2.1.0
+fasttext==0.9.3
+
+# HTTP Requests
+requests==2.31.0
+urllib3==2.0.7
+
+# Async Support
+asyncio-mqtt==0.16.1
+
+# Utilities
+numpy==1.24.3
+pandas==2.0.3
+
+elasticsearch==8.10.0

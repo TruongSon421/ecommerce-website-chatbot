@@ -37,6 +37,10 @@ logging:
 inventory-service:
   url: http://inventory-service:8100
 
+order-service:
+  url: http://order-service:8084
+
+
 
 management:
   endpoints:

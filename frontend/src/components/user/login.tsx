@@ -22,7 +22,7 @@ const Login: React.FC = () => {
       const redirectTo = location.state?.redirectTo || '/home';
       // Prevent redirect to admin routes if not admin
       if (redirectTo.startsWith('/admin') && !isAdmin) {
-        navigate('/home', { replace: true });
+        navigate('/', { replace: true });
       } else {
         navigate(redirectTo, { replace: true });
       }

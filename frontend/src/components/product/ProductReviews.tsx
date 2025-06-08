@@ -52,6 +52,8 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
         10, 
         selectedColor || undefined
       );
+      console.log('Review data received:', data);
+      console.log('Reviews:', data.reviews?.content);
       setOverview(data);
     } catch (error) {
       console.error('Error loading review data:', error);
@@ -95,13 +97,13 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
     setSubmitting(true);
     try {
       if (editingReview) {
-        const request: UpdateReviewRequest = { rating, comment };
+        const request: UpdateReviewRequest = { rating, content: comment };
         await updateReview(editingReview.id, request);
       } else {
         const request: CreateReviewRequest = {
           productId,
           rating,
-          comment,
+          content: comment,
           color: selectedColor,
         };
         await createReview(request);

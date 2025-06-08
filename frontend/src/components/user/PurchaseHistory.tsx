@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getUserPurchaseHistory } from '../../services/orderService';
+import { getUserReviews } from '../../services/reviewService';
 import { PaginatedPurchaseHistory, UserPurchaseHistoryResponse, OrderStatus } from '../../types/order';
+import { ReviewResponse } from '../../types/review';
 import OrderReviewSection from '../review/OrderReviewSection';
 import QuickReviewBadge from '../review/QuickReviewBadge';
 import ReviewSummaryCard from '../review/ReviewSummaryCard';
@@ -15,10 +17,27 @@ const PurchaseHistory: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedOrder, setSelectedOrder] = useState<UserPurchaseHistoryResponse | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [userReviews, setUserReviews] = useState<ReviewResponse[]>([]);
+  const [reviewStats, setReviewStats] = useState({
+    totalReviews: 0,
+    pendingReviews: 0,
+    averageRating: 0,
+    canReviewCount: 0
+  });
 
   useEffect(() => {
     loadPurchaseHistory();
   }, [currentPage, sortBy, sortDir, statusFilter]);
+
+  useEffect(() => {
+    loadUserReviews();
+  }, []);
+
+  useEffect(() => {
+    if (purchaseHistory && userReviews.length >= 0) {
+      calculateReviewStats(purchaseHistory);
+    }
+  }, [userReviews, purchaseHistory]);
 
   const loadPurchaseHistory = async () => {
     try {
@@ -36,6 +55,37 @@ const PurchaseHistory: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadUserReviews = async () => {
+    try {
+      const reviews = await getUserReviews();
+      setUserReviews(reviews);
+    } catch (error) {
+      console.error('Error loading user reviews:', error);
+    }
+  };
+
+  const calculateReviewStats = (purchaseData: PaginatedPurchaseHistory) => {
+    if (!purchaseData) return;
+
+    const deliveredOrders = purchaseData.orders.filter(
+      order => order.status === 'DELIVERED' || order.status === 'PAYMENT_COMPLETED'
+    );
+    
+    const totalItemsCanReview = deliveredOrders.reduce((sum, order) => sum + order.items.length, 0);
+    const reviewedItems = userReviews.length;
+    const pendingItems = userReviews.filter(review => review.status === 'PENDING').length;
+    const averageRating = userReviews.length > 0 
+      ? userReviews.reduce((sum, review) => sum + review.rating, 0) / userReviews.length 
+      : 0;
+
+    setReviewStats({
+      totalReviews: reviewedItems,
+      pendingReviews: pendingItems,
+      averageRating: Number(averageRating.toFixed(1)),
+      canReviewCount: Math.max(0, totalItemsCanReview - reviewedItems)
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -74,6 +124,49 @@ const PurchaseHistory: React.FC = () => {
   const handleViewDetails = (order: UserPurchaseHistoryResponse) => {
     setSelectedOrder(order);
     setShowOrderDetails(true);
+  };
+
+  const handleReviewUpdate = () => {
+    // Reload user reviews when a review is submitted/updated
+    loadUserReviews();
+  };
+
+  const getProductReviewStatus = (productId: string) => {
+    const review = userReviews.find(r => r.productId === productId);
+    return review || null;
+  };
+
+  const hasReviewedProduct = (productId: string) => {
+    return userReviews.some(review => review.productId === productId);
+  };
+
+  // Flatten all items from all orders into a single list
+  const getAllPurchasedItems = () => {
+    if (!purchaseHistory) return [];
+    
+    const allItems: Array<{
+      orderId: string;
+      orderDate: string;
+      orderStatus: string;
+      transactionId: string;
+      item: any;
+      totalPrice: number;
+    }> = [];
+
+    purchaseHistory.orders.forEach(order => {
+      order.items.forEach(item => {
+        allItems.push({
+          orderId: order.id,
+          orderDate: order.createdAt,
+          orderStatus: order.status,
+          transactionId: order.transactionId,
+          item: item,
+          totalPrice: item.price * item.quantity
+        });
+      });
+    });
+
+    return allItems;
   };
 
   const renderOrderDetailsModal = () => {
@@ -150,6 +243,7 @@ const PurchaseHistory: React.FC = () => {
             orderId={selectedOrder.id}
             items={selectedOrder.items}
             orderStatus={selectedOrder.status}
+            onReviewUpdate={handleReviewUpdate}
           />
         </div>
       </div>
@@ -200,17 +294,12 @@ const PurchaseHistory: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Lịch sử mua hàng</h1>
+        <h1 className="text-2xl font-bold">Sản phẩm đã mua</h1>
       </div>
 
       {/* Review Summary */}
       <ReviewSummaryCard 
-        stats={{
-          totalReviews: 0, // This would come from API
-          pendingReviews: 0,
-          averageRating: 0,
-          canReviewCount: purchaseHistory?.orders.filter(order => order.status === 'DELIVERED' || order.status === 'PAYMENT_COMPLETED').length || 0
-        }}
+        stats={reviewStats}
         loading={loading}
       />
 
@@ -258,88 +347,139 @@ const PurchaseHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Orders List */}
+      {/* Products List */}
       <div className="space-y-4">
-        {purchaseHistory?.orders.length === 0 ? (
+        {getAllPurchasedItems().length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow">
-            <p className="text-gray-500">Bạn chưa có đơn hàng nào</p>
+            <p className="text-gray-500">Bạn chưa mua sản phẩm nào</p>
           </div>
         ) : (
-          purchaseHistory?.orders.map((order) => (
-            <div key={order.id} className="bg-white p-6 rounded-lg shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <div className="flex items-center gap-4 mb-2">
-                    <h3 className="font-semibold">Đơn hàng #{order.id}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(order.status)}`}>
-                      {getStatusText(order.status)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    <div>Mã giao dịch: {order.transactionId}</div>
-                    <div>Ngày đặt: {new Date(order.createdAt).toLocaleString('vi-VN')}</div>
-                    <div className="mt-2">
-                      <QuickReviewBadge
-                        hasReviewed={false} // This would come from API
-                        canReview={order.status === 'DELIVERED' || order.status === 'PAYMENT_COMPLETED'}
-                        orderStatus={order.status}
-                        itemCount={order.items.length}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  <div className="text-lg font-bold text-green-600 mb-2">
-                    {formatCurrency(order.totalAmount)}
-                  </div>
-                  <div className="flex gap-2">
-                    {(order.status === 'DELIVERED' || order.status === 'PAYMENT_COMPLETED') && (
-                      <button
-                        onClick={() => handleViewDetails(order)}
-                        className="px-3 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center gap-1"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+          getAllPurchasedItems().map((purchasedItem, index) => {
+            const canReview = purchasedItem.orderStatus === 'DELIVERED' || purchasedItem.orderStatus === 'PAYMENT_COMPLETED';
+            const hasReviewed = hasReviewedProduct(purchasedItem.item.productId);
+            const reviewStatus = getProductReviewStatus(purchasedItem.item.productId);
+            
+            return (
+              <div key={`${purchasedItem.orderId}-${purchasedItem.item.productId}-${index}`} className="bg-white p-6 rounded-lg shadow">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-start gap-4">
+                      {/* Product Image Placeholder */}
+                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        Đánh giá
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleViewDetails(order)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">Sản phẩm ({order.items.length} món)</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {order.items.slice(0, 3).map((item, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                      </div>
+                      
                       <div className="flex-1">
-                        <div className="font-medium text-sm">{item.productName}</div>
-                        <div className="text-xs text-gray-600">
-                          {item.color} × {item.quantity}
+                        <h3 className="font-semibold text-lg mb-1">{purchasedItem.item.productName}</h3>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div>Màu sắc: <span className="font-medium">{purchasedItem.item.color}</span></div>
+                          <div>Số lượng: <span className="font-medium">{purchasedItem.item.quantity}</span></div>
+                          <div>Đơn giá: <span className="font-medium">{formatCurrency(purchasedItem.item.price)}</span></div>
+                          <div>Tổng tiền: <span className="font-medium text-green-600">{formatCurrency(purchasedItem.totalPrice)}</span></div>
+                        </div>
+                        
+                        <div className="mt-3 flex items-center gap-4">
+                          <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(purchasedItem.orderStatus)}`}>
+                            {getStatusText(purchasedItem.orderStatus)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Mua ngày: {new Date(purchasedItem.orderDate).toLocaleDateString('vi-VN')}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-sm font-medium">
-                        {formatCurrency(item.price)}
+                    </div>
+                  </div>
+                  
+                  <div className="ml-4 flex flex-col items-end gap-2">
+                    {/* Review Status */}
+                    <div className="text-right">
+                      {hasReviewed && reviewStatus ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1 text-green-600 text-sm">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Đã đánh giá
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <svg
+                                key={star}
+                                className={`w-4 h-4 ${
+                                  star <= reviewStatus.rating
+                                    ? 'text-yellow-400 fill-yellow-400'
+                                    : 'text-gray-300'
+                                }`}
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                              </svg>
+                            ))}
+                            <span className="text-sm text-gray-600 ml-1">({reviewStatus.rating})</span>
+                          </div>
+                          {reviewStatus.status === 'PENDING' && (
+                            <p className="text-xs text-yellow-600">Chờ duyệt</p>
+                          )}
+                        </div>
+                      ) : canReview ? (
+                        <div className="flex items-center gap-1 text-yellow-600 text-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                          Có thể đánh giá
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-gray-500 text-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Chưa thể đánh giá
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-2">
+                      {canReview && (
+                        <button
+                          onClick={() => {
+                            const mockOrder = {
+                              id: purchasedItem.orderId,
+                              transactionId: purchasedItem.transactionId,
+                              createdAt: purchasedItem.orderDate,
+                              status: purchasedItem.orderStatus,
+                              totalAmount: purchasedItem.totalPrice,
+                              shippingAddress: 'Địa chỉ giao hàng',
+                              paymentMethod: 'Thanh toán online',
+                              items: [purchasedItem.item]
+                            };
+                            handleViewDetails(mockOrder);
+                          }}
+                          className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1 ${
+                            hasReviewed
+                              ? 'text-blue-600 border border-blue-600 hover:bg-blue-50'
+                              : 'text-white bg-green-600 hover:bg-green-700'
+                          }`}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                          </svg>
+                          {hasReviewed ? 'Sửa đánh giá' : 'Đánh giá'}
+                        </button>
+                      )}
+                      
+                      <div className="text-xs text-gray-500 text-center">
+                        Đơn #{purchasedItem.orderId}
                       </div>
                     </div>
-                  ))}
-                  {order.items.length > 3 && (
-                    <div className="flex items-center justify-center p-2 bg-gray-100 rounded text-gray-600 text-sm">
-                      +{order.items.length - 3} sản phẩm khác
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
