@@ -56,7 +56,7 @@ export const phoneFilterData: FilterData = {
       multiSelect: true,
       options: [
         { label: 'Samsung', value: 'samsung' },
-        { label: 'iPhone', value: 'iphone' },
+        { label: 'iPhone', value: 'iPhone (Apple)' },
         { label: 'OPPO', value: 'oppo' },
         { label: 'Xiaomi', value: 'xiaomi' },
         { label: 'vivo', value: 'vivo' },

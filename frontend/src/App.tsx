@@ -25,9 +25,12 @@ import CartPage from "./pages/CartPage";
 // Import admin components
 import AdminLogin from "./pages/admin/LoginAdmin";
 import AdminRegister from "./pages/admin/RegisterAdmin";
-import Dashboard from "./pages/dashboard/adminDashBoard";
+import Dashboard from "./pages/admin/adminDashBoard.tsx";
 import AddProductPage from "./pages/product/addProduct";
 import ProductManagement from "./pages/admin/ProductManagement";
+import UserManagement from "./pages/admin/UserManagement";
+import OrderManagement from "./pages/admin/OrderManagement";
+import ReviewManagement from "./pages/admin/ReviewManagement";
 
 // Import private user components
 import PaymentPage from "./pages/PaymentPage";
@@ -37,6 +40,7 @@ import PaymentProcessingPage from "./pages/PaymentProcessingPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import Profile from "./components/user/profile";
+import PurchaseHistory from "./components/user/PurchaseHistory";
 
 // Private route components
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -80,6 +84,14 @@ function AppContent() {
             element={
               <UserPrivateRoute>
                 <Profile />
+              </UserPrivateRoute>
+            }
+          />
+          <Route 
+            path="purchase-history"
+            element={
+              <UserPrivateRoute>
+                <PurchaseHistory />
               </UserPrivateRoute>
             }
           />
@@ -155,6 +167,10 @@ function AppContent() {
           />
           <Route path="/admin/products/:type" element={<AdminPrivateRoute><PageCategoryAdmin /></AdminPrivateRoute>} />
           <Route path="/admin/detail/:type/:product_id" element={<AdminPrivateRoute><ProductGHAdmin /></AdminPrivateRoute>} />
+        
+          <Route path="/admin/users" element={<AdminPrivateRoute><UserManagement /></AdminPrivateRoute>} />
+          <Route path="/admin/orders" element={<AdminPrivateRoute><OrderManagement /></AdminPrivateRoute>} />
+          <Route path="/admin/reviews" element={<AdminPrivateRoute><ReviewManagement /></AdminPrivateRoute>} />
         </Route>
       </Routes>
     </NotificationProvider>

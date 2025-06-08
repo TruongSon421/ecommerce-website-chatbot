@@ -21,12 +21,21 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   isLoading = false,
 }) => {
   const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
-  const [priceRange, setPriceRange] = useState<number[]>([300000, 45000000]);
+  const [priceRange, setPriceRange] = useState<number[]>([0, 50000000]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [shouldAutoApply, setShouldAutoApply] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const currentFilterData = filterData[type] || {};
+
+  // Auto-apply effect when shouldAutoApply flag is set
+  useEffect(() => {
+    if (shouldAutoApply) {
+      handleApply();
+      setShouldAutoApply(false);
+    }
+  }, [selectedFilters, searchQuery, shouldAutoApply]);
 
   // Calculate number of active filters
   const getSelectedFiltersCount = () => {
@@ -36,9 +45,11 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   // Reset all filters
   const handleResetFilters = () => {
     setSelectedFilters({});
-    setPriceRange([300000, 45000000]);
+    setPriceRange([0, 50000000]);
     setSearchQuery('');
-    onApplyFilters({}); // Let the parent handle URL updates
+    
+    // Apply empty filters to trigger data reload
+    onApplyFilters({});
   };
 
   useEffect(() => {
@@ -65,8 +76,31 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       const filter = filterSection?.find((f: any) => f.key === key);
       const isMultiSelect = filter?.multiSelect !== false;
       
-      // For price filters or non-multiSelect filters, replace the current selection
-      if (key === 'price' || key === 'priceRanges' || !isMultiSelect) {
+      // Special handling for price filters - convert to priceRange
+      if (key === 'price') {
+        if (currentValues.includes(value)) {
+          // Deselecting - reset to full range
+          setPriceRange([0, 50000000]);
+          return {
+            ...prev,
+            [key]: []
+          };
+        } else {
+          // Selecting a price range - parse and update priceRange
+          const [minStr, maxStr] = value.split('-');
+          const min = minStr ? parseInt(minStr, 10) : 0;
+          const max = maxStr ? parseInt(maxStr, 10) : 50000000;
+          setPriceRange([min, max]);
+          
+          return {
+            ...prev,
+            [key]: [value]
+          };
+        }
+      }
+      
+      // For other price filters or non-multiSelect filters, replace the current selection
+      if (key === 'priceRanges' || !isMultiSelect) {
         if (currentValues.includes(value)) {
           return {
             ...prev,
@@ -95,14 +129,32 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     });
   };
 
+  // Handle removing filter and auto-apply
+  const handleRemoveFilter = (key: string, value: string) => {
+    handleFilterChange(key, value);
+    // Trigger auto-apply using flag instead of setTimeout
+    setShouldAutoApply(true);
+  };
+
+  // Handle removing search query and auto-apply
+  const handleRemoveSearchQuery = () => {
+    setSearchQuery('');
+    // Trigger auto-apply using flag instead of setTimeout
+    setShouldAutoApply(true);
+  };
+
   const handlePriceRangeChange = (newValue: number[]) => {
     setPriceRange(newValue);
   };
 
   const handleApply = () => {
+    // Remove price filter since we're using priceRange instead
+    const filtersToSend = { ...selectedFilters };
+    delete filtersToSend.price;
+    
     // Send filter data to parent component
     onApplyFilters({
-      ...selectedFilters,
+      ...filtersToSend,
       priceRange,
       searchQuery,
     });
@@ -120,9 +172,8 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
 
   return (
     <div className="p-4">
-      {/* Flex container for Button and Search Input */}
+      {/* Filter Button and Dropdown */}
       <div className="flex items-center gap-4 mb-4">
-        {/* Filter Button and Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={toggleDropdown}
@@ -130,9 +181,9 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
             disabled={isLoading}
           >
             <span>Lọc</span>
-            {getSelectedFiltersCount() > 0 && (
+            {(getSelectedFiltersCount() > 0 || searchQuery.trim()) && (
               <span className="bg-white text-blue-500 px-2 py-0.5 rounded-full text-xs">
-                {getSelectedFiltersCount()}
+                {getSelectedFiltersCount() + (searchQuery.trim() ? 1 : 0)}
               </span>
             )}
             <svg
@@ -149,35 +200,25 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
               currentFilterData={currentFilterData}
               selectedFilters={selectedFilters}
               priceRange={priceRange}
+              searchQuery={searchQuery}
               onFilterChange={handleFilterChange}
               onPriceRangeChange={handlePriceRangeChange}
+              onSearchQueryChange={setSearchQuery}
               onApply={handleApply}
               isLoading={isLoading}
             />
           )}
         </div>
-
-        {/* Search Query Input - flex-grow to take remaining space */}
-        <div className="flex-grow">
-          <input
-            type="text"
-            placeholder="Tìm kiếm thông số kỹ thuật (vd: ip68)..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            disabled={isLoading}
-          />
-        </div>
       </div>
 
-      {/* Moved Reset Button and Active Filters to be outside the flex container of button/search */}
-      {getSelectedFiltersCount() > 0 && (
+      {/* Reset Button and Active Filters */}
+      {(getSelectedFiltersCount() > 0 || searchQuery.trim()) && (
         <div className="mb-4">
           <button
             onClick={handleResetFilters}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            Xóa bộ lọc
+            Xóa tất cả bộ lọc
           </button>
         </div>
       )}
@@ -187,8 +228,26 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
         <ActiveFilters
           selectedFilters={selectedFilters}
           currentFilterData={currentFilterData}
-          onRemoveFilter={handleFilterChange}
+          onRemoveFilter={handleRemoveFilter}
         />
+      )}
+
+      {/* Show search query as active filter if present */}
+      {searchQuery.trim() && (
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm">
+              Tìm kiếm: "{searchQuery}"
+              <button
+                onClick={handleRemoveSearchQuery}
+                className="ml-1 text-green-600 hover:text-green-800"
+                aria-label="Remove search"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Sort Menu */}

@@ -38,7 +38,7 @@ const useProductApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProducts = useCallback(async (queryString: string, resetProducts: boolean = false) => {
+  const fetchProducts = useCallback(async (queryString: string, resetProducts: boolean = false, isSortedByPrice: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -67,12 +67,28 @@ const useProductApi = () => {
       
       setProducts((prevProducts) => {
         if (resetProducts) {
-          return data.content;
+          // Sort by orderNumber only if not sorted by price
+          if (isSortedByPrice) {
+            return data.content; // Keep the order from backend (sorted by price)
+          } else {
+            const sortedContent = data.content.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
+            return sortedContent;
+          }
         } else {
           // Merge products, ensuring no duplicates by checking groupId
           const existingGroupIds = new Set(prevProducts.map(group => group.groupDto.groupId));
           const newGroups = data.content.filter(group => !existingGroupIds.has(group.groupDto.groupId));
-          return [...prevProducts, ...newGroups];
+          
+          if (isSortedByPrice) {
+            // When sorted by price, preserve the order from backend
+            return [...prevProducts, ...newGroups];
+          } else {
+            // Sort new groups by orderNumber before adding
+            const sortedNewGroups = newGroups.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
+            const combinedProducts = [...prevProducts, ...sortedNewGroups];
+            // Sort the entire combined list by orderNumber
+            return combinedProducts.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
+          }
         }
       });
     } catch (error) {
