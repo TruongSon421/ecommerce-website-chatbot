@@ -14,15 +14,29 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
 }) => {
   // Helper function to get label for a filter value
   const getFilterLabel = (key: string, value: string): string => {
-    const filters = currentFilterData[key] || [];
-    for (const filter of filters) {
-      const option = filter.options?.find((opt: { value: string; label: string }) => opt.value === value);
-      if (option) return option.label;
+    // Tìm trong tất cả các filter của key - sử dụng cùng logic với FilterDropdown
+    const filterSections = Object.values(currentFilterData);
+    
+    for (const section of filterSections as any[]) {
+      for (const filter of section) {
+        if (filter.key === key) {
+          const option = filter.options?.find((opt: { value: string; label: string }) => opt.value === value);
+          if (option) return option.label;
+        }
+      }
     }
-    // If label not found, try to extract label from value (for values with prefix)
+    
+    // Nếu không tìm thấy label, loại bỏ prefix nếu có dấu '_'
     if (value.includes('_')) {
-      return value.split('_').slice(1).join(' ');
+      // Split by underscore, remove the first part (prefix), join with space
+      // and capitalize first letter of each word
+      return value
+        .split('_')
+        .slice(1)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
     }
+    
     return value;
   };
 

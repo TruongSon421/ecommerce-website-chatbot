@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import BannerSection from '../../layout/bannerSection';
 import ProductReview from '../productReview';
 import ProductSpecifications from '../productSpecifications';
+import ProductReviews from '../ProductReviews';
 import ENV from '../../../config/env';
 import { useAuth } from '../../hooks/useAuth';
 import { addItemToCart } from '../../../services/cartService';
@@ -859,6 +860,10 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, produ
           <div>
             <ProductReviewsSection productReviews={product.productReviews || []} />
             <ProductReview />
+            <ProductReviews 
+              productId={product.productId} 
+              selectedColor={selectedColor}
+            />
           </div>
         )}
       </div>

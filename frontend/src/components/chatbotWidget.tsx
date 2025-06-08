@@ -29,6 +29,7 @@ interface Message {
   text?: string;
   sender: 'user' | 'bot';
   products?: GroupProduct[];
+  viewAllUrl?: string; // Add viewAllUrl to message
 }
 
 interface QueryResponse {
@@ -36,8 +37,6 @@ interface QueryResponse {
   group_ids: number[];
   response: string;
 }
-
-// Removed CartItem interface since we're not using add to cart
 
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
   const [selectedVariants, setSelectedVariants] = useState<Record<string, Product>>({});
@@ -58,8 +57,6 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
       [groupId.toString()]: product,
     }));
   };
-
-  // Removed handleAddToCart function
 
   return (
     <div className="space-y-4">
@@ -113,7 +110,6 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                     <div className="text-xs text-gray-500 mb-2">Phiên bản:</div>
                     <div className="flex flex-wrap gap-1">
                       {group.products.map((product, index) => {
-                        // Tạo label hiển thị cho variant
                         const variantLabel = product.variant && product.variant.trim() 
                           ? product.variant 
                           : `Phiên bản ${index + 1}`;
@@ -147,6 +143,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 
 const ChatbotWidget: React.FC = () => {
   const { user } = useAuth();
+  
   const generateSessionId = (): string => {
     return 'session-' + Math.random().toString(36).substring(2, 11);
   };
@@ -183,7 +180,6 @@ const ChatbotWidget: React.FC = () => {
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [viewAllUrl, setViewAllUrl] = useState('');
 
   useEffect(() => {
     localStorage.setItem('chatSession', JSON.stringify(chatSession));
@@ -219,33 +215,78 @@ const ChatbotWidget: React.FC = () => {
     }
   };
 
-  const generateViewAllUrl = (groupIds: number[], filterParams: Record<string, any>): string => {
+  const generateViewAllUrl = (filterParams: Record<string, any>): string => {
+    // Extract type from filter_params or default to 'phone'
+    const type = filterParams.type?.toLowerCase() || 'phone';
+    
+    // Create base URL for the category page
+    const baseUrl = `/${type}`;
     const params = new URLSearchParams();
     
-    if (groupIds.length > 0) {
-      params.append('groupIds', groupIds.join(','));
+    console.log('Processing filterParams:', filterParams);
+    
+    // Map filter_params to frontend filter format
+    const filterMapping: Record<string, any> = {};
+    
+    // Price range mapping
+    const hasMinPrice = filterParams.minPrice !== undefined;
+    const hasMaxPrice = filterParams.maxPrice !== undefined;
+    
+    if (hasMinPrice || hasMaxPrice) {
+      const minPrice = filterParams.minPrice || 0;
+      const maxPrice = filterParams.maxPrice || 50000000;
+      
+      // Only add priceRange if it's not the default range
+      if (minPrice !== 0 || maxPrice !== 50000000) {
+        filterMapping.priceRange = [minPrice, maxPrice];
+        console.log('Set price range:', [minPrice, maxPrice]);
+      }
     }
     
-    // Thêm filter params vào URL
-    Object.entries(filterParams).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== '') {
-        if (Array.isArray(value)) {
-          params.append(key, value.join(','));
-        } else {
-          params.append(key, String(value));
-        }
+    // Tags mapping - convert comma-separated string to array
+    if (filterParams.tags) {
+      if (typeof filterParams.tags === 'string' && filterParams.tags.trim()) {
+        // Split by comma and clean up each tag
+        filterMapping.tags = filterParams.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+        console.log('Set tags:', filterMapping.tags);
       }
-    });
+    }
     
-    return `http://localhost:3000/products?${params.toString()}`;
+    // Add filters to URL if any exist
+    if (Object.keys(filterMapping).length > 0) {
+      params.append('filters', JSON.stringify(filterMapping));
+      console.log('Final filterMapping:', filterMapping);
+    }
+    
+    // Reset page to 0 for new search
+    params.append('page', '0');
+    
+    const finalUrl = `${baseUrl}?${params.toString()}`;
+    console.log('Generated final URL:', finalUrl);
+    
+    return finalUrl;
   };
 
-  const shouldShowViewAll = (groupIds: number[], filterParams: Record<string, any>): boolean => {
-    // Hiển thị "Xem toàn bộ" nếu có group_ids hoặc filter_params không rỗng
-    return (groupIds && groupIds.length > 0) || 
-           (filterParams && Object.keys(filterParams).length > 0);
+  const shouldShowViewAll = (filterParams: Record<string, any>): boolean => {
+    // Show "Xem toàn bộ" if we have meaningful filter_params
+    if (!filterParams) return false;
+    
+    // Check for price filters
+    const hasPrice = (filterParams.minPrice !== undefined && filterParams.minPrice !== 0) || 
+                    (filterParams.maxPrice !== undefined && filterParams.maxPrice !== 50000000);
+    
+    // Check for tags
+    const hasTags = filterParams.tags && 
+                    typeof filterParams.tags === 'string' && 
+                    filterParams.tags.trim().length > 0;
+    
+    return hasPrice || hasTags;
   };
 
+  // Updated handleSend function
   const handleSend = async () => {
     if (!input.trim()) return;
 
@@ -263,8 +304,21 @@ const ChatbotWidget: React.FC = () => {
 
     setIsBotTyping(true);
     setApiError(null);
+    
     try {
-      const response = await axios.post<QueryResponse>('http://localhost:5500/api/query', {
+      const getChatbotUrl = () => {
+        const currentHost = window.location.hostname;
+        
+        if (currentHost.includes('ngrok-free.app')) {
+          return 'https://your-chatbot-ngrok-url.ngrok-free.app/query';
+        } else if (currentHost === 'localhost') {
+          return 'http://localhost:5500/query';
+        } else {
+          return 'https://your-production-chatbot-domain.com/query';
+        }
+      };
+
+      const response = await axios.post<QueryResponse>(getChatbotUrl(), {
         user_id: user?.id || (localStorage.getItem('guestCartId')),
         session_id: chatSession.session_id,
         query: input,
@@ -283,24 +337,62 @@ const ChatbotWidget: React.FC = () => {
 
       let messagesToAdd: Message[] = [botMessage];
 
-      // Kiểm tra điều kiện hiển thị "Xem toàn bộ" và sản phẩm
-      if (shouldShowViewAll(group_ids, filter_params)) {
-        const url = generateViewAllUrl(group_ids, filter_params);
-        setViewAllUrl(url);
+      // Check if we should show "Xem toàn bộ" based on filter_params
+      if (shouldShowViewAll(filter_params)) {
+        const url = generateViewAllUrl(filter_params);
+        console.log('Generated View All URL:', url);
 
-        // Chỉ fetch products nếu có group_ids
+        // If we have products from group_ids, show them with view all button
         if (group_ids && group_ids.length > 0) {
-          const products = await fetchProducts(group_ids);
-          if (products.length > 0) {
-            messagesToAdd.push({
-              id: Date.now() + 1,
-              sender: 'bot',
-              products,
-            });
+          // Handle nested group_ids
+          let flattenedGroupIds: number[] = [];
+          if (Array.isArray(group_ids)) {
+            if (group_ids.length > 0 && Array.isArray(group_ids[0])) {
+              flattenedGroupIds = group_ids.flat();
+            } else {
+              flattenedGroupIds = group_ids;
+            }
           }
+
+          if (flattenedGroupIds.length > 0) {
+            try {
+              const products = await fetchProducts(flattenedGroupIds);
+              if (products.length > 0) {
+                messagesToAdd.push({
+                  id: Date.now() + 1,
+                  sender: 'bot',
+                  products,
+                  viewAllUrl: url,
+                });
+              } else {
+                // No products found but have filters, show text message with view all
+                messagesToAdd.push({
+                  id: Date.now() + 1,
+                  sender: 'bot',
+                  text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp tại trang danh mục.',
+                  viewAllUrl: url,
+                });
+              }
+            } catch (error) {
+              console.error('Error fetching products:', error);
+              // Still show view all option even if product fetch fails
+              messagesToAdd.push({
+                id: Date.now() + 1,
+                sender: 'bot',
+                text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp tại trang danh mục.',
+                viewAllUrl: url,
+              });
+            }
+          }
+        } else {
+          // No group_ids but have filter_params, show view all option
+          messagesToAdd.push({
+            id: Date.now() + 1,
+            sender: 'bot',
+            text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp với yêu cầu của bạn.',
+            viewAllUrl: url,
+          });
         }
-      } else {
-        setViewAllUrl(''); // Clear URL nếu không có kết quả
       }
 
       setChatSession((prev) => ({
@@ -308,6 +400,7 @@ const ChatbotWidget: React.FC = () => {
         messages: [...prev.messages, ...messagesToAdd],
         last_active: Date.now(),
       }));
+      
     } catch (error) {
       console.error('Query API Error:', error);
       setApiError('Không thể xử lý yêu cầu. Vui lòng thử lại.');
@@ -331,7 +424,6 @@ const ChatbotWidget: React.FC = () => {
       ],
     });
     setApiError(null);
-    setViewAllUrl('');
     setIsBotTyping(false);
   };
 
@@ -427,12 +519,13 @@ const ChatbotWidget: React.FC = () => {
                       </div>
                     )}
                     <div className="relative border rounded-lg p-2 bg-gray-50">
-                      {viewAllUrl && (
+                      {msg.viewAllUrl && (
                         <div className="absolute top-2 right-2 z-10">
-                          <a
-                            href={viewAllUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => {
+                              // Navigate to the filter page using the stored URL
+                              window.location.href = msg.viewAllUrl!;
+                            }}
                             className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white rounded-lg shadow-sm hover:bg-blue-50 transition border border-gray-200"
                           >
                             Xem toàn bộ
@@ -450,7 +543,7 @@ const ChatbotWidget: React.FC = () => {
                                 d="M9 5l7 7-7 7"
                               />
                             </svg>
-                          </a>
+                          </button>
                         </div>
                       )}
                       <div className="overflow-y-auto max-h-60 pr-2">

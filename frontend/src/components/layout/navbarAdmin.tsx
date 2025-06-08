@@ -250,6 +250,18 @@ const AdminNavbar: React.FC = () => {
                 👥 Người dùng
               </Link>
 
+              {/* Reviews Management */}
+              <Link
+                to="/admin/reviews"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive('/admin/reviews')
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                ⭐ Đánh giá
+              </Link>
+
               {/* Analytics */}
               <Link
                 to="/admin/analytics"
@@ -300,21 +312,21 @@ const AdminNavbar: React.FC = () => {
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={toggleDropdown}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2"
+                  className="flex items-center space-x-3 text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-2 transition-all duration-200"
                   aria-expanded={isDropdownOpen}
                   aria-haspopup="true"
                 >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-semibold">
+                  <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-sm font-semibold text-white">
                       {user?.email?.charAt(0).toUpperCase() || 'A'}
                     </span>
                   </div>
                   <div className="hidden md:block text-left">
-                    <div className="text-sm font-medium">{user?.email || 'Admin'}</div>
-                    <div className="text-xs text-gray-400">Quản trị viên</div>
+                    <div className="text-sm font-medium text-white">{user?.email || 'Admin'}</div>
+                    <div className="text-xs text-blue-300">Quản trị viên</div>
                   </div>
                   <svg
-                    className={`h-4 w-4 transition-transform ${
+                    className={`h-4 w-4 transition-transform duration-200 ${
                       isDropdownOpen ? 'rotate-180' : ''
                     }`}
                     fill="currentColor"
@@ -328,42 +340,107 @@ const AdminNavbar: React.FC = () => {
                   </svg>
                 </button>
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-gray-800 text-white rounded-md shadow-lg z-20 border border-gray-700">
-                    <div className="py-1">
-                      <div className="px-4 py-3 border-b border-gray-700">
-                        <div className="text-sm font-medium">{user?.email}</div>
-                        <div className="text-xs text-gray-400">Quản trị viên</div>
+                  <div className="absolute right-0 mt-3 w-72 bg-white text-gray-800 rounded-xl shadow-2xl z-20 border border-gray-200 overflow-hidden">
+                    {/* User Info Header */}
+                    <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-4 py-4 text-white">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                          <span className="text-lg font-bold text-white">
+                            {user?.email?.charAt(0).toUpperCase() || 'A'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-semibold text-white">{user?.email}</div>
+                          <div className="text-blue-300 text-sm flex items-center">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M9.243 3.03a1 1 0 01.727 1.213L9.53 6h2.94l.56-2.243a1 1 0 111.94.486L14.53 6H17a1 1 0 110 2h-2.97l-1 4H15a1 1 0 110 2h-2.47l-.56 2.242a1 1 0 11-1.94-.485L10.47 14H7.53l-.56 2.242a1 1 0 11-1.94-.485L5.47 14H3a1 1 0 110-2h2.97l1-4H5a1 1 0 110-2h2.47l.56-2.243a1 1 0 011.213-.727zM9.03 8l-1 4h2.94l1-4H9.03z" clipRule="evenodd" />
+                            </svg>
+                            Quản trị viên
+                          </div>
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
                       <Link
                         to="/admin/profile"
-                        className="block px-4 py-2 text-sm hover:bg-gray-700 transition-colors"
+                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150 group"
                         onClick={() => setIsDropdownOpen(false)}
                       >
-                        👤 Thông tin cá nhân
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="font-medium">Thông tin cá nhân</div>
+                            <div className="text-xs text-gray-500">Xem và chỉnh sửa hồ sơ admin</div>
+                          </div>
+                        </div>
                       </Link>
+                      
                       <Link
                         to="/admin/settings"
-                        className="block px-4 py-2 text-sm hover:bg-gray-700 transition-colors"
+                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-150 group"
                         onClick={() => setIsDropdownOpen(false)}
                       >
-                        ⚙️ Cài đặt hệ thống
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="font-medium">Cài đặt hệ thống</div>
+                            <div className="text-xs text-gray-500">Quản lý cấu hình website</div>
+                          </div>
+                        </div>
                       </Link>
-                      <div className="border-t border-gray-700 my-1"></div>
+
+                      {/* Divider */}
+                      <div className="my-2 border-t border-gray-100"></div>
+                      
                       <Link
                         to="/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="block px-4 py-2 text-sm hover:bg-gray-700 transition-colors"
+                        className="flex items-center px-4 py-3 text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors duration-150 group"
                         onClick={() => setIsDropdownOpen(false)}
                       >
-                        🌐 Xem website
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 group-hover:bg-green-100 flex items-center justify-center transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="font-medium">Xem website</div>
+                            <div className="text-xs text-gray-500">Mở trang web khách hàng</div>
+                          </div>
+                        </div>
                       </Link>
-                      <div className="border-t border-gray-700 my-1"></div>
+
+                      {/* Divider */}
+                      <div className="my-2 border-t border-gray-100"></div>
+                      
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm hover:bg-red-600 hover:text-white transition-colors text-red-400"
+                        className="w-full flex items-center px-4 py-3 text-red-600 hover:bg-red-50 transition-colors duration-150 group"
                       >
-                        🚪 Đăng xuất
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-lg bg-red-50 group-hover:bg-red-100 flex items-center justify-center transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                          </div>
+                          <div>
+                            <div className="font-medium">Đăng xuất</div>
+                            <div className="text-xs text-red-400">Thoát khỏi tài khoản admin</div>
+                          </div>
+                        </div>
                       </button>
                     </div>
                   </div>
@@ -417,6 +494,36 @@ const AdminNavbar: React.FC = () => {
                 }`}
               >
                 📋 Quản lý sản phẩm
+              </Link>
+              <Link
+                to="/admin/orders"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/admin/orders')
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                🛍️ Đơn hàng
+              </Link>
+              <Link
+                to="/admin/users"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/admin/users')
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                👥 Người dùng
+              </Link>
+              <Link
+                to="/admin/reviews"
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive('/admin/reviews')
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                ⭐ Đánh giá
               </Link>
             </div>
           </div>
@@ -474,6 +581,38 @@ const AdminNavbar: React.FC = () => {
                         <span className="text-white capitalize">
                           {location.pathname.split('/')[3]}
                         </span>
+                      </li>
+                    </>
+                  )}
+                  {location.pathname.includes('/admin/orders') && (
+                    <>
+                      <li>
+                        <span className="mx-2">/</span>
+                        <span className="text-white">Quản lý đơn hàng</span>
+                      </li>
+                    </>
+                  )}
+                  {location.pathname.includes('/admin/users') && (
+                    <>
+                      <li>
+                        <span className="mx-2">/</span>
+                        <span className="text-white">Quản lý người dùng</span>
+                      </li>
+                    </>
+                  )}
+                  {location.pathname.includes('/admin/reviews') && (
+                    <>
+                      <li>
+                        <span className="mx-2">/</span>
+                        <span className="text-white">Quản lý đánh giá</span>
+                      </li>
+                    </>
+                  )}
+                  {location.pathname.includes('/admin/analytics') && (
+                    <>
+                      <li>
+                        <span className="mx-2">/</span>
+                        <span className="text-white">Thống kê</span>
                       </li>
                     </>
                   )}
