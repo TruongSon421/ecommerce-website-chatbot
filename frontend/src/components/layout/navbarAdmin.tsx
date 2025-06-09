@@ -171,6 +171,17 @@ const AdminNavbar: React.FC = () => {
                       >
                         ➕ Thêm sản phẩm mới
                       </Link>
+
+                      <Link
+                        to="/admin/tag"
+                        className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
+                          isActive('/admin/tag') ? 'bg-blue-600' : ''
+                        }`}
+                        onClick={() => setIsProductDropdownOpen(false)}
+                      >
+                        ➕ Quản lý tag
+                      </Link>
+
                       <div className="border-t border-gray-700 my-1"></div>
                       <div className="px-4 py-2 text-xs text-gray-400 font-semibold uppercase tracking-wider">
                         Quản lý theo danh mục
@@ -292,12 +303,7 @@ const AdminNavbar: React.FC = () => {
 
               {/* Quick Actions */}
               <div className="hidden lg:flex items-center space-x-2">
-                <Link
-                  to="/admin/product/add"
-                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                >
-                  ➕ Thêm SP
-                </Link>
+      
                 <Link
                   to="/"
                   target="_blank"
@@ -474,16 +480,6 @@ const AdminNavbar: React.FC = () => {
                 }`}
               >
                 📊 Dashboard
-              </Link>
-              <Link
-                to="/admin/product/add"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  isActive('/admin/product/add')
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                }`}
-              >
-                ➕ Thêm sản phẩm
               </Link>
               <Link
                 to="/admin/products/all"

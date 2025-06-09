@@ -3,12 +3,14 @@ import fasttext
 import re
 from dotenv import load_dotenv
 import os
+from share_data import user_language
 load_dotenv()
 
 
 class Filter:
     # Class variables instead of instance variables
     # Từ ngữ nhạy cảm cần filter
+    lang_dict = {'vie':"Vietnamese",'eng':"English"}
     sensitive_words = [
         # Từ ngữ bạo lực - Tiếng Việt
         'fuck', 'shit', 'giết', 'chết', 'máu', 'đánh', 'bắn', 'cướp',
@@ -197,6 +199,7 @@ class Filter:
             if lang_code in supported_langs and prob > 0.4:
                 has_supported_lang = True
                 userLang = lang_code
+                user_language = cls.lang_dict[lang_code]
                 break
         
         if not has_supported_lang:

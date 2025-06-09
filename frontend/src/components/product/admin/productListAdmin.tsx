@@ -9,6 +9,7 @@ interface Product {
     productName: string;
     defaultOriginalPrice: string | null;
     defaultCurrentPrice: string | null;
+    defaultColor?: string | null; // Added defaultColor field
 }
 
 interface GroupDto {
