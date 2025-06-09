@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './hooks/useAuth';
+import { addItemToCart } from '../services/cartService'; // Adjust path as needed
+import { useNotification } from './common/Notification'; // Adjust path as needed
 
 interface Product {
   productId: string;
@@ -9,6 +11,7 @@ interface Product {
   productName: string;
   defaultOriginalPrice: number | null;
   defaultCurrentPrice: number | null;
+  defaultColor?: string | null; // Added defaultColor field
 }
 
 interface GroupDto {
@@ -38,8 +41,19 @@ interface QueryResponse {
   response: string;
 }
 
+interface CartItem {
+  productId: string;
+  productName: string;
+  price: number;
+  quantity: number;
+  color: string;
+  available: boolean;
+}
+
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
   const [selectedVariants, setSelectedVariants] = useState<Record<string, Product>>({});
+  const { user, isAuthenticated } = useAuth();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     const initialSelected: Record<string, Product> = {};
@@ -56,6 +70,41 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
       ...prev,
       [groupId.toString()]: product,
     }));
+  };
+
+  const handleAddToCart = async (e: React.MouseEvent, group: GroupProduct, selectedProduct: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!selectedProduct.defaultCurrentPrice) {
+      showNotification('Sản phẩm chưa có giá', 'error');
+      return;
+    }
+
+    console.log('Adding to cart:', { 
+      productId: selectedProduct.productId, 
+      color: selectedProduct.defaultColor, 
+      productType: group.groupDto.type 
+    });
+
+    const cartItem: CartItem = {
+      productId: selectedProduct.productId,
+      productName: selectedProduct.productName,
+      price: selectedProduct.defaultCurrentPrice,
+      quantity: 1,
+      color: selectedProduct.defaultColor === 'default' || !selectedProduct.defaultColor 
+        ? 'Không xác định' 
+        : selectedProduct.defaultColor,
+      available: true,
+    };
+
+    try {
+      await addItemToCart(user?.id || 'guest', cartItem, isAuthenticated);
+      showNotification('Đã thêm vào giỏ hàng!', 'success');
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');
+    }
   };
 
   return (
@@ -90,6 +139,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                 >
                   {displayProduct.productName}
                 </a>
+                
                 <div className="space-y-2 mb-3">
                   <div className="flex justify-between items-center text-xs">
                     <div className="flex items-center space-x-2">
@@ -123,7 +173,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                                 ? 'bg-blue-100 border-blue-500 text-blue-700 font-medium'
                                 : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
                             }`}
-                            title={`Product ID: ${product.productId}`}
+                            title={product.defaultColor ? `Màu: ${product.defaultColor}` : `Product ID: ${product.productId}`}
                           >
                             {variantLabel}
                           </button>
@@ -132,6 +182,30 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
                     </div>
                   </div>
                 )}
+                
+                {/* Add to Cart Button */}
+                <div className="mt-3">
+                  <button
+                    onClick={(e) => handleAddToCart(e, group, displayProduct)}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-3 rounded text-xs transition-colors duration-200 flex items-center justify-center gap-1"
+                    disabled={!displayProduct.defaultCurrentPrice}
+                  >
+                    <svg 
+                      className="w-3 h-3" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 004 16v0a1 1 0 001 1h11M16 17a2 2 0 11-4 0 2 2 0 014 0zM10 17a2 2 0 11-4 0 2 2 0 014 0z" 
+                      />
+                    </svg>
+                    Thêm vào giỏ
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -306,19 +380,8 @@ const ChatbotWidget: React.FC = () => {
     setApiError(null);
     
     try {
-      const getChatbotUrl = () => {
-        const currentHost = window.location.hostname;
-        
-        if (currentHost.includes('ngrok-free.app')) {
-          return 'https://your-chatbot-ngrok-url.ngrok-free.app/query';
-        } else if (currentHost === 'localhost') {
-          return 'http://localhost:5500/query';
-        } else {
-          return 'https://your-production-chatbot-domain.com/query';
-        }
-      };
 
-      const response = await axios.post<QueryResponse>(getChatbotUrl(), {
+      const response = await axios.post<QueryResponse>("http://localhost:5500/query", {
         user_id: user?.id || (localStorage.getItem('guestCartId')),
         session_id: chatSession.session_id,
         query: input,
@@ -337,35 +400,71 @@ const ChatbotWidget: React.FC = () => {
 
       let messagesToAdd: Message[] = [botMessage];
 
-      // Check if we should show "Xem toàn bộ" based on filter_params
-      if (shouldShowViewAll(filter_params)) {
-        const url = generateViewAllUrl(filter_params);
-        console.log('Generated View All URL:', url);
-
-        // If we have products from group_ids, show them with view all button
-        if (group_ids && group_ids.length > 0) {
-          // Handle nested group_ids
-          let flattenedGroupIds: number[] = [];
-          if (Array.isArray(group_ids)) {
+      if (group_ids && group_ids.length > 0) {
+        // Handle nested group_ids
+        let flattenedGroupIds: number[] = [];
+        if (Array.isArray(group_ids)) {
             if (group_ids.length > 0 && Array.isArray(group_ids[0])) {
-              flattenedGroupIds = group_ids.flat();
+                flattenedGroupIds = group_ids.flat();
             } else {
-              flattenedGroupIds = group_ids;
+                flattenedGroupIds = group_ids;
             }
-          }
+        }
 
-          if (flattenedGroupIds.length > 0) {
+        if (flattenedGroupIds.length > 0) {
             try {
-              const products = await fetchProducts(flattenedGroupIds);
-              if (products.length > 0) {
-                messagesToAdd.push({
-                  id: Date.now() + 1,
-                  sender: 'bot',
-                  products,
-                  viewAllUrl: url,
-                });
+                const products = await fetchProducts(flattenedGroupIds);
+                if (products.length > 0) {
+                    messagesToAdd.push({
+                        id: Date.now() + 1,
+                        sender: 'bot',
+                        products,
+                        // Chỉ thêm viewAllUrl nếu có filter
+                        ...(shouldShowViewAll(filter_params) && { viewAllUrl: generateViewAllUrl(filter_params) })
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+      } else if (shouldShowViewAll(filter_params)) {
+          const url = generateViewAllUrl(filter_params);
+          console.log('Generated View All URL:', url);
+
+          // If we have products from group_ids, show them with view all button
+          if (group_ids && group_ids.length > 0) {
+            // Handle nested group_ids
+            let flattenedGroupIds: number[] = [];
+            if (Array.isArray(group_ids)) {
+              if (group_ids.length > 0 && Array.isArray(group_ids[0])) {
+                flattenedGroupIds = group_ids.flat();
               } else {
-                // No products found but have filters, show text message with view all
+                flattenedGroupIds = group_ids;
+              }
+            }
+
+            if (flattenedGroupIds.length > 0) {
+              try {
+                const products = await fetchProducts(flattenedGroupIds);
+                if (products.length > 0) {
+                  messagesToAdd.push({
+                    id: Date.now() + 1,
+                    sender: 'bot',
+                    products,
+                    viewAllUrl: url,
+                  });
+                } else {
+                  // No products found but have filters, show text message with view all
+                  messagesToAdd.push({
+                    id: Date.now() + 1,
+                    sender: 'bot',
+                    text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp tại trang danh mục.',
+                    viewAllUrl: url,
+                  });
+                }
+              } catch (error) {
+                console.error('Error fetching products:', error);
+                // Still show view all option even if product fetch fails
                 messagesToAdd.push({
                   id: Date.now() + 1,
                   sender: 'bot',
@@ -373,26 +472,16 @@ const ChatbotWidget: React.FC = () => {
                   viewAllUrl: url,
                 });
               }
-            } catch (error) {
-              console.error('Error fetching products:', error);
-              // Still show view all option even if product fetch fails
-              messagesToAdd.push({
-                id: Date.now() + 1,
-                sender: 'bot',
-                text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp tại trang danh mục.',
-                viewAllUrl: url,
-              });
             }
+          } else {
+            // No group_ids but have filter_params, show view all option
+            messagesToAdd.push({
+              id: Date.now() + 1,
+              sender: 'bot',
+              text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp với yêu cầu của bạn.',
+              viewAllUrl: url,
+            });
           }
-        } else {
-          // No group_ids but have filter_params, show view all option
-          messagesToAdd.push({
-            id: Date.now() + 1,
-            sender: 'bot',
-            text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp với yêu cầu của bạn.',
-            viewAllUrl: url,
-          });
-        }
       }
 
       setChatSession((prev) => ({

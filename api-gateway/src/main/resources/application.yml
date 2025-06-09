@@ -72,6 +72,20 @@ spring:
           filters:
             - Authentication    # Thêm filter
 
+        - id: tag-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/tags/**
+          filters:
+            - Authentication    # Thêm filter
+
+        - id: group-tag-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/group-tags/**
+          filters:
+            - Authentication    # Thêm filter
+
         - id: group-variants-service
           uri: lb://inventory-service
           predicates:

@@ -89,6 +89,7 @@ public class GroupController {
                                 .productName(gp.getProductName())
                                 .defaultOriginalPrice(gp.getDefaultOriginalPrice())
                                 .defaultCurrentPrice(gp.getDefaultCurrentPrice())
+                                .defaultColor(gp.getDefaultColor())
                                 .build())
                         .collect(Collectors.toList());
                 Group group = groupRepository.getById(groupId);
@@ -177,6 +178,8 @@ public class GroupController {
         List<Integer> defaultOriginalPrices = (List<Integer>) request.get("defaultOriginalPrices");
 
         List<Integer> defaultCurrentPrices = (List<Integer>) request.get("defaultCurrentPrices");
+
+        List<String> defaultColors = (List<String>) request.get("defaultColors");
         Integer orderNumber = request.get("orderNumber") != null ?
                 Integer.parseInt(request.get("orderNumber").toString()) : null;
         log.debug("Extracted orderNumber: {}", orderNumber);
@@ -188,7 +191,7 @@ public class GroupController {
         log.debug("Extracted type: {}", type);
 
         log.debug("Calling groupService.createGroupAndAssignProducts");
-        Integer groupId = groupService.createGroupAndAssignProducts(productIds, orderNumber, image, type,variants,productNames,defaultOriginalPrices,defaultCurrentPrices,groupName,brand);
+        Integer groupId = groupService.createGroupAndAssignProducts(productIds, orderNumber, image, type,variants,productNames,defaultOriginalPrices,defaultCurrentPrices,defaultColors,groupName,brand);
         log.debug("Created group with ID: {}", groupId);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("groupId", groupId));
@@ -214,6 +217,7 @@ public class GroupController {
 
             List<Integer> defaultOriginalPrices = (List<Integer>) request.get("defaultOriginalPrices");
             List<Integer> defaultCurrentPrices = (List<Integer>) request.get("defaultCurrentPrices");
+            List<String> defaultColors = (List<String>) request.get("defaultColors");
 
             Integer orderNumber = request.get("orderNumber") != null ?
                     Integer.parseInt(request.get("orderNumber").toString()) : null;
@@ -223,7 +227,7 @@ public class GroupController {
 
             log.debug("Calling groupService.updateGroupAndProducts");
             groupService.updateGroupAndProducts(groupId, productIds, variants,productNames, orderNumber,
-                    image, type, defaultOriginalPrices, defaultCurrentPrices);
+                    image, type, defaultOriginalPrices, defaultCurrentPrices, defaultColors);
 
             return ResponseEntity.ok(Map.of("message", "Group updated successfully"));
         } catch (Exception e) {

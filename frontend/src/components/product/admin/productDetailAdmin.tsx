@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import BannerSection from '../../layout/bannerSection';
-import ProductReview from '../productReview';
 import ProductSpecifications from '../productSpecifications';
 import ENV from '../../../config/env';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,6 +18,20 @@ interface ProductReview {
 // Extend Product interface if needed
 interface ExtendedProduct extends Product {
   productReviews?: ProductReview[];
+}
+
+// Interfaces for tags
+interface Tag {
+  tagId: number;
+  tagName: string;
+  description?: string;
+}
+
+interface GroupTag {
+  id: number;
+  groupId: number;
+  tagId: number;
+  tag: Tag;
 }
 
 const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialProduct }) => {
@@ -48,6 +61,12 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // States for tag management
+  const [groupTags, setGroupTags] = useState<GroupTag[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isManagingTags, setIsManagingTags] = useState(false);
 
   const fetchProduct = useCallback(async (productId: string, isRetry = false) => {
     setIsProductLoading(true);
@@ -122,6 +141,124 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       // Không hiển thị error cho user vì đây là optional
     }
   }, []);
+
+  // Function để fetch tags cho group
+  const fetchGroupTags = useCallback(async (groupId: number) => {
+    if (!groupId) return;
+    
+    setIsLoadingTags(true);
+    try {
+      const token = localStorage.getItem('accessToken') || user?.token;
+      const response = await fetch(`${ENV.API_URL}/group-tags/get/${groupId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (response.ok) {
+        const data: GroupTag[] = await response.json();
+        setGroupTags(data);
+        console.log('Fetched group tags:', data);
+      } else {
+        console.error('Failed to fetch group tags:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching group tags:', error);
+    } finally {
+      setIsLoadingTags(false);
+    }
+  }, [user?.token]);
+
+  // Function để fetch tất cả available tags
+  const fetchAvailableTags = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('accessToken') || user?.token;
+      const response = await fetch(`${ENV.API_URL}/tags`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (response.ok) {
+        const data: Tag[] = await response.json();
+        setAvailableTags(data);
+        console.log('Fetched available tags:', data);
+      } else {
+        console.error('Failed to fetch available tags:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching available tags:', error);
+    }
+  }, [user?.token]);
+
+  // Function để thêm tag vào group
+  const addTagToGroup = async (tagId: number) => {
+    if (!groupData?.groupId) return;
+    
+    try {
+      const token = localStorage.getItem('accessToken') || user?.token;
+      if (!token) {
+        showNotification('Không tìm thấy token xác thực.', 'error');
+        return;
+      }
+
+      const response = await fetch(`${ENV.API_URL}/group-tags?groupId=${groupData.groupId}&tagId=${tagId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+      }
+
+      // Refresh group tags
+      await fetchGroupTags(groupData.groupId);
+      
+      const addedTag = availableTags.find(tag => tag.tagId === tagId);
+      showNotification(`Đã thêm tag "${addedTag?.tagName}" vào sản phẩm!`, 'success');
+    } catch (error: any) {
+      console.error('Error adding tag to group:', error);
+      showNotification(error.message || 'Lỗi khi thêm tag', 'error');
+    }
+  };
+
+  // Function để xóa tag khỏi group
+  const removeTagFromGroup = async (tagId: number) => {
+    if (!groupData?.groupId) return;
+    
+    try {
+      const token = localStorage.getItem('accessToken') || user?.token;
+      if (!token) {
+        showNotification('Không tìm thấy token xác thực.', 'error');
+        return;
+      }
+
+      const response = await fetch(`${ENV.API_URL}/group-tags?groupId=${groupData.groupId}&tagId=${tagId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+      }
+
+      // Refresh group tags
+      await fetchGroupTags(groupData.groupId);
+      
+      const removedTag = groupTags.find(gt => gt.tagId === tagId)?.tag;
+      showNotification(`Đã xóa tag "${removedTag?.tagName}" khỏi sản phẩm!`, 'success');
+    } catch (error: any) {
+      console.error('Error removing tag from group:', error);
+      showNotification(error.message || 'Lỗi khi xóa tag', 'error');
+    }
+  };
 
   // Function để cập nhật Elasticsearch document
   const updateElasticsearchDocument = useCallback(async (groupData: GroupVariantResponse) => {
@@ -303,6 +440,11 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
           (v) => v.productId === product.productId
         );
         setSelectedVariantIndex(currentVariantIndex >= 0 ? currentVariantIndex : 0);
+        
+        // Fetch tags for the group
+        if (data.groupId) {
+          fetchGroupTags(data.groupId);
+        }
       } catch (error: any) {
         setError(error.message);
       } finally {
@@ -311,7 +453,12 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     };
 
     fetchVariants();
-  }, [product.productId]);
+  }, [product.productId, fetchGroupTags]);
+
+  // Fetch available tags when component mounts
+  useEffect(() => {
+    fetchAvailableTags();
+  }, [fetchAvailableTags]);
 
   const handleColorChange = (color: string) => {
     setSelectedColor(color);
@@ -370,6 +517,11 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
           (v) => v.productId === product.productId
         );
         setSelectedVariantIndex(currentVariantIndex >= 0 ? currentVariantIndex : 0);
+        
+        // Fetch tags for the group
+        if (data.groupId) {
+          fetchGroupTags(data.groupId);
+        }
       } catch (error: any) {
         setError(error.message);
       } finally {
@@ -726,6 +878,19 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
               <ProductReviewsSection 
                 productReviews={product.productReviews || []} 
               />
+              
+              {/* Tag Management Section */}
+              <TagManagementSection
+                groupData={groupData}
+                groupTags={groupTags}
+                availableTags={availableTags}
+                isLoadingTags={isLoadingTags}
+                isManagingTags={isManagingTags}
+                setIsManagingTags={setIsManagingTags}
+                onAddTag={addTagToGroup}
+                onRemoveTag={removeTagFromGroup}
+              />
+              
               <AdminProductEditor
                 isEditing={isEditingProduct}
                 editData={editProductData}
@@ -934,6 +1099,131 @@ const ProductOptions: React.FC<ProductOptionsProps> = ({
     </div>
   </div>
 );
+
+// Component quản lý tags
+interface TagManagementSectionProps {
+  groupData: GroupVariantResponse | null;
+  groupTags: GroupTag[];
+  availableTags: Tag[];
+  isLoadingTags: boolean;
+  isManagingTags: boolean;
+  setIsManagingTags: (managing: boolean) => void;
+  onAddTag: (tagId: number) => void;
+  onRemoveTag: (tagId: number) => void;
+}
+
+const TagManagementSection: React.FC<TagManagementSectionProps> = ({
+  groupData,
+  groupTags,
+  availableTags,
+  isLoadingTags,
+  isManagingTags,
+  setIsManagingTags,
+  onAddTag,
+  onRemoveTag,
+}) => {
+  if (!groupData) return null;
+
+  // Lọc ra các tags chưa được gắn vào group
+  const assignedTagIds = groupTags.map(gt => gt.tagId);
+  const unassignedTags = availableTags.filter(tag => !assignedTagIds.includes(tag.tagId));
+
+  return (
+    <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium text-white">Quản lý Tags</h3>
+        <button
+          onClick={() => setIsManagingTags(!isManagingTags)}
+          className={`px-3 py-1 rounded text-sm font-medium ${
+            isManagingTags 
+              ? 'bg-gray-600 text-white hover:bg-gray-700' 
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
+        >
+          {isManagingTags ? 'Ẩn quản lý' : 'Quản lý tags'}
+        </button>
+      </div>
+
+      {/* Hiển thị tags hiện tại */}
+      <div className="mb-4">
+        <h4 className="text-sm font-medium text-gray-400 mb-2">Tags hiện tại:</h4>
+        {isLoadingTags ? (
+          <p className="text-gray-400 text-sm">Đang tải...</p>
+        ) : groupTags.length === 0 ? (
+          <p className="text-gray-400 text-sm">Chưa có tag nào</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {groupTags.map((groupTag) => (
+              <div
+                key={groupTag.id}
+                className="flex items-center bg-blue-600 text-white px-3 py-1 rounded-full text-sm"
+              >
+                <span>{groupTag.tag.tagName}</span>
+                {isManagingTags && (
+                  <button
+                    onClick={() => onRemoveTag(groupTag.tagId)}
+                    className="ml-2 text-red-300 hover:text-red-100 font-bold"
+                    title={`Xóa tag "${groupTag.tag.tagName}"`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Panel quản lý tags */}
+      {isManagingTags && (
+        <div className="border-t border-gray-600 pt-4">
+          <h4 className="text-sm font-medium text-gray-400 mb-3">Thêm tags mới:</h4>
+          {unassignedTags.length === 0 ? (
+            <p className="text-gray-400 text-sm">Tất cả tags đã được gắn vào sản phẩm này</p>
+          ) : (
+            <div className="space-y-2">
+              {unassignedTags.map((tag) => (
+                <div
+                  key={tag.tagId}
+                  className="flex items-center justify-between bg-gray-700 p-3 rounded"
+                >
+                  <div>
+                    <span className="text-white font-medium">{tag.tagName}</span>
+                    {tag.description && (
+                      <p className="text-gray-400 text-sm mt-1">{tag.description}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => onAddTag(tag.tagId)}
+                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  >
+                    Thêm
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Thông tin debug cho admin */}
+      {isManagingTags && (
+        <div className="mt-4 pt-4 border-t border-gray-600">
+          <details className="text-xs text-gray-400">
+            <summary className="cursor-pointer hover:text-white">Debug Info</summary>
+            <div className="mt-2 bg-gray-900 p-2 rounded">
+              <p>Group ID: {groupData.groupId}</p>
+              <p>Group Name: {groupData.groupName}</p>
+              <p>Assigned Tags: {assignedTagIds.join(', ') || 'None'}</p>
+              <p>Available Tags: {availableTags.length}</p>
+              <p>Unassigned Tags: {unassignedTags.length}</p>
+            </div>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function getColorCode(colorName: string | null | undefined): string {
   if (!colorName) {

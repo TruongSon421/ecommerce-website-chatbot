@@ -18,4 +18,5 @@ public class GroupProductDto {
     private String productName;
     private Integer defaultOriginalPrice;
     private Integer defaultCurrentPrice;
+    private String defaultColor;
 }

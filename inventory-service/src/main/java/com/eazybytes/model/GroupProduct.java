@@ -42,6 +42,9 @@
         @Column(name = "default_current_price")
         private Integer defaultCurrentPrice; // Sửa từ String thành Double
 
+        @Column(name = "default_color")
+        private String defaultColor;
+
         @CreationTimestamp
         @Column(name = "created_at")
         private LocalDateTime createdAt;

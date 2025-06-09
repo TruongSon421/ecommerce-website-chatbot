@@ -31,7 +31,7 @@ import ProductManagement from "./pages/admin/ProductManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 import ReviewManagement from "./pages/admin/ReviewManagement";
-
+import TagManagement from "./pages/admin/TagManagement";
 // Import private user components
 import PaymentPage from "./pages/PaymentPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
@@ -141,36 +141,17 @@ function AppContent() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="login" element={<AdminLogin />} />
           <Route path="register" element={<AdminRegister />} />
-          <Route
-            path="dashboard"
-            element={
-              <AdminPrivateRoute>
-                <Dashboard />
-              </AdminPrivateRoute>
-            }
-          />
-          <Route
-            path="product/add"
-            element={
-              <AdminPrivateRoute>
-                <AddProductPage />
-              </AdminPrivateRoute>
-            }
-          />
-          <Route
-            path="products"
-            element={
-              <AdminPrivateRoute>
-                <ProductManagement />
-              </AdminPrivateRoute>
-            }
-          />
-          <Route path="/admin/products/:type" element={<AdminPrivateRoute><PageCategoryAdmin /></AdminPrivateRoute>} />
-          <Route path="/admin/detail/:type/:product_id" element={<AdminPrivateRoute><ProductGHAdmin /></AdminPrivateRoute>} />
+          <Route path="dashboard" element={<AdminPrivateRoute><Dashboard /></AdminPrivateRoute>} />
+          <Route path="product/add" element={<AdminPrivateRoute><AddProductPage /></AdminPrivateRoute>} />
+          <Route path="products" element={<AdminPrivateRoute><ProductManagement /></AdminPrivateRoute>} />
+          <Route path="products/:type" element={<AdminPrivateRoute><PageCategoryAdmin /></AdminPrivateRoute>} />
+          <Route path="tag" element={<AdminPrivateRoute><TagManagement /></AdminPrivateRoute>} />
+
+          <Route path="detail/:type/:product_id" element={<AdminPrivateRoute><ProductGHAdmin /></AdminPrivateRoute>} />
         
-          <Route path="/admin/users" element={<AdminPrivateRoute><UserManagement /></AdminPrivateRoute>} />
-          <Route path="/admin/orders" element={<AdminPrivateRoute><OrderManagement /></AdminPrivateRoute>} />
-          <Route path="/admin/reviews" element={<AdminPrivateRoute><ReviewManagement /></AdminPrivateRoute>} />
+          <Route path="users" element={<AdminPrivateRoute><UserManagement /></AdminPrivateRoute>} />
+          <Route path="orders" element={<AdminPrivateRoute><OrderManagement /></AdminPrivateRoute>} />
+          <Route path="reviews" element={<AdminPrivateRoute><ReviewManagement /></AdminPrivateRoute>} />
         </Route>
       </Routes>
     </NotificationProvider>

@@ -21,6 +21,7 @@ public class GroupDto {
     private String productId; // From first GroupProduct
     private Double defaultOriginalPrice; // From first GroupProduct
     private Double defaultCurrentPrice; // From first GroupProduct
+    private String defaultColor;
     public GroupDto(Integer groupId) {
     }
 }

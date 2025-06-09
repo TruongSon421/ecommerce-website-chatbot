@@ -186,6 +186,7 @@ public class GroupService {
                                                 .productName(gp.getProductName())
                                                 .defaultOriginalPrice(gp.getDefaultOriginalPrice())
                                                 .defaultCurrentPrice(gp.getDefaultCurrentPrice())
+                                                .defaultColor(gp.getDefaultColor())
                                                 .orderNumber(gp.getOrderNumber())
                                                 .build())
                                         .collect(Collectors.toList()))
@@ -279,7 +280,7 @@ public class GroupService {
     }
 
     @Transactional
-    public Integer createGroupAndAssignProducts(List<String> productIds, Integer orderNumber, String image, String type,List<String> variants,List<String> productNames,List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices,String groupName,String brand) {
+    public Integer createGroupAndAssignProducts(List<String> productIds, Integer orderNumber, String image, String type,List<String> variants,List<String> productNames,List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices, List<String> defaultColors,String groupName,String brand) {
         log.debug("Creating group and assigning products. ProductIds: {}, orderNumber: {}, type: {}",
                 productIds, orderNumber, type);
 
@@ -325,6 +326,7 @@ public class GroupService {
                     .productName(productNames.get(i))
                     .defaultOriginalPrice(defaultOriginalPrices.get(i))
                     .defaultCurrentPrice(defaultCurrentPrices.get(i))
+                    .defaultColor(defaultColors.get(i))
                     .orderNumber(i + 1) // Xác định thứ tự dựa vào vị trí trong danh sách
                     .build();
 
@@ -340,7 +342,8 @@ public class GroupService {
     @Transactional
     public void updateGroupAndProducts(Integer groupId, List<String> productIds, List<String> variants,List<String> productNames,
                                        Integer orderNumber, String image, String type,
-                                       List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices) {
+                                       List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices,
+                                       List<String> defaultColors) {
         log.debug("Updating group {} and its products. ProductIds: {}", groupId, productIds);
 
         // Validate inputs
@@ -394,6 +397,7 @@ public class GroupService {
                             .productName(productNames.get(i))
                             .defaultOriginalPrice(defaultOriginalPrices.get(i))
                             .defaultCurrentPrice(defaultCurrentPrices.get(i))
+                            .defaultColor(defaultColors.get(i))
                             .orderNumber(i + 1) // Ordering based on position in the list
                             .build();
 

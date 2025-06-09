@@ -32,11 +32,11 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         if device == "phone":
             reqs = llm.structured_predict(PhoneRequirements, PHONE_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "phone_"
-            device_type = "PHONE"
+            device_type = "phone"
         elif device == "laptop":
             reqs = llm.structured_predict(LaptopRequirements, LAPTOP_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "laptop_"
-            device_type = "LAPTOP"
+            device_type = "laptop"
         else:
             cursor.close()
             conn.close()
@@ -53,8 +53,8 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         if reqs.max_budget:
             filter_params["maxPrice"] = reqs.max_budget
 
-        # Xử lý brand preference
-        if reqs.brand_preference and reqs.brand_preference != "không xác định":
+        # Xử lý brand preference (string với dấu phẩy)
+        if reqs.brand_preference and reqs.brand_preference.strip():
             filter_params["brand"] = reqs.brand_preference
 
         # Xử lý các tags
@@ -71,25 +71,76 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         if reqs.specific_requirements:
             filter_params["search"] = reqs.specific_requirements
 
-        # Phần còn lại của hàm giữ nguyên...
-        brand = reqs.brand_preference or "không xác định"
+        # Parse brand_preference string thành list
+        brand_list = []
+        brand_display = ""
+        if reqs.brand_preference and reqs.brand_preference.strip():
+            # Split by comma và clean up
+            brand_list = [brand.strip() for brand in reqs.brand_preference.split(',') if brand.strip() and brand.strip() != "không xác định"]
+            if brand_list:
+                brand_display = ", ".join(brand_list)
+        
         min_budget = reqs.min_budget
         max_budget = reqs.max_budget
         print(reqs)
+        
+        # **XỬ LÝ BRAND FILTER CHO COMMA-SEPARATED STRING**
+        brand_filtered_df = None
+        if brand_list:
+            # Create placeholders for IN clause
+            brand_placeholders = ','.join(['%s'] * len(brand_list))
+            brand_sql = f"""
+                SELECT group_id, group_name, brand
+                FROM group_product
+                WHERE brand IN ({brand_placeholders}) AND type = %s
+            """
+            brand_params = brand_list + [device_type]
+            cursor.execute(brand_sql, brand_params)
+            brand_result = cursor.fetchall()
+            
+            if brand_result:
+                brand_filtered_df = pd.DataFrame(brand_result, columns=["group_id", "group_name", "brand"])
+                print(f"Found {len(brand_filtered_df)} products for brands {brand_list}")
+            else:
+                cursor.close()
+                conn.close()
+                if len(brand_list) == 1:
+                    return f"Không tìm thấy {device} của thương hiệu {brand_list[0]} trong cửa hàng."
+                else:
+                    brands_str = " hoặc ".join(brand_list)
+                    return f"Không tìm thấy {device} của thương hiệu {brands_str} trong cửa hàng."
+        
         # Kiểm tra nếu chỉ có thông tin giá mà không có yêu cầu khác
         only_price = (min_budget or max_budget) and not any(
             field for field in reqs.__dict__.keys() 
             if field.startswith(tag_prefix) and getattr(reqs, field)
         )
+        
         if only_price:
             # Trường hợp chỉ có thông tin giá
-            price_sql = """
-                SELECT gp.group_id, gp.group_name, MIN(gpj.default_current_price) AS price
-                FROM group_product gp
-                JOIN group_product_junction gpj ON gp.group_id = gpj.group_id
-                GROUP BY gp.group_id, gp.group_name
-            """
-            cursor.execute(price_sql)
+            if brand_filtered_df is not None:
+                # Nếu có brand filter, chỉ lấy giá của các sản phẩm trong brand đó
+                brand_group_ids = brand_filtered_df['group_id'].tolist()
+                placeholders = ','.join(['%s'] * len(brand_group_ids))
+                price_sql = f"""
+                    SELECT gp.group_id, gp.group_name, MIN(gpj.default_current_price) AS price
+                    FROM group_product gp
+                    JOIN group_product_junction gpj ON gp.group_id = gpj.group_id
+                    WHERE gp.group_id IN ({placeholders})
+                    GROUP BY gp.group_id, gp.group_name
+                """
+                cursor.execute(price_sql, brand_group_ids)
+            else:
+                # Không có brand filter, lấy tất cả
+                price_sql = """
+                    SELECT gp.group_id, gp.group_name, MIN(gpj.default_current_price) AS price
+                    FROM group_product gp
+                    JOIN group_product_junction gpj ON gp.group_id = gpj.group_id
+                    WHERE gp.type = %s
+                    GROUP BY gp.group_id, gp.group_name
+                """
+                cursor.execute(price_sql, (device_type,))
+                
             result = cursor.fetchall()
             combined_df = pd.DataFrame(result, columns=["group_id", "group_name", "price"])
             
@@ -99,16 +150,21 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             if max_budget and max_budget != 0:
                 combined_df = combined_df[combined_df["price"] <= max_budget]
                 
-            # Sắp xếp theo giá từ CAO NHẤT đến THẤP NHẤT (thay đổi ascending=False)
+            # Sắp xếp theo giá từ CAO NHẤT đến THẤP NHẤT
             combined_df = combined_df.sort_values(by="price", ascending=False).head(top_k)
             
             if combined_df.empty:
                 cursor.close()
                 conn.close()
-                return f"Không tìm thấy {device} phù hợp với khoảng giá bạn yêu cầu."
+                brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+                return f"Không tìm thấy {device}{brand_msg} phù hợp với khoảng giá bạn yêu cầu."
+            
+            # **FIX: THÊM CURRENT_GROUP_IDS CHO TRƯỜNG HỢP CHỈ CÓ GIÁ**
+            current_group_ids.extend(combined_df['group_id'].tolist())
             
             # Build response
-            response = f"Dưới đây là top {top_k} {device} phù hợp với khoảng giá bạn yêu cầu (từ cao đến thấp):\n"
+            brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+            response = f"Dưới đây là top {top_k} {device}{brand_msg} phù hợp với khoảng giá bạn yêu cầu (từ cao đến thấp):\n"
             for _, product in combined_df.iterrows():
                 product_info = f"- {product['group_name']} (ID: {product['group_id']}, giá: {int(product['price']):,} đồng)"
                 response += product_info + "\n"
@@ -121,111 +177,153 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         # Active requirements
         req_fields = [field for field in reqs.__dict__.keys() if field.startswith(tag_prefix) and getattr(reqs, field)]
 
-        # Query tags
+        # Query tags với brand filter
         tables_to_merge = []
+        
         for req_key in req_fields:
             tag_name = req_key
-            sql = """
-                SELECT gp.group_id, gp.group_name
-                FROM group_product gp
-                JOIN group_tags gt ON gp.group_id = gt.group_id
-                JOIN tags t ON gt.tag_id = t.tag_id
-                WHERE t.tag_name = %s
-            """
-            cursor.execute(sql, (tag_name,))
+            if brand_filtered_df is not None:
+                # Nếu có brand filter, chỉ lấy tags của các sản phẩm trong brand đó
+                brand_group_ids = brand_filtered_df['group_id'].tolist()
+                placeholders = ','.join(['%s'] * len(brand_group_ids))
+                sql = f"""
+                    SELECT gp.group_id, gp.group_name
+                    FROM group_product gp
+                    JOIN group_tags gt ON gp.group_id = gt.group_id
+                    JOIN tags t ON gt.tag_id = t.tag_id
+                    WHERE t.tag_name = %s AND gp.group_id IN ({placeholders})
+                """
+                params = [tag_name] + brand_group_ids
+                cursor.execute(sql, params)
+            else:
+                # Không có brand filter
+                sql = """
+                    SELECT gp.group_id, gp.group_name
+                    FROM group_product gp
+                    JOIN group_tags gt ON gp.group_id = gt.group_id
+                    JOIN tags t ON gt.tag_id = t.tag_id
+                    WHERE t.tag_name = %s AND gp.type = %s
+                """
+                cursor.execute(sql, (tag_name, device_type))
+                
             result = cursor.fetchall()
             if result:
                 df = pd.DataFrame(result, columns=["group_id", "group_name"])
                 df[f"{tag_name}_rank"] = df.index + 1
                 tables_to_merge.append(df[["group_id", "group_name", f"{tag_name}_rank"]])
 
+        # Xử lý trường hợp chỉ có brand preference không có tag
         if not tables_to_merge:
-            cursor.close()
-            conn.close()
-            return f"Tôi đề xuất {device} từ {brand} dựa trên sở thích thương hiệu của bạn."
+            if brand_filtered_df is not None:
+                # Nếu chỉ có brand preference mà không có tag nào, sử dụng brand_filtered_df
+                combined_df = brand_filtered_df.copy()
+                # **FIX: THÊM CURRENT_GROUP_IDS CHO TRƯỜNG HỢP CHỈ CÓ BRAND**
+                current_group_ids.extend(combined_df['group_id'].tolist())
+            else:
+                cursor.close()
+                conn.close()
+                return f"Tôi đề xuất {device} từ {brand_display} dựa trên sở thích thương hiệu của bạn." if brand_display else f"Tôi cần thêm thông tin để đề xuất {device} phù hợp."
+        else:
+            # Merge DataFrames
+            combined_df = tables_to_merge[0]
+            for df in tables_to_merge[1:]:
+                combined_df = pd.merge(combined_df, df, on=["group_id", "group_name"], how="outer")
 
-        # Merge DataFrames
-        combined_df = tables_to_merge[0]
-        for df in tables_to_merge[1:]:
-            combined_df = pd.merge(combined_df, df, on=["group_id", "group_name"], how="outer")
+            # Fill NaN ranks
+            max_rank = max([len(df) for df in tables_to_merge]) + 1
+            for col in combined_df.columns:
+                if col.endswith("_rank"):
+                    combined_df[col] = combined_df[col].fillna(max_rank)
 
-        # Fill NaN ranks
-        max_rank = max([len(df) for df in tables_to_merge]) + 1
-        for col in combined_df.columns:
-            if col.endswith("_rank"):
-                combined_df[col] = combined_df[col].fillna(max_rank)
-
-        # Trong phần xử lý specific_requirements
+        # Xử lý specific_requirements
         if hasattr(reqs, 'specific_requirements') and reqs.specific_requirements and reqs.specific_requirements != '':
             print("reqs.specific_requirements", reqs.specific_requirements)
             
-            # Lấy danh sách group_id từ combined_df (đảm bảo là string)
+            # Lấy danh sách group_id từ combined_df
             group_ids = combined_df['group_id'].astype(str).tolist()
             
-            # Tìm kiếm chính xác cụm từ (không dùng slop)
+            # Tìm kiếm chính xác cụm từ
             search_results = search_elasticsearch(
-                query=reqs.specific_requirements,  # Pass the string query
-                ids=group_ids,                    # Pass the list of group IDs
-                size=len(group_ids)               # Pass the size
+                query=reqs.specific_requirements,
+                ids=group_ids,
+                size=len(group_ids)
             )
             print('search_results', search_results)
             
             # Chỉ giữ lại các sản phẩm có trong kết quả tìm kiếm
-            if search_results:  # Check if the list is not empty
+            if search_results:
                 matched_group_ids = [int(hit['group_id']) for hit in search_results]
                 combined_df = combined_df[combined_df['group_id'].isin(matched_group_ids)]
                 
-                # Nếu không còn sản phẩm nào phù hợp
                 if combined_df.empty:
                     cursor.close()
                     conn.close()
-                    return f"Không tìm thấy {device} có tính năng '{reqs.specific_requirements}'"
+                    brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+                    return f"Không tìm thấy {device}{brand_msg} có tính năng '{reqs.specific_requirements}'"
             else:
                 cursor.close()
                 conn.close()
-                return f"Không tìm thấy {device} có tính năng '{reqs.specific_requirements}'"
+                brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+                return f"Không tìm thấy {device}{brand_msg} có tính năng '{reqs.specific_requirements}'"
 
-        # Prices
+        # Xử lý giá cả
         if min_budget or max_budget:
-            price_sql = """
-                SELECT gpj.group_id, gp.group_name, gpj.default_current_price AS price
-                FROM group_product_junction gpj
-                JOIN group_product gp ON gpj.group_id = gp.group_id
-                WHERE (gpj.group_id, gpj.default_current_price) IN (
-                    SELECT group_id, MIN(default_current_price)
-                    FROM group_product_junction
-                    GROUP BY group_id
-                )
-            """
-            cursor.execute(price_sql)
-            result = cursor.fetchall()
-            prices_df = pd.DataFrame(result, columns=["group_id", "group_name", "price"])
+            if not combined_df.empty:
+                group_ids_for_price = combined_df['group_id'].tolist()
+                placeholders = ','.join(['%s'] * len(group_ids_for_price))
+                price_sql = f"""
+                    SELECT gpj.group_id, gp.group_name, gpj.default_current_price AS price
+                    FROM group_product_junction gpj
+                    JOIN group_product gp ON gpj.group_id = gp.group_id
+                    WHERE gpj.group_id IN ({placeholders})
+                    AND (gpj.group_id, gpj.default_current_price) IN (
+                        SELECT group_id, MIN(default_current_price)
+                        FROM group_product_junction
+                        WHERE group_id IN ({placeholders})
+                        GROUP BY group_id
+                    )
+                """
+                params = group_ids_for_price + group_ids_for_price
+                cursor.execute(price_sql, params)
+                result = cursor.fetchall()
+                prices_df = pd.DataFrame(result, columns=["group_id", "group_name", "price"])
 
-            if not prices_df.empty:
-                combined_df = pd.merge(combined_df, prices_df, on=["group_id", "group_name"], how="inner")
-                if min_budget:
-                    combined_df = combined_df[combined_df["price"] >= min_budget]
-                if max_budget and max_budget != 0:
-                    combined_df = combined_df[combined_df["price"] <= max_budget]
+                if not prices_df.empty:
+                    combined_df = pd.merge(combined_df, prices_df, on=["group_id", "group_name"], how="inner")
+                    if min_budget:
+                        combined_df = combined_df[combined_df["price"] >= min_budget]
+                    if max_budget and max_budget != 0:
+                        combined_df = combined_df[combined_df["price"] <= max_budget]
 
         # Calculate ranks
         rank_columns = [col for col in combined_df.columns if col.endswith("_rank")]
         if "es_rank" in combined_df.columns:
             rank_columns.append("es_rank")
             
-        combined_df["combined_rank"] = combined_df[rank_columns].sum(axis=1)
-        # Top k
-        top_k_products = combined_df.sort_values(by="combined_rank").head(top_k)
-        current_group_ids.append(top_k_products['group_id'].tolist())
+        if rank_columns:
+            combined_df["combined_rank"] = combined_df[rank_columns].sum(axis=1)
+            top_k_products = combined_df.sort_values(by="combined_rank").head(top_k)
+        else:
+            # Nếu không có rank columns, lấy theo thứ tự
+            top_k_products = combined_df.head(top_k)
+        
+        # **FIX: ĐẢM BẢO CURRENT_GROUP_IDS LUÔN ĐƯỢC CẬP NHẬT**
+        if not top_k_products.empty:
+            current_group_ids.extend(top_k_products['group_id'].tolist())
+        
         if top_k_products.empty:
             cursor.close()
             conn.close()
-            return f"Không tìm thấy {device} phù hợp với yêu cầu của bạn."
+            brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+            return f"Không tìm thấy {device}{brand_msg} phù hợp với yêu cầu của bạn."
 
         # Build response
-        response = f"Dưới đây là top {top_k} {device} phù hợp với yêu cầu của bạn:\n"
+        brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
+        response = f"Dưới đây là top {top_k} {device}{brand_msg} phù hợp với yêu cầu của bạn:\n"
         for _, product in top_k_products.iterrows():
-            product_info = f"- {product['group_name']} (ID: {product['group_id']}, rank: {int(product['combined_rank'])}"
+            product_info = f"- {product['group_name']} (ID: {product['group_id']}"
+            if "combined_rank" in product and not pd.isna(product["combined_rank"]):
+                product_info += f", rank: {int(product['combined_rank'])}"
             if "price" in product and not pd.isna(product["price"]):
                 product_info += f", giá: {int(product['price']):,} đồng"
             product_info += ")"
