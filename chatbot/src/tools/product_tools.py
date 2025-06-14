@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 from models.requirements import PhoneRequirements,LaptopRequirements
 from llama_index.llms.google_genai import GoogleGenAI
 from prompts import *
-from duckduckgo_search import DDGS
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))
 from db.mysql import mysql
@@ -22,6 +21,25 @@ llm = GoogleGenAI(
     api_key=os.getenv('GOOGLE_API_KEY')
 )
 def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
+
+    """
+    Công cụ tư vấn sản phẩm điện tử thông minh dựa trên nhu cầu của người dùng.
+    
+    Args:
+        device (str): Loại thiết bị cần tư vấn (ví dụ: "điện thoại", "laptop", "tablet", "tai nghe", "smartwatch")
+        query (str): Câu hỏi hoặc yêu cầu tư vấn gốc của người dùng (ví dụ: "tìm điện thoại chụp ảnh đẹp dưới 15 triệu", "laptop gaming trong tầm giá 20-30 triệu")
+        top_k (int, optional): Top số lượng sản phẩm phù hợp nhất mà người dùng muốn hiển thị trong kết quả tư vấn. 
+                               
+    Returns:
+        str: Kết quả tư vấn chi tiết bao gồm danh sách sản phẩm phù hợp    
+    Examples:
+        >>> # Tư vấn 3 điện thoại tốt nhất
+        >>> product_consultation_tool("điện thoại", "chụp ảnh đẹp dưới 15 triệu", top_k=3)
+        
+        >>> # Xem 10 laptop gaming để có nhiều lựa chọn
+        >>> product_consultation_tool("laptop", "gaming trong tầm 20-30 triệu", top_k=10)
+        
+    """
     current_group_ids.clear()
     filter_params.clear()
     try:
@@ -250,22 +268,24 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             )
             print('search_results', search_results)
             
-            # Chỉ giữ lại các sản phẩm có trong kết quả tìm kiếm
+            # Tạo mapping điểm số từ kết quả search
+            relevance_scores = {}
             if search_results:
-                matched_group_ids = [int(hit['group_id']) for hit in search_results]
-                combined_df = combined_df[combined_df['group_id'].isin(matched_group_ids)]
-                
-                if combined_df.empty:
-                    cursor.close()
-                    conn.close()
-                    brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
-                    return f"Không tìm thấy {device}{brand_msg} có tính năng '{reqs.specific_requirements}'"
-            else:
-                cursor.close()
-                conn.close()
-                brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
-                return f"Không tìm thấy {device}{brand_msg} có tính năng '{reqs.specific_requirements}'"
-
+                for hit in search_results:
+                    group_id = int(hit['group_id'])
+                    score = hit.get('_score', 0)  # Lấy điểm từ Elasticsearch
+                    relevance_scores[group_id] = score
+            
+            # Thêm cột điểm relevance cho tất cả sản phẩm
+            # Nếu group_id không có trong kết quả search thì được gán điểm 0
+            combined_df['relevance_score'] = combined_df['group_id'].map(
+                lambda x: relevance_scores.get(x, 0)
+            )
+            
+            # Sắp xếp theo điểm relevance (cao nhất trước)
+            combined_df = combined_df.sort_values('relevance_score', ascending=False)
+            
+            print(f"Reranked {len(combined_df)} products by specific requirements relevance")
         # Xử lý giá cả
         if min_budget or max_budget:
             if not combined_df.empty:

@@ -14,13 +14,12 @@ export interface Review {
   rejectionReason?: string;
 }
 
-// Backend API response structure
+// Backend API response structure for user reviews
 export interface BackendReviewResponse {
   reviewId: string;
   productId: string;
   userId: string;
   username: string;
-  color: string;
   rating: number;
   title?: string;
   content: string;
@@ -35,7 +34,6 @@ export interface CreateReviewRequest {
   productId: string;
   rating: number;
   content: string;
-  color: string;
   title?: string;
 }
 
@@ -45,7 +43,7 @@ export interface UpdateReviewRequest {
   title?: string;
 }
 
-// Frontend normalized interface
+// Frontend normalized interface for user reviews
 export interface ReviewResponse {
   id: string;
   productId: string;
@@ -54,7 +52,6 @@ export interface ReviewResponse {
   username: string;
   rating: number;
   comment: string;
-  color: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   visible: boolean;
   createdAt: string;
@@ -87,7 +84,6 @@ export interface ProductReviewOverview {
   };
   stats: ReviewStats;
   productId: string;
-  color: string;
 }
 
 export interface AdminReviewActionRequest {
@@ -105,7 +101,7 @@ export interface PaginatedReviews {
   hasPrevious: boolean;
 }
 
-// Transform function to convert backend response to frontend format
+// Transform function to convert backend response to frontend format for user reviews
 export const transformBackendReview = (backendReview: BackendReviewResponse): ReviewResponse => {
   // Determine status based on isApproved and adminNote
   let status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -124,7 +120,6 @@ export const transformBackendReview = (backendReview: BackendReviewResponse): Re
     username: backendReview.username,
     rating: backendReview.rating,
     comment: backendReview.content,
-    color: backendReview.color,
     status: status,
     visible: backendReview.isVisible,
     createdAt: backendReview.createdAt,

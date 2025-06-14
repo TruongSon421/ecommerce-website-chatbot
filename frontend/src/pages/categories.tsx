@@ -13,12 +13,41 @@ function PageCategory() {
   const { type = '' } = useParams<{ type: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] | string }>({});
-  const [sortByPrice, setSortByPrice] = useState<string>(''); // Empty string means no price sorting, use orderNumber
+  
+  // Storage key for sortByPrice persistence
+  const SORT_STORAGE_KEY = `sortByPrice_${type}`;
+  
+  // Initialize sortByPrice with localStorage backup
+  const [sortByPrice, setSortByPrice] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SORT_STORAGE_KEY) || '';
+    } catch (error) {
+      console.warn('Failed to load sortByPrice from localStorage:', error);
+      return '';
+    }
+  });
+  
   const { isAdmin } = useAuth();
+  
+  // Track if initial state has been restored
+  const [isStateRestored, setIsStateRestored] = useState(false);
   
   // Get page from URL params or default to 0
   const page = Number(searchParams.get('page')) || 0;
   
+  // Save sortByPrice to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (sortByPrice) {
+        localStorage.setItem(SORT_STORAGE_KEY, sortByPrice);
+      } else {
+        localStorage.removeItem(SORT_STORAGE_KEY);
+      }
+    } catch (error) {
+      console.warn('Failed to save sortByPrice to localStorage:', error);
+    }
+  }, [sortByPrice, SORT_STORAGE_KEY]);
+
   // Custom hook for product API operations
   const { 
     products, 
@@ -107,23 +136,43 @@ function PageCategory() {
     return queryParams.join('&');
   }, [type, sortByPrice, searchParams]);
 
-  // Fetch products when dependencies change
+  // Fetch products when dependencies change, but only after state is restored
   useEffect(() => {
+    // Don't fetch until initial state is restored
+    if (!isStateRestored) return;
+    
     const queryString = createQueryParams(page, filters);
     const isSortedByPrice = sortByPrice === 'asc' || sortByPrice === 'desc';
-    console.log('Fetching products with filters:', filters, 'queryString:', queryString);
-    fetchProducts(queryString, page === 0, isSortedByPrice);
-  }, [fetchProducts, page, filters, createQueryParams, sortByPrice]);
+    
+    // Check if there's a search query (either from filters or URL)
+    const hasSearchQuery = !!(filters.searchQuery || searchParams.get('search'));
+    
+    console.log('Fetching products with filters:', filters, 'queryString:', queryString, 'hasSearchQuery:', hasSearchQuery);
+    fetchProducts(queryString, page === 0, isSortedByPrice, hasSearchQuery);
+  }, [fetchProducts, page, filters, createQueryParams, sortByPrice, isStateRestored, searchParams]);
 
-  // Save filters to URL
+    // Save filters to URL
   useEffect(() => {
-    const currentParams = Object.fromEntries(searchParams.entries());
-    setSearchParams({
-      ...currentParams,
-      filters: JSON.stringify(filters),
-      sort: sortByPrice,
-      page: page.toString()
-    }, { replace: true }); // Use replace to avoid adding multiple history entries
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', page.toString());
+    
+    // Only add filters to URL if they exist and are not empty
+    if (filters && Object.keys(filters).length > 0) {
+      newParams.set('filters', JSON.stringify(filters));
+    } else {
+      // Remove filters from URL if empty
+      newParams.delete('filters');
+    }
+    
+    // Only add sort to URL if it's not empty
+    if (sortByPrice && sortByPrice !== '') {
+      newParams.set('sort', sortByPrice);
+    } else {
+      // Remove sort from URL if empty
+      newParams.delete('sort');
+    }
+    
+    setSearchParams(newParams, { replace: true }); // Use replace to avoid adding multiple history entries
   }, [filters, sortByPrice, page, setSearchParams, searchParams]);
 
   // Restore state from URL on mount
@@ -131,18 +180,39 @@ function PageCategory() {
     const filtersFromUrl = searchParams.get('filters');
     const sortFromUrl = searchParams.get('sort');
     
-    if (filtersFromUrl) {
+    // Restore filters from URL
+    if (filtersFromUrl && filtersFromUrl !== 'undefined') {
       try {
-        setFilters(JSON.parse(filtersFromUrl));
+        const parsedFilters = JSON.parse(filtersFromUrl);
+        // Only set filters if they're not empty
+        if (parsedFilters && Object.keys(parsedFilters).length > 0) {
+          setFilters(parsedFilters);
+        }
       } catch (e) {
         console.error('Error parsing filters from URL:', e);
       }
     }
     
-    if (sortFromUrl) {
+    // Restore sort from URL (prioritize URL over localStorage)
+    if (sortFromUrl && sortFromUrl !== '' && sortFromUrl !== 'undefined') {
       setSortByPrice(sortFromUrl);
+    } else {
+      // Fallback to localStorage if URL doesn't have sort
+      try {
+        const storedSort = localStorage.getItem(SORT_STORAGE_KEY);
+        if (storedSort && storedSort !== '') {
+          setSortByPrice(storedSort);
+        }
+      } catch (error) {
+        console.warn('Failed to restore sortByPrice from localStorage:', error);
+      }
     }
-  }, [searchParams]); // Only run on mount
+    
+    // Mark state as restored with small delay to ensure state is set
+    setTimeout(() => {
+      setIsStateRestored(true);
+    }, 100);
+  }, []); // Only run on mount
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
@@ -200,10 +270,20 @@ function PageCategory() {
 
   const handleClearFilters = () => {
     setFilters({});
+    setSortByPrice('');
+    
+    // Clear localStorage
+    try {
+      localStorage.removeItem(SORT_STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear sortByPrice from localStorage:', error);
+    }
+    
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', '0');
       newParams.delete('filters');
+      newParams.delete('sort');
       return newParams;
     });
   };

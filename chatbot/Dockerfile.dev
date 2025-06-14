@@ -1,0 +1,10 @@
+# Sử dụng base image vừa build
+FROM ecommerce-website-chatbot-chatbot:latest 
+
+WORKDIR /app
+
+# RUN pip install litellm>=1.0.0
+
+EXPOSE 5500
+
+CMD ["uvicorn", "main:asgi_app", "--host", "0.0.0.0", "--port", "5500"]

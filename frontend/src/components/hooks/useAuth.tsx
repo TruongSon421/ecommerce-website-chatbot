@@ -19,9 +19,10 @@ interface UseAuth {
 
 export const useAuth = (): UseAuth => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, accessToken, loading, error } = useSelector((state: RootState) => state.auth);
+  const { user, accessToken, loading, error, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-  const isAuthenticated = !!user && !!accessToken;
+  // Fallback calculation if isAuthenticated is not properly set
+  const calculatedIsAuthenticated = isAuthenticated || (!!user && !!accessToken);
   const isAdmin = user && user.role === 'admin' || false;
 
   const loginHandler = useCallback(async (credentials: LoginCredentials) => {
@@ -83,7 +84,7 @@ export const useAuth = (): UseAuth => {
     accessToken,
     loading,
     error,
-    isAuthenticated,
+    isAuthenticated: calculatedIsAuthenticated,
     isAdmin,
     login: loginHandler,
     register: registerHandler,

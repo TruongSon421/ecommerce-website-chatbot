@@ -94,17 +94,15 @@ export const confirmOrder = async (orderId: string): Promise<void> => {
 };
 
 /**
- * Kiểm tra user đã mua sản phẩm với màu cụ thể chưa
+ * Kiểm tra user đã mua sản phẩm chưa
  */
 export const checkIfUserPurchasedProduct = async (
   userId: string,
-  productId: string,
-  color: string
+  productId: string
 ): Promise<boolean> => {
   const params = new URLSearchParams({
     userId,
     productId,
-    color,
   });
   
   const response = await api.get(`${BASE_URL}/check-purchased?${params}`);

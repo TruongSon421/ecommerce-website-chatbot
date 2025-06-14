@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../components/hooks/useAuth';
 import { useNotification } from '../../components/common/Notification';
 import ENV from '../../config/env';
 
@@ -15,7 +14,7 @@ interface TagFormData {
 }
 
 const TagManagement: React.FC = () => {
-  const { user } = useAuth();
+  
   const { showNotification } = useNotification();
   
   // States
@@ -43,7 +42,7 @@ const TagManagement: React.FC = () => {
     setError(null);
     
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${ENV.API_URL}/tags/get`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(10000),
@@ -62,7 +61,7 @@ const TagManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.token]);
+  }, []);
 
   // Add new tag
   const handleAddTag = async (e: React.FormEvent) => {
@@ -75,7 +74,7 @@ const TagManagement: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
         return;
@@ -129,7 +128,7 @@ const TagManagement: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
         return;
@@ -178,7 +177,7 @@ const TagManagement: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
         return;
@@ -328,7 +327,7 @@ const TagManagement: React.FC = () => {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">
-                {editingTag ? `Chỉnh sửa tag "${editingTag.name}"` : 'Thêm tag mới'}
+                {editingTag ? `Chỉnh sửa tag "${editingTag.tagName}"` : 'Thêm tag mới'}
               </h2>
               <button
                 onClick={cancelEditing}

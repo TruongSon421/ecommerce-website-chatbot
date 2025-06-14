@@ -4,6 +4,7 @@ import ProductSection from '../components/product/productSection';
 import NewsSection from '../components/newSection';
 import BannerSection from '../components/layout/bannerSection';
 import CategoriesSection from '../components/product/categoriesSection';
+
 function Home() {
   return (
     <div className="home">

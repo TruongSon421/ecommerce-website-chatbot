@@ -26,8 +26,6 @@ public class ProductReview {
     @NotBlank(message = "User ID không được để trống")
     private String userId;
     
-    private String color; // Color có thể null (sẽ được normalize thành "default")
-    
     @NotBlank(message = "Username không được để trống")
     private String username;
     
@@ -76,15 +74,5 @@ public class ProductReview {
     public void show() {
         this.isVisible = true;
         this.updatedAt = LocalDateTime.now();
-    }
-    
-    // Helper method để normalize color
-    public String getNormalizedColor() {
-        return (color == null || color.trim().isEmpty()) ? "default" : color;
-    }
-    
-    // Pre-persist để normalize color
-    public void normalizeColor() {
-        this.color = getNormalizedColor();
     }
 } 

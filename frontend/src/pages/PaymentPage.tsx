@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchOrderDetailsByTransactionId, OrderDetailsResponse } from '../services/orderService';
+import { fetchOrderDetailsByTransactionId } from '../services/orderService';
 import { processPayment, ProcessPaymentRequest } from '../services/paymentService';
 import OrderSummary from '../components/payment/OrderSummary';
+import { OrderDetailsResponse } from '../types/order';
 // import PaymentForm from '../components/payment/PaymentForm'; // No longer directly used for VNPay redirect
 
 const PaymentPage: React.FC = () => {

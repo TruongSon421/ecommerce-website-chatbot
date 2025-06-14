@@ -12,6 +12,5 @@ public interface OrderClient {
     
     @GetMapping("/api/orders/check-purchased")
     boolean checkIfUserPurchasedProduct(@RequestParam("userId") String userId, 
-                                      @RequestParam("productId") String productId,
-                                      @RequestParam("color") String color);
+                                      @RequestParam("productId") String productId);
 } 

@@ -6,7 +6,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   phoneNumber?: string;
-  addresses: Address[];
+  addresses?: Address[];
 }
 
 export interface AuthResponse {
@@ -52,4 +52,25 @@ export interface CreateUserDTO {
   isActive?: boolean;
   roleNames?: string[];
   addresses?: Address[];
+}
+
+// New interface for auth API response user data
+export interface AuthUserResponse {
+  id: number;
+  username: string;
+  email: string;
+  role: string; // ROLE_USER, ROLE_ADMIN, etc.
+}
+
+// Detailed user profile interface (for profile API)
+export interface UserProfile {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: number;
+  isActive: boolean | null;
+  role: string;
+  addresses: Address[];
 }

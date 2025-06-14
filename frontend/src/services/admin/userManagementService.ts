@@ -1,5 +1,5 @@
 // services/userService.ts
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8070/api';
+import ENV from '../../config/env';
 
 export interface User {
   id: number;
@@ -66,7 +66,7 @@ class UserService {
       ...(status !== 'ALL' && { status })
     });
 
-    const response = await fetch(`${API_BASE}/users?${params}`, {
+    const response = await fetch(`${ENV.API_URL}/users?${params}`, {
       headers: this.getAuthHeaders()
     });
 
@@ -78,7 +78,7 @@ class UserService {
   }
 
   async getUserById(userId: number): Promise<User> {
-    const response = await fetch(`${API_BASE}/users/${userId}`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}`, {
       headers: this.getAuthHeaders()
     });
 
@@ -90,7 +90,7 @@ class UserService {
   }
 
   async createUser(userData: CreateUserData): Promise<User> {
-    const response = await fetch(`${API_BASE}/users`, {
+    const response = await fetch(`${ENV.API_URL}/users`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(userData)
@@ -105,7 +105,7 @@ class UserService {
   }
 
   async updateUser(userId: number, userData: Partial<User>): Promise<User> {
-    const response = await fetch(`${API_BASE}/users/${userId}`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}`, {
       method: 'PUT',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(userData)
@@ -119,7 +119,7 @@ class UserService {
   }
 
   async deleteUser(userId: number): Promise<void> {
-    const response = await fetch(`${API_BASE}/users/${userId}`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders()
     });
@@ -130,7 +130,7 @@ class UserService {
   }
 
   async activateUser(userId: number): Promise<User> {
-    const response = await fetch(`${API_BASE}/users/${userId}/activate`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}/activate`, {
       method: 'PUT',
       headers: this.getAuthHeaders()
     });
@@ -143,7 +143,7 @@ class UserService {
   }
 
   async deactivateUser(userId: number): Promise<User> {
-    const response = await fetch(`${API_BASE}/users/${userId}/deactivate`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}/deactivate`, {
       method: 'PUT',
       headers: this.getAuthHeaders()
     });
@@ -156,7 +156,7 @@ class UserService {
   }
 
   async resetPassword(userId: number): Promise<string> {
-    const response = await fetch(`${API_BASE}/users/${userId}/reset-password`, {
+    const response = await fetch(`${ENV.API_URL}/users/${userId}/reset-password`, {
       method: 'POST',
       headers: this.getAuthHeaders()
     });
@@ -169,7 +169,7 @@ class UserService {
   }
 
   async getUserStatistics(): Promise<UserStatistics> {
-    const response = await fetch(`${API_BASE}/users/statistics`, {
+    const response = await fetch(`${ENV.API_URL}/users/statistics`, {
       headers: this.getAuthHeaders()
     });
 
@@ -181,7 +181,7 @@ class UserService {
   }
 
   async performBulkAction(actionData: BulkActionData): Promise<string> {
-    const response = await fetch(`${API_BASE}/users/bulk-action`, {
+    const response = await fetch(`${ENV.API_URL}/users/bulk-action`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(actionData)

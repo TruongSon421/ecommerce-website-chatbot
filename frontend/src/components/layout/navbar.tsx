@@ -101,7 +101,7 @@ const Navbar: React.FC = () => {
           
           <div className="logo">
             <a href="/">
-              <img src="/images/google-nexus.svg" alt="Nexus Logo" className='logo-img' />
+              <img src="/images/techzone-logo.png" alt="TechZone Logo" className='logo-img' />
             </a>
           </div>
           

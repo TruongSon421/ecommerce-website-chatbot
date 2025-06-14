@@ -10,7 +10,7 @@ load_dotenv()
 class Filter:
     # Class variables instead of instance variables
     # Từ ngữ nhạy cảm cần filter
-    lang_dict = {'vie':"Vietnamese",'eng':"English"}
+    lang_dict = {'vie':"tiếng Việt",'eng':"tiếng Anh"}
     sensitive_words = [
         # Từ ngữ bạo lực - Tiếng Việt
         'fuck', 'shit', 'giết', 'chết', 'máu', 'đánh', 'bắn', 'cướp',
@@ -79,7 +79,7 @@ class Filter:
         'chúa trời', 'thượng đế', 'allah', 'buddha', 'phật tổ', 'chúa jesus',
         
         # Từ ngữ phân biệt chủng tộc
-        'đen', 'da đen', 'da đỏ', 'da vàng', 'da trắng', 'thổ dân',
+        'da đen', 'da đỏ', 'da vàng', 'da trắng',
         'nigger', 'negro', 'chink', 'gook', 'slant', 'jap', 'nazi',
         
         # Từ viết tắt và biến thể
@@ -153,16 +153,15 @@ class Filter:
         # Process the results
         detected_langs = []
         for i in range(len(labels)):
-            if i < len(labels):  # Safety check
-                label = labels[i]
-                prob = probabilities[i] if i < len(probabilities) else 0
-                
-                # Extract language code
-                label = label.replace('__label__', '')
-                match = re.search(r'^([a-z]{3})', label)
-                if match:
-                    lang_code = match.group(1)
-                    detected_langs.append((lang_code, prob))
+            label = labels[i]
+            prob = probabilities[i] 
+            
+            # Extract language code
+            label = label.replace('__label__', '')
+            match = re.search(r'^([a-z]{3})', label)
+            if match:
+                lang_code = match.group(1)
+                detected_langs.append((lang_code, prob))
         
         return detected_langs
         

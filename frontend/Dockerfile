@@ -4,25 +4,21 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package.json and package-lock.json first (for better caching)
 COPY package.json package-lock.json ./
 
-# Install dependencies as a non-root user
+# Install dependencies
 RUN npm ci --quiet && \
     npm cache clean --force
 
-# Copy the rest of the application code
-COPY . .
+# Create app directory with proper permissions
+RUN mkdir -p /app && chown -R node:node /app
 
-# Fix permissions for the app directory
-RUN chown -R node:node /app && \
-    chmod -R u+rwX /app
-
-# Switch to non-root user for security
+# Switch to non-root user
 USER node
 
-# Expose port 3000 for Vite dev server
+# Expose port 5173
 EXPOSE 5173
 
-# Command to run the Vite development server
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Command to run the Vite development server with hot reload
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

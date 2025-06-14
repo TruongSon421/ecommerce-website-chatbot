@@ -405,9 +405,6 @@ const ReviewManagement: React.FC = () => {
                       <span className="text-sm text-gray-500 font-medium">
                         Sản phẩm: {productCache[review.productId] || 'Đang tải...'}
                       </span>
-                      <span className="text-sm text-gray-500">
-                        Màu: {review.color}
-                      </span>
                     </div>
                     
                     <p className="text-gray-700 mb-2">{review.comment}</p>

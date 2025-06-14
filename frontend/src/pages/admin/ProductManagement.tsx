@@ -12,7 +12,7 @@ import CategoriesSection from '../../components/product/categoriesSection';
 function PageCategory() {
   const { type = '' } = useParams<{ type: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [filters, setFilters] = useState<{ [key: string]: string[] | number[] }>({});
+  const [filters, setFilters] = useState<{ [key: string]: string | string[] | number[] }>({});
   const [sortByPrice, setSortByPrice] = useState<string>('desc');
   const { isAdmin } = useAuth();
   
@@ -33,7 +33,7 @@ function PageCategory() {
   // Create query params for API request
   const createQueryParams = useCallback((
     currentPage: number, 
-    appliedFilters: { [key: string]: string[] | number[] }
+    appliedFilters: { [key: string]: string | string[] | number[] }
   ) => {
     const queryParams: string[] = [
       `page=${currentPage}`,
@@ -57,8 +57,13 @@ function PageCategory() {
     };
 
     Object.entries(filterMapping).forEach(([key, param]) => {
-      if (appliedFilters[key] && (appliedFilters[key] as string[]).length > 0) {
-        queryParams.push(`${param}=${(appliedFilters[key] as string[]).join(',')}`);
+      if (appliedFilters[key]) {
+        const filterValue = appliedFilters[key];
+        if (Array.isArray(filterValue) && filterValue.length > 0) {
+          queryParams.push(`${param}=${filterValue.join(',')}`);
+        } else if (typeof filterValue === 'string' && filterValue.length > 0) {
+          queryParams.push(`${param}=${filterValue}`);
+        }
       }
     });
 
@@ -115,7 +120,7 @@ function PageCategory() {
     });
   };
 
-  const handleApplyFilters = (newFilters: { [key: string]: string[] | number[] }) => {
+  const handleApplyFilters = (newFilters: { [key: string]: string | string[] | number[] }) => {
     setFilters(newFilters);
     // Reset to page 0 when filters change
     setSearchParams(prev => {

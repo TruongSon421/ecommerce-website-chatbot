@@ -26,7 +26,7 @@ import CartPage from "./pages/CartPage";
 import AdminLogin from "./pages/admin/LoginAdmin";
 import AdminRegister from "./pages/admin/RegisterAdmin";
 import Dashboard from "./pages/admin/adminDashBoard.tsx";
-import AddProductPage from "./pages/product/addProduct";
+import AddProductPage from "./pages/admin/addProduct.tsx";
 import ProductManagement from "./pages/admin/ProductManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
@@ -41,7 +41,7 @@ import PaymentFailedPage from "./pages/PaymentFailedPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import Profile from "./components/user/profile";
 import PurchaseHistory from "./components/user/PurchaseHistory";
-
+import PoliciesPage from "./components/PopliciesPage.tsx";
 // Private route components
 const UserPrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -69,6 +69,7 @@ function AppContent() {
           <Route path="cart" element={<CartPage />} />
           <Route path=":type" element={<PageCategory />} />
           <Route path="/detail/:type/:product_id" element={<ProductGH />} />
+          <Route path="/policies" element={<PoliciesPage />} />
           
           {/* Private user routes */}
           <Route 

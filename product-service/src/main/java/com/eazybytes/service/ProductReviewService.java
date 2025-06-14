@@ -29,25 +29,21 @@ public class ProductReviewService {
      * Tạo đánh giá mới (FR-14)
      */
     public ReviewResponse createReview(CreateReviewRequest request, String userId, String username) {
-        // Normalize color
-        String normalizedColor = normalizeColor(request.getColor());
-        
-        // Kiểm tra user đã mua sản phẩm với màu này chưa
-        boolean hasPurchased = orderClient.checkIfUserPurchasedProduct(userId, request.getProductId(), normalizedColor);
+        // Kiểm tra user đã mua sản phẩm này chưa
+        boolean hasPurchased = orderClient.checkIfUserPurchasedProduct(userId, request.getProductId());
         if (!hasPurchased) {
-            throw new IllegalArgumentException("Bạn cần mua sản phẩm này với màu " + normalizedColor + " trước khi có thể đánh giá");
+            throw new IllegalArgumentException("Bạn cần mua sản phẩm này trước khi có thể đánh giá");
         }
         
-        // Kiểm tra user đã đánh giá sản phẩm với màu này chưa
-        if (reviewRepository.existsByUserIdAndProductIdAndColor(userId, request.getProductId(), normalizedColor)) {
-            throw new IllegalArgumentException("Bạn đã đánh giá sản phẩm này với màu " + normalizedColor + " rồi");
+        // Kiểm tra user đã đánh giá sản phẩm này chưa
+        if (reviewRepository.existsByUserIdAndProductId(userId, request.getProductId())) {
+            throw new IllegalArgumentException("Bạn đã đánh giá sản phẩm này rồi");
         }
         
         ProductReview review = ProductReview.builder()
                 .productId(request.getProductId())
                 .userId(userId)
                 .username(username)
-                .color(normalizedColor)
                 .rating(request.getRating())
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -57,7 +53,7 @@ public class ProductReviewService {
                 .build();
         
         ProductReview savedReview = reviewRepository.save(review);
-        log.info("Created new review for product {} color {} by user {}", request.getProductId(), normalizedColor, userId);
+        log.info("Created new review for product {} by user {}", request.getProductId(), userId);
         
         return mapToResponse(savedReview);
     }
@@ -110,16 +106,6 @@ public class ProductReviewService {
     }
     
     /**
-     * Lấy đánh giá của sản phẩm theo màu (chỉ đã approve và visible)
-     */
-    @Transactional(readOnly = true)
-    public Page<ReviewResponse> getProductReviewsByColor(String productId, String color, Pageable pageable) {
-        String normalizedColor = normalizeColor(color);
-        Page<ProductReview> reviews = reviewRepository.findByProductIdAndColorAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, pageable);
-        return reviews.map(this::mapToResponse);
-    }
-    
-    /**
      * Lấy đánh giá của user
      */
     @Transactional(readOnly = true)
@@ -142,22 +128,7 @@ public class ProductReviewService {
      */
     @Transactional(readOnly = true)
     public Map<String, Object> getProductReviewStats(String productId) {
-        return getProductReviewStatsByColor(productId, null);
-    }
-    
-    /**
-     * Tính thống kê đánh giá của sản phẩm theo màu
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getProductReviewStatsByColor(String productId, String color) {
-        List<ProductReview> reviews;
-        
-        if (color != null) {
-            String normalizedColor = normalizeColor(color);
-            reviews = reviewRepository.findApprovedReviewsByProductIdAndColor(productId, normalizedColor);
-        } else {
-            reviews = reviewRepository.findApprovedReviewsByProductId(productId);
-        }
+        List<ProductReview> reviews = reviewRepository.findApprovedReviewsByProductId(productId);
         
         if (reviews.isEmpty()) {
             return Map.of(
@@ -165,8 +136,7 @@ public class ProductReviewService {
                 "totalReviews", 0,
                 "ratingDistribution", Map.of(
                     "5", 0, "4", 0, "3", 0, "2", 0, "1", 0
-                ),
-                "color", color != null ? normalizeColor(color) : "all"
+                )
             );
         }
         
@@ -175,31 +145,18 @@ public class ProductReviewService {
                 .average()
                 .orElse(0.0);
         
-        Map<String, Long> ratingDistribution;
-        if (color != null) {
-            String normalizedColor = normalizeColor(color);
-            ratingDistribution = Map.of(
-                "5", reviewRepository.countByProductIdAndColorAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, 5),
-                "4", reviewRepository.countByProductIdAndColorAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, 4),
-                "3", reviewRepository.countByProductIdAndColorAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, 3),
-                "2", reviewRepository.countByProductIdAndColorAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, 2),
-                "1", reviewRepository.countByProductIdAndColorAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, normalizedColor, 1)
-            );
-        } else {
-            ratingDistribution = Map.of(
-                "5", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 5),
-                "4", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 4),
-                "3", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 3),
-                "2", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 2),
-                "1", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 1)
-            );
-        }
+        Map<String, Long> ratingDistribution = Map.of(
+            "5", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 5),
+            "4", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 4),
+            "3", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 3),
+            "2", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 2),
+            "1", reviewRepository.countByProductIdAndRatingAndIsApprovedTrueAndIsVisibleTrue(productId, 1)
+        );
         
         return Map.of(
             "averageRating", Math.round(averageRating * 10.0) / 10.0, // Round to 1 decimal
             "totalReviews", reviews.size(),
-            "ratingDistribution", ratingDistribution,
-            "color", color != null ? normalizeColor(color) : "all"
+            "ratingDistribution", ratingDistribution
         );
     }
     
@@ -308,7 +265,6 @@ public class ProductReviewService {
                 .productId(review.getProductId())
                 .userId(review.getUserId())
                 .username(review.getUsername())
-                .color(review.getColor())
                 .rating(review.getRating())
                 .title(review.getTitle())
                 .content(review.getContent())
@@ -318,10 +274,5 @@ public class ProductReviewService {
                 .isVisible(review.getIsVisible())
                 .adminNote(review.getAdminNote())
                 .build();
-    }
-    
-    // Helper method để normalize color
-    private String normalizeColor(String color) {
-        return (color == null || color.trim().isEmpty()) ? "default" : color.trim();
     }
 } 

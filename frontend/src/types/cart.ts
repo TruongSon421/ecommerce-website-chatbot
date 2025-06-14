@@ -7,6 +7,11 @@ export interface CartItem {
   available: boolean;
 }
 
+export interface Cart {
+  items: CartItem[];
+  totalPrice: number;
+}
+
 export interface CartItemIdentity {
   productId: string;
   color: string;

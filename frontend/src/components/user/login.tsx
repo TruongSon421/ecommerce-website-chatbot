@@ -19,7 +19,7 @@ const Login: React.FC = () => {
     try {
       await login(credentials);
       showNotification('Đăng nhập thành công!', 'success');
-      const redirectTo = location.state?.redirectTo || '/home';
+      const redirectTo = location.state?.redirectTo || '/';
       // Prevent redirect to admin routes if not admin
       if (redirectTo.startsWith('/admin') && !isAdmin) {
         navigate('/', { replace: true });

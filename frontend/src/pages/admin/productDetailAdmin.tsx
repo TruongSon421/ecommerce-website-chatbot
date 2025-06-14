@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import ProductDetailAdmin from '../../components/product/admin/productDetailAdmin';
-
+import ENV from '../../config/env';
 interface Product {
   productId: string;
   productName: string;
@@ -34,7 +34,7 @@ function ProductGHAdmin() {
       }
 
       try {
-        const response = await fetch(`http://localhost:8070/api/products/get/${type}/${product_id}`);
+        const response = await fetch(`${ENV.API_URL}/products/get/${type}/${product_id}`);
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }

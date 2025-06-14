@@ -1,43 +1,129 @@
-THÔNG TIN CỬA HÀNG ECOMMERCE - TECHZONE
+# THÔNG TIN CỬA HÀNG ECOMMERCE - TECHZONE
 
-1. Địa chỉ:
+## 1. Địa chỉ
 
-Trụ sở chính: 123 Đường Công Nghệ, Phường 7, Quận 5, TP. Hồ Chí Minh, Việt Nam
-Kho hàng: 45 Đường Sáng Tạo, Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh
-2. Giờ hoạt động:
+**Trụ sở chính:** 123 Đường Công Nghệ, Phường 7, Quận 5, TP. Hồ Chí Minh, Việt Nam  
+**Kho hàng:** 45 Đường Sáng Tạo, Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh
 
-Website: Hoạt động 24/7 (www.techzone.vn)
-Hotline hỗ trợ: 8:00 - 22:00 (Thứ Hai đến Chủ Nhật)
-Showroom: 9:00 - 18:00 (Thứ Hai đến Thứ Bảy)
-3. Chương trình khuyến mãi:
+## 2. Giờ hoạt động
 
-Tháng 4/2025 - Tech Deals: Giảm giá lên đến 30% cho các sản phẩm điện thoại, laptop và tai nghe không dây.
-Mua 2 tặng 1: Áp dụng cho phụ kiện (ốp lưng, sạc dự phòng) khi mua cùng sản phẩm chính.
-Freeship toàn quốc: Cho đơn hàng từ 1.000.000 VNĐ trở lên.
-4. Thời gian bảo hành:
+- **Website:** Hoạt động 24/7 (www.techzone.vn)
+- **Hotline hỗ trợ:** 8:00 - 22:00 (Thứ Hai đến Chủ Nhật)
+- **Showroom:** 9:00 - 18:00 (Thứ Hai đến Thứ Bảy)
 
-Điện thoại, laptop: 12 tháng (bảo hành chính hãng).
-Tai nghe, loa: 6 tháng.
-Phụ kiện (sạc, cáp): 3 tháng.
-Sản phẩm đổi trả do lỗi kỹ thuật: Bảo hành 1 đổi 1 trong 30 ngày đầu tiên.
-5. Chính sách đổi trả:
+## 3. Chương trình khuyến mãi
 
-Đổi trả trong vòng 7 ngày kể từ ngày nhận hàng nếu sản phẩm lỗi do nhà sản xuất.
-Sản phẩm phải còn nguyên tem, hộp, không trầy xước hoặc hư hỏng do người dùng.
-Hoàn tiền 100% nếu không giao đúng sản phẩm đã đặt.
-Chi phí vận chuyển đổi trả: Miễn phí nếu lỗi từ TechZone, khách hàng chịu phí nếu đổi trả vì lý do cá nhân.
-6. Hotline liên hệ:
+- **Tháng 6/2025 - Tech Summer Sale:** Giảm giá lên đến 40% cho các sản phẩm điện thoại, laptop và tai nghe không dây
+- **Mua 2 tặng 1:** Áp dụng cho phụ kiện (ốp lưng, sạc dự phòng) khi mua cùng sản phẩm chính
+- **Freeship toàn quốc:** Cho đơn hàng từ 1.000.000 VNĐ trở lên
+- **Ưu đãi sinh viên:** Giảm thêm 5% khi xuất trình thẻ sinh viên
 
-Hỗ trợ khách hàng: 1900 1234 (8:00 - 22:00)
-Khiếu nại: 0909 567 890
-Email: support@techzone.vn
-7. Những mặt hàng kinh doanh:
+## 4. Thời gian bảo hành
 
-Điện thoại di động: iPhone, Samsung, Xiaomi, Oppo, v.v.
-Laptop: MacBook, Dell, HP, Asus, Lenovo.
-Phụ kiện: Tai nghe (AirPods, Sony), sạc dự phòng, cáp sạc.
+- **Điện thoại, laptop:** 12 tháng (bảo hành chính hãng)
+- **Tai nghe, loa:** 6 tháng
+- **Phụ kiện (sạc, cáp):** 3 tháng
+- **Sản phẩm đổi trả do lỗi kỹ thuật:** Bảo hành 1 đổi 1 trong 30 ngày đầu tiên
 
-Lưu ý:
+## 5. Chính sách đổi trả
 
-Giá sản phẩm được cập nhật liên tục trên website.
-TechZone cam kết bán hàng chính hãng 100%, có hóa đơn VAT đầy đủ.
+- **Đổi trả trong vòng 7 ngày** kể từ ngày nhận hàng nếu sản phẩm lỗi do nhà sản xuất
+- Sản phẩm phải còn nguyên tem, hộp, không trầy xước hoặc hư hỏng do người dùng
+- **Hoàn tiền 100%** nếu không giao đúng sản phẩm đã đặt
+- **Chi phí vận chuyển đổi trả:** Miễn phí nếu lỗi từ TechZone, khách hàng chịu phí nếu đổi trả vì lý do cá nhân
+
+## 6. Hotline liên hệ
+
+- **Hỗ trợ khách hàng:** 1900 1234 (8:00 - 22:00)
+- **Khiếu nại:** 0909 567 890
+- **Email:** support@techzone.vn
+
+## 7. Những mặt hàng kinh doanh
+
+### Điện thoại di động
+- iPhone (tất cả series từ iPhone 12 đến iPhone 15)
+- Samsung (Galaxy S series, Note series, A series)
+- Xiaomi (Redmi, Mi series)
+- Oppo, Vivo, Realme
+
+### Laptop & Máy tính
+- MacBook (Air, Pro)
+- Dell (XPS, Inspiron, Latitude)
+- HP (Pavilion, EliteBook, Envy)
+- Asus (ROG, ZenBook, VivoBook)
+- Lenovo (ThinkPad, IdeaPad, Legion)
+- MSI Gaming Laptop
+
+### Phụ kiện công nghệ
+- Tai nghe (AirPods, Sony WH-1000XM5, Bose)
+- Loa bluetooth (JBL, Sony, Harman Kardon)
+- Sạc dự phòng (Anker, Xiaomi, Samsung)
+- Cáp sạc (Lightning, USB-C, Micro USB)
+- Ốp lưng, miếng dán màn hình
+- Chuột, bàn phím không dây
+- Webcam, microphone
+
+## 8. Chính sách giao hàng
+
+### Phạm vi áp dụng
+Những khu vực tỉnh thành có hệ thống siêu thị TechZone
+
+### Thời gian nhận hàng
+- **Giao siêu nhanh (0-20km):** Từ 1-2 tiếng
+- **Giao tiêu chuẩn (0-20km):** Từ 6 tiếng  
+- **Giao tiêu chuẩn (nội tỉnh - liên tỉnh):** Từ 2-6 ngày
+
+### Phí giao hàng
+**Sản phẩm không lắp đặt:**
+- Giỏ hàng từ 500.000đ: Miễn phí 10km đầu, 5.000đ/km tiếp theo
+- Giỏ hàng dưới 500.000đ: 20.000đ cho 10km đầu, 5.000đ/km tiếp theo
+- Giỏ hàng từ 2.000.000đ: Miễn phí hoàn toàn
+
+**Sản phẩm lắp đặt:**
+- Giỏ hàng từ 5 triệu: Miễn phí 10km đầu, 5.000đ/km tiếp theo
+- Giỏ hàng dưới 5 triệu: 50.000đ cho 10km đầu, 5.000đ/km tiếp theo
+
+## 9. Phương thức thanh toán
+
+### Thanh toán trực tiếp
+- Tại cửa hàng: Tiền mặt, thẻ ATM, thẻ tín dụng
+- Khi nhận hàng (COD): Tiền mặt, POS di động
+
+### Thanh toán online
+- Chuyển khoản ngân hàng
+- Ví điện tử: MoMo, ZaloPay, ViettelPay
+- Thẻ tín dụng: Visa, MasterCard, JCB
+- Internet Banking
+
+### Thông tin chuyển khoản
+**Ngân hàng Vietcombank:**
+- STK: 1234567890
+- Chủ TK: CÔNG TY TNHH TECHZONE
+- Chi nhánh: TP. Hồ Chí Minh
+
+## 10. Dịch vụ khách hàng
+
+### Hỗ trợ kỹ thuật
+- Tư vấn sản phẩm miễn phí
+- Hướng dẫn sử dụng
+- Cài đặt phần mềm cơ bản
+- Kiểm tra, vệ sinh máy định kỳ
+
+### Chăm sóc khách hàng
+- Live chat trên website (8:00 - 22:00)
+- Hotline 24/7 cho khách VIP
+- Email hỗ trợ với phản hồi trong 24h
+- Tư vấn qua Facebook Messenger
+
+### Chương trình thành viên
+- **Thành viên Bạc:** Mua từ 10 triệu (ưu đãi 3%)
+- **Thành viên Vàng:** Mua từ 30 triệu (ưu đãi 5%)
+- **Thành viên Kim Cương:** Mua từ 100 triệu (ưu đãi 8%)
+
+## Lưu ý quan trọng
+
+- Giá sản phẩm được cập nhật liên tục trên website
+- **TechZone cam kết bán hàng chính hãng 100%**, có hóa đơn VAT đầy đủ
+- Tất cả sản phẩm đều có tem bảo hành chính thức từ nhà phân phối
+- Miễn phí kiểm tra và tư vấn tại tất cả cửa hàng
+- Hỗ trợ thu cũ đổi mới với giá tốt nhất thị trường

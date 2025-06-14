@@ -59,15 +59,14 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
           content: comment.trim()
         };
         review = await updateReview(existingReview.id!, updateRequest);
-              } else {
-          const reviewRequest: CreateReviewRequest = {
-            productId: product.productId,
-            rating,
-            content: comment.trim(),
-            color: product.color
-          };
-          review = await createReview(reviewRequest);
-        }
+      } else {
+        const reviewRequest: CreateReviewRequest = {
+          productId: product.productId,
+          rating,
+          content: comment.trim()
+        };
+        review = await createReview(reviewRequest);
+      }
 
       onReviewSubmitted(review);
       onClose();
@@ -145,11 +144,11 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
           </div>
 
           {!canReview && !isEditing && (
-                         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-               <p className="text-yellow-800 text-sm">
-                 Bạn chỉ có thể đánh giá sản phẩm sau khi đơn hàng đã được thanh toán hoặc giao thành công.
-               </p>
-             </div>
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 text-sm">
+                Bạn chỉ có thể đánh giá sản phẩm sau khi đơn hàng đã được thanh toán hoặc giao thành công.
+              </p>
+            </div>
           )}
 
           <form onSubmit={handleSubmit}>
@@ -202,7 +201,7 @@ const ProductReviewForm: React.FC<ProductReviewFormProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={loading || (!canReview && !isEditing)}
               >
                 {loading ? (

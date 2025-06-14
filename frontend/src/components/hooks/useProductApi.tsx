@@ -1,5 +1,6 @@
 // src/hooks/useProductApi.ts
 import { useState, useCallback } from 'react';
+import ENV from '../../config/env';
 
 interface Product {
   productId: string;
@@ -20,6 +21,7 @@ interface GroupDto {
 interface GroupProduct {
   products: Product[];
   groupDto: GroupDto;
+  elasticsearchScore?: number; // Score from Elasticsearch for search relevance
 }
 
 interface ApiResponse {
@@ -38,14 +40,14 @@ const useProductApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProducts = useCallback(async (queryString: string, resetProducts: boolean = false, isSortedByPrice: boolean = false) => {
+  const fetchProducts = useCallback(async (queryString: string, resetProducts: boolean = false, isSortedByPrice: boolean = false, hasSearchQuery: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
 
       // Ensure searchQuery is handled in the queryString formation if passed
       // The actual addition of searchQuery to queryString will be handled by the calling component
-      const url = `http://localhost:8070/api/group-variants/groups?${queryString}`;
+      const url = `${ENV.API_URL}/group-variants/groups?${queryString}`;
       console.log('Fetching products with URL:', url);
       
       const response = await fetch(url);
@@ -66,27 +68,50 @@ const useProductApi = () => {
       setTotalProducts(data.totalElements);
       
       setProducts((prevProducts) => {
+        // Filter out products with elasticsearchScore = 0.0 when searching
+        let filteredContent = data.content;
+        if (hasSearchQuery) {
+          filteredContent = data.content.filter(group => 
+            group.elasticsearchScore === undefined || group.elasticsearchScore > 0.0
+          );
+        }
+        
         if (resetProducts) {
-          // Sort by orderNumber only if not sorted by price
-          if (isSortedByPrice) {
-            return data.content; // Keep the order from backend (sorted by price)
+          // Sort logic based on search type
+          if (hasSearchQuery) {
+            // When searching, sort by elasticsearchScore (highest first)
+            return filteredContent.sort((a, b) => {
+              const scoreA = a.elasticsearchScore || 0;
+              const scoreB = b.elasticsearchScore || 0;
+              return scoreB - scoreA; // Descending order (highest score first)
+            });
+          } else if (isSortedByPrice) {
+            // When sorted by price (not search), keep backend order
+            return filteredContent;
           } else {
-            const sortedContent = data.content.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
-            return sortedContent;
+            // Default sort by orderNumber
+            return filteredContent.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
           }
         } else {
-          // Merge products, ensuring no duplicates by checking groupId
+          // Merge products for pagination
           const existingGroupIds = new Set(prevProducts.map(group => group.groupDto.groupId));
-          const newGroups = data.content.filter(group => !existingGroupIds.has(group.groupDto.groupId));
+          const newGroups = filteredContent.filter(group => !existingGroupIds.has(group.groupDto.groupId));
           
-          if (isSortedByPrice) {
-            // When sorted by price, preserve the order from backend
+          if (hasSearchQuery) {
+            // When searching, sort by elasticsearchScore
+            const combinedProducts = [...prevProducts, ...newGroups];
+            return combinedProducts.sort((a, b) => {
+              const scoreA = a.elasticsearchScore || 0;
+              const scoreB = b.elasticsearchScore || 0;
+              return scoreB - scoreA;
+            });
+          } else if (isSortedByPrice) {
+            // When sorted by price, preserve backend order
             return [...prevProducts, ...newGroups];
           } else {
-            // Sort new groups by orderNumber before adding
+            // Default sort by orderNumber
             const sortedNewGroups = newGroups.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
             const combinedProducts = [...prevProducts, ...sortedNewGroups];
-            // Sort the entire combined list by orderNumber
             return combinedProducts.sort((a, b) => a.groupDto.orderNumber - b.groupDto.orderNumber);
           }
         }
