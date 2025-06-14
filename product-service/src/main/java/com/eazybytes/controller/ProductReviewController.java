@@ -66,12 +66,8 @@ public class ProductReviewController {
     @GetMapping("/product/{productId}")
     public Page<ReviewResponse> getProductReviews(@PathVariable String productId,
                                                 @RequestParam(defaultValue = "0") int page,
-                                                @RequestParam(defaultValue = "10") int size,
-                                                @RequestParam(required = false) String color) {
+                                                @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        if (color != null) {
-            return reviewService.getProductReviewsByColor(productId, color, pageable);
-        }
         return reviewService.getProductReviews(productId, pageable);
     }
     
@@ -79,11 +75,7 @@ public class ProductReviewController {
      * Lấy thống kê đánh giá của sản phẩm (public)
      */
     @GetMapping("/product/{productId}/stats")
-    public Map<String, Object> getProductReviewStats(@PathVariable String productId,
-                                                    @RequestParam(required = false) String color) {
-        if (color != null) {
-            return reviewService.getProductReviewStatsByColor(productId, color);
-        }
+    public Map<String, Object> getProductReviewStats(@PathVariable String productId) {
         return reviewService.getProductReviewStats(productId);
     }
     
@@ -93,27 +85,17 @@ public class ProductReviewController {
     @GetMapping("/product/{productId}/overview")
     public Map<String, Object> getProductReviewOverview(@PathVariable String productId,
                                                        @RequestParam(defaultValue = "0") int page,
-                                                       @RequestParam(defaultValue = "5") int size,
-                                                       @RequestParam(required = false) String color) {
+                                                       @RequestParam(defaultValue = "5") int size) {
         Pageable pageable = PageRequest.of(page, size);
         
         // Lấy đánh giá với phân trang
-        Page<ReviewResponse> reviews;
-        Map<String, Object> stats;
-        
-        if (color != null) {
-            reviews = reviewService.getProductReviewsByColor(productId, color, pageable);
-            stats = reviewService.getProductReviewStatsByColor(productId, color);
-        } else {
-            reviews = reviewService.getProductReviews(productId, pageable);
-            stats = reviewService.getProductReviewStats(productId);
-        }
+        Page<ReviewResponse> reviews = reviewService.getProductReviews(productId, pageable);
+        Map<String, Object> stats = reviewService.getProductReviewStats(productId);
         
         return Map.of(
             "reviews", reviews,
             "stats", stats,
-            "productId", productId,
-            "color", color != null ? color : "all"
+            "productId", productId
         );
     }
     
@@ -215,9 +197,6 @@ public class ProductReviewController {
     public ReviewResponse toggleReviewVisibility(@PathVariable String reviewId,
                                                @RequestBody Map<String, Boolean> body) {
         Boolean visible = body.get("visible");
-        if (visible == null) {
-            visible = true; // Default to show
-        }
-        return reviewService.toggleReviewVisibility(reviewId, visible);
+        return reviewService.toggleReviewVisibility(reviewId, visible != null ? visible : true);
     }
 } 

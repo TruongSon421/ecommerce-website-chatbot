@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from './hooks/useAuth';
-import { addItemToCart } from '../services/cartService';
+import { addItemToCart, getGuestId } from '../services/cartService';
 import { CartItem } from '../types/cart';
 
 interface ActionButtonsProps {
@@ -9,12 +9,12 @@ interface ActionButtonsProps {
     productName: string;
     price: number;
     color: string;
-    type: string; // Added type
+    
   };
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const handleAddToCart = async () => {
     const cartItem: CartItem = {
@@ -23,11 +23,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product }) => {
       price: product.price,
       quantity: 1,
       color: product.color,
-      type: product.type
+      available: true
     };
 
     try {
-      await addItemToCart(cartItem, isAuthenticated);
+      const userId = user?.id || getGuestId() || `guest-${Date.now()}`;
+      await addItemToCart(userId, cartItem, isAuthenticated);
     //   alert('Đã thêm vào giỏ hàng!');
     } catch (error) {
       console.error('Error adding to cart:', error);

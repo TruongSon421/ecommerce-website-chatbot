@@ -6,7 +6,7 @@ from google.adk.tools import FunctionTool
 
 shop_agent = LlmAgent(
     name="Shop",
-    description="Necessary when users want to ask about general shop information like sales, addresses, hotline, promotions,...",
+    description="Necessary when users want to ask about general shop information like sales, addresses, hotline, promotions, policies, payment methods...",
     instruction=SHOP_INSTRUCTION,
     tools=[FunctionTool(func=shop_information_tool)],
     after_tool_callback=log_after_tool_execution,  

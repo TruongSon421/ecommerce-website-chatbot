@@ -14,8 +14,6 @@ public class CreateReviewRequest {
     @NotBlank(message = "Product ID không được để trống")
     private String productId;
     
-    private String color; // Color có thể null hoặc rỗng (sẽ được normalize thành "default")
-    
     @NotNull(message = "Rating không được để trống")
     @Min(value = 1, message = "Rating phải từ 1-5 sao")
     @Max(value = 5, message = "Rating phải từ 1-5 sao")

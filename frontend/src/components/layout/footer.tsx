@@ -60,6 +60,11 @@ const Footer: React.FC = () => {
               <li style={{ marginTop: '8px' }}><strong>Đổi trả:</strong></li>
               <li>• Đổi trả trong 7 ngày</li>
               <li>• Bảo hành 1 đổi 1 trong 30 ngày</li>
+              <li style={{ marginTop: '8px' }}>
+                <a href="/policies" style={{ color: '#007bff', textDecoration: 'none' }}>
+                  → Xem tất cả chính sách & quy định
+                </a>
+              </li>
             </ul>
           </div>
         </div>

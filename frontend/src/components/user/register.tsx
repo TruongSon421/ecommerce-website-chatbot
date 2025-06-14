@@ -11,16 +11,30 @@ const Register: React.FC = () => {
     email: '',
   });
   const [error, setError] = useState<string | null>(null);
-  const { register } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const { register, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isLoading) return; // Prevent double submission
+    
     try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Kiểm tra confirmPassword trước tiên
+      if (credentials.password !== credentials.confirmPassword) {
+        setError('Mật khẩu xác nhận không khớp');
+        return;
+      }
+
       // Kiểm tra định dạng email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(credentials.email)) {
-        throw new Error('Invalid email format');
+        setError('Định dạng email không hợp lệ');
+        return;
       }
   
       // Kiểm tra độ dài mật khẩu (ví dụ: tối thiểu 8 ký tự)
@@ -28,14 +42,28 @@ const Register: React.FC = () => {
         credentials.password.length < 8 || 
         !/[A-Z]/.test(credentials.password) || 
         !/[!+@#$_%^&*(),.?":{}|<>]/.test(credentials.password)
-      ) throw new Error('Password must be at least 8 characters, contain at least one uppercase letter and one special character.');
+      ) {
+        setError('Mật khẩu phải có ít nhất 8 ký tự, chứa ít nhất một chữ hoa và một ký tự đặc biệt');
+        return;
+      }
       
-  
       await register(credentials);
-      setError(null);
-      navigate('/home');
+      
+      // Thêm delay nhỏ để đảm bảo Redux state được update
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      // Cải thiện error handling để hiển thị lỗi cụ thể hơn
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError('Đăng ký thất bại. Vui lòng thử lại.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,9 +136,14 @@ const Register: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={isLoading}
+            className={`w-full py-2 px-4 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+              isLoading 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
           >
-            Đăng ký
+            {isLoading ? 'Đang đăng ký...' : 'Đăng ký'}
           </button>
         </form>
 

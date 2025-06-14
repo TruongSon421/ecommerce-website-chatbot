@@ -2,9 +2,7 @@ import React from "react";
 import { useState } from "react";
 import formatProductName from "../../utils/formatProductName";
 import { Link } from "react-router-dom";
-import { addItemToCart } from '../../../services/cartService';
-import { useAuth } from '../../hooks/useAuth'; // Adjust path as needed
-import { useNotification } from '../../common/Notification'; // Adjust path as needed
+
 
 interface Product {
     productId: string;
@@ -26,6 +24,7 @@ interface GroupDto {
 interface GroupProduct {
     products: Product[];
     groupDto: GroupDto;
+    elasticsearchScore?: number; // Score from Elasticsearch for search relevance
 }
 
 interface ProductListProps {
@@ -36,14 +35,6 @@ interface ProductItemProps {
     groupproduct: GroupProduct;
 }
 
-interface CartItem {
-    productId: string;
-    productName: string;
-    price: number;
-    quantity: number;
-    color: string;
-    available: boolean;
-}
 
 const ProductList: React.FC<ProductListProps> = ({ grouplist }) => {
     return (
@@ -74,8 +65,6 @@ const calculateDiscount = (originalPrice: number, currentPrice: number): number 
 
 const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
     const [selectedProduct, setSelectedProduct] = useState<Product>(groupproduct.products[0]);
-    const { user, isAuthenticated } = useAuth();
-    const { showNotification } = useNotification();
     
     const href = `/detail/${groupproduct.groupDto.type.toLowerCase()}/${selectedProduct.productId}`;
     
@@ -85,40 +74,6 @@ const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
         ? calculateDiscount(originalPrice, currentPrice) 
         : null;
 
-    const handleAddToCart = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (!currentPrice) {
-            showNotification('Sản phẩm chưa có giá', 'error');
-            return;
-        }
-
-        console.log('Adding to cart:', { 
-            productId: selectedProduct.productId, 
-            color: selectedProduct.defaultColor, 
-            productType: groupproduct.groupDto.type 
-        });
-
-        const cartItem: CartItem = {
-            productId: selectedProduct.productId,
-            productName: selectedProduct.productName,
-            price: currentPrice,
-            quantity: 1,
-            color: selectedProduct.defaultColor === 'default' || !selectedProduct.defaultColor 
-                ? 'Không xác định' 
-                : selectedProduct.defaultColor,
-            available: true,
-        };
-
-        try {
-            await addItemToCart(user?.id || 'guest', cartItem, isAuthenticated);
-            showNotification('Đã thêm vào giỏ hàng!', 'success');
-        } catch (error: any) {
-            console.error('Error adding to cart:', error);
-            showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');
-        }
-    };
 
     return (
         <div className="w-full bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow overflow-hidden mb-4">
@@ -177,27 +132,7 @@ const ProductItem: React.FC<ProductItemProps> = ({ groupproduct }) => {
                                 </div>
                             )}
                             
-                            {/* Add to Cart Button */}
-                            <button
-                                onClick={handleAddToCart}
-                                className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-                                disabled={!currentPrice}
-                            >
-                                <svg 
-                                    className="w-4 h-4" 
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path 
-                                        strokeLinecap="round" 
-                                        strokeLinejoin="round" 
-                                        strokeWidth={2} 
-                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.293 2.293A1 1 0 004 16v0a1 1 0 001 1h11M16 17a2 2 0 11-4 0 2 2 0 014 0zM10 17a2 2 0 11-4 0 2 2 0 014 0z" 
-                                    />
-                                </svg>
-                                Thêm vào giỏ
-                            </button>
+
                         </div>
                     </div>
                 </div>

@@ -217,20 +217,19 @@ public class OrderController {
     }
 
     /**
-     * Kiểm tra user đã mua sản phẩm với màu cụ thể chưa (cho review service)
+     * Kiểm tra user đã mua sản phẩm chưa (cho review service)
      */
     @GetMapping("/check-purchased")
     public ResponseEntity<Boolean> checkIfUserPurchasedProduct(
             @RequestParam String userId, 
-            @RequestParam String productId,
-            @RequestParam String color) {
+            @RequestParam String productId) {
         try {
-            log.info("Checking if user {} purchased product {} with color {}", userId, productId, color);
-            boolean hasPurchased = orderService.checkIfUserPurchasedProduct(userId, productId, color);
+            log.info("Checking if user {} purchased product {}", userId, productId);
+            boolean hasPurchased = orderService.checkIfUserPurchasedProduct(userId, productId);
             return new ResponseEntity<>(hasPurchased, HttpStatus.OK);
         } catch (Exception e) {
-            log.error("Failed to check purchase status for user {}, product {} and color {}. Reason: {}", 
-                    userId, productId, color, e.getMessage());
+            log.error("Failed to check purchase status for user {} and product {}. Reason: {}", 
+                    userId, productId, e.getMessage());
             return new ResponseEntity<>(false, HttpStatus.OK); // Return false on error for safety
         }
     }

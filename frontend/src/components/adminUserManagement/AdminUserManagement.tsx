@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { showNotification } from '../common/Notification';
-
+import ENV from '../../config/env';
 interface User {
   id: number;
   username: string;
@@ -76,8 +76,6 @@ const AdminUserManagement: React.FC = () => {
     roleNames: ['ROLE_USER']
   });
 
-  const API_BASE = 'http://localhost:8070/api';
-
   // Fetch users with pagination and filters
   const fetchUsers = async (page = 0, search = '') => {
     setLoading(true);
@@ -88,7 +86,7 @@ const AdminUserManagement: React.FC = () => {
         ...(search && { search })
       });
 
-      const response = await fetch(`${API_BASE}/users?${params}`, {
+      const response = await fetch(`${ENV.API_URL}/users?${params}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
@@ -112,7 +110,7 @@ const AdminUserManagement: React.FC = () => {
   // Fetch statistics
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`${API_BASE}/users/statistics`, {
+      const response = await fetch(`${ENV.API_URL}/users/statistics`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
@@ -133,7 +131,7 @@ const AdminUserManagement: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/users`, {
+      const response = await fetch(`${ENV.API_URL}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +168,7 @@ const AdminUserManagement: React.FC = () => {
   // Update user
   const handleUpdateUser = async (userId: number, userData: Partial<User>) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${userId}`, {
+      const response = await fetch(`${ENV.API_URL}/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +191,7 @@ const AdminUserManagement: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
 
     try {
-      const response = await fetch(`${API_BASE}/users/${userId}`, {
+      const response = await fetch(`${ENV.API_URL}/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -215,7 +213,7 @@ const AdminUserManagement: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn reset mật khẩu cho người dùng này?')) return;
 
     try {
-      const response = await fetch(`${API_BASE}/users/${userId}/reset-password`, {
+      const response = await fetch(`${ENV.API_URL}/users/${userId}/reset-password`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -242,7 +240,7 @@ const AdminUserManagement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/users/bulk-action`, {
+      const response = await fetch(`${ENV.API_URL}/users/bulk-action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

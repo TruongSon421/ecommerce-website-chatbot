@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService'; // Adjust path as needed
 import { useNotification } from './common/Notification'; // Adjust path as needed
-
+import ENV from '../config/env';
 interface Product {
   productId: string;
   variant: string;
@@ -25,6 +25,7 @@ interface GroupDto {
 interface GroupProduct {
   products: Product[];
   groupDto: GroupDto;
+  elasticsearchScore?: number; // Score from Elasticsearch for search relevance
 }
 
 interface Message {
@@ -239,7 +240,7 @@ const ChatbotWidget: React.FC = () => {
       messages: [
         {
           id: Date.now(),
-          text: 'Xin chào! Tôi là trợ lý ảo của NEXUS. Tôi có thể giúp gì cho bạn?',
+          text: 'Xin chào! Tôi là trợ lý ảo của TechZone. Tôi có thể giúp gì cho bạn?',
           sender: 'bot',
         },
       ],
@@ -279,7 +280,7 @@ const ChatbotWidget: React.FC = () => {
   const fetchProducts = async (groupIds: number[]): Promise<GroupProduct[]> => {
     try {
       const response = await axios.get(
-        `http://localhost:8070/api/group-variants/get?groupIds=${groupIds.join(',')}`
+        `${ENV.API_URL}/group-variants/get?groupIds=${groupIds.join(',')}`
       );
       return response.data;
     } catch (error) {
@@ -381,7 +382,7 @@ const ChatbotWidget: React.FC = () => {
     
     try {
 
-      const response = await axios.post<QueryResponse>("http://localhost:5500/query", {
+      const response = await axios.post<QueryResponse>(`${ENV.API_URL}/chatbot/query`, {
         user_id: user?.id || (localStorage.getItem('guestCartId')),
         session_id: chatSession.session_id,
         query: input,
@@ -507,7 +508,7 @@ const ChatbotWidget: React.FC = () => {
       messages: [
         {
           id: Date.now(),
-          text: 'Xin chào! Tôi là trợ lý ảo của NEXUS. Tôi có thể giúp gì cho bạn?',
+          text: 'Xin chào! Tôi là trợ lý ảo của TechZone. Tôi có thể giúp gì cho bạn?',
           sender: 'bot',
         },
       ],
@@ -549,7 +550,7 @@ const ChatbotWidget: React.FC = () => {
       {isOpen && (
         <div className="w-[350px] h-[500px] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200">
           <div className="bg-blue-500 text-white p-3 rounded-t-lg flex justify-between items-center">
-            <h3 className="font-semibold">NEXUS Assistant</h3>
+            <h3 className="font-semibold">TechZone Assistant</h3>
             <div className="flex gap-2">
               <button
                 onClick={handleReset}

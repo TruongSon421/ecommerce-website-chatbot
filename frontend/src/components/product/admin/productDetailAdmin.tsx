@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import BannerSection from '../../layout/bannerSection';
 import ProductSpecifications from '../productSpecifications';
 import ENV from '../../../config/env';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,16 +7,11 @@ import { addItemToCart } from '../../../services/cartService';
 import { useNotification } from '../../common/Notification';
 import { CartItem } from '../../../types/cart';
 import { inventoryService } from '../../../services/inventoryService';
-import { GroupVariantResponse, Variant, Product, Specification, Image } from '../../../types/product';
+import { GroupVariantResponse, Variant, Product} from '../../../types/product';
 
 interface ProductReview {
   title: string;
   content: string;
-}
-
-// Extend Product interface if needed
-interface ExtendedProduct extends Product {
-  productReviews?: ProductReview[];
 }
 
 // Interfaces for tags
@@ -37,7 +31,6 @@ interface GroupTag {
 const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialProduct }) => {
   const navigate = useNavigate();
   const { productId: urlProductId } = useParams<{ productId: string }>();
-  const { user, isAuthenticated } = useAuth();
   const { showNotification } = useNotification();
   const [product, setProduct] = useState<Product>(initialProduct);
   const [groupData, setGroupData] = useState<GroupVariantResponse | null>(null);
@@ -148,7 +141,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     
     setIsLoadingTags(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${ENV.API_URL}/group-tags/get/${groupId}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(10000),
@@ -166,12 +159,12 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     } finally {
       setIsLoadingTags(false);
     }
-  }, [user?.token]);
+  }, []);
 
   // Function để fetch tất cả available tags
   const fetchAvailableTags = useCallback(async () => {
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       const response = await fetch(`${ENV.API_URL}/tags`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(10000),
@@ -187,14 +180,14 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     } catch (error) {
       console.error('Error fetching available tags:', error);
     }
-  }, [user?.token]);
+  }, []);
 
   // Function để thêm tag vào group
   const addTagToGroup = async (tagId: number) => {
     if (!groupData?.groupId) return;
     
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
         return;
@@ -230,7 +223,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     if (!groupData?.groupId) return;
     
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
         return;
@@ -344,7 +337,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     console.log('Elasticsearch request:', JSON.stringify(elasticsearchRequest, null, 2));
 
     // Gọi API cập nhật Elasticsearch
-    const esResponse = await fetch(`http://localhost:5000/update-by-group-id/${groupData.groupId}`, {
+    const esResponse = await fetch(`${ENV.API_URL}/chatbot/rag/update-by-group-id/${groupData.groupId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -617,7 +610,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
 
     setIsSavingProduct(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
@@ -729,7 +722,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
 
     setIsDeletingProduct(true);
     try {
-      const token = localStorage.getItem('accessToken') || user?.token;
+      const token = localStorage.getItem('accessToken');
       
       if (!token) {
         showNotification('Không tìm thấy token xác thực.', 'error');
@@ -765,7 +758,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
 
       // Xóa document khỏi Elasticsearch
       try {
-        const esResponse = await fetch(`http://localhost:5000/delete-by-group-id/${groupData.groupId}`, {
+        const esResponse = await fetch(`${ENV.API_URL}/chatbot/rag/delete-by-group-id/${groupData.groupId}`, {
           method: 'DELETE',
           signal: AbortSignal.timeout(15000),
         });
@@ -933,7 +926,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       {!isProductLoading && !productError && (
         <div className="bg-white">
           <ProductSpecifications specifications={product.specifications} />
-          <ProductReview />
+          {/* <ProductReview /> */}
         </div>
       )}
     </>

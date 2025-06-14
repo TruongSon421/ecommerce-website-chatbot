@@ -32,7 +32,7 @@ export const cartSlice = createSlice({
     addToCart: (state, action: PayloadAction<CartItem>) => {
       const newItem = action.payload;
       const existingItemIndex = state.items.findIndex(
-        (item) => item.productId === newItem.productId && item.color === newItem.color
+        (item: CartItem) => item.productId === newItem.productId && item.color === newItem.color
       );
 
       if (existingItemIndex >= 0) {
@@ -51,7 +51,7 @@ export const cartSlice = createSlice({
     },
     removeFromCart: (state, action: PayloadAction<{ productId: string }>) => {
       const { productId } = action.payload;
-      state.items = state.items.filter((item) => item.productId !== productId);
+      state.items = state.items.filter((item: CartItem) => item.productId !== productId);
       
       // Update total price
       state.totalPrice = calculateTotalPrice(state.items);
@@ -61,7 +61,7 @@ export const cartSlice = createSlice({
     },
     updateQuantity: (state, action: PayloadAction<{ productId: string, quantity: number }>) => {
       const { productId, quantity } = action.payload;
-      const itemIndex = state.items.findIndex(item => item.productId === productId);
+      const itemIndex = state.items.findIndex((item: CartItem) => item.productId === productId);
       
       if (itemIndex >= 0) {
         state.items[itemIndex].quantity = quantity;
@@ -93,7 +93,7 @@ export const cartSlice = createSlice({
       // For each server item, check if it exists in local cart
       for (const serverItem of serverItems) {
         const existingItemIndex = state.items.findIndex(
-          item => item.productId === serverItem.productId && item.color === serverItem.color
+          (item: CartItem) => item.productId === serverItem.productId && item.color === serverItem.color
         );
         
         if (existingItemIndex >= 0) {

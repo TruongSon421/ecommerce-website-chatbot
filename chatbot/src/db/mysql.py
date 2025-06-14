@@ -10,8 +10,8 @@ mysql = MySQL()
 
 def init_mysql(app: Flask):
     """Khởi tạo cấu hình MySQL cho ứng dụng Flask."""
-    app.config['MYSQL_DATABASE_HOST'] = os.getenv('MYSQL_DATABASE_HOST', 'localhost')
-    app.config['MYSQL_DATABASE_PORT'] = int(os.getenv('MYSQL_DATABASE_PORT', 3307))
+    app.config['MYSQL_DATABASE_HOST'] = os.getenv('MYSQL_DATABASE_HOST', 'mysql')
+    app.config['MYSQL_DATABASE_PORT'] = int(os.getenv('MYSQL_DATABASE_PORT', 3306))
     app.config['MYSQL_DATABASE_USER'] = os.getenv('MYSQL_DATABASE_USER', 'tiendoan')
     app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('MYSQL_DATABASE_PASSWORD', 'tiendoan')
     app.config['MYSQL_DATABASE_DB'] = os.getenv('MYSQL_DATABASE_DB', 'ecommerce_inventory')

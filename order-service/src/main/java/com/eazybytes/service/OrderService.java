@@ -44,8 +44,8 @@ public interface OrderService {
 
     Map<String, Object> getOrderStatistics();
 
-    // Check if user purchased a product with specific color (for review system)
-    boolean checkIfUserPurchasedProduct(String userId, String productId, String color);
+    // Check if user purchased a product (for review system)
+    boolean checkIfUserPurchasedProduct(String userId, String productId);
 
     // Get user purchase history with pagination and filtering
     Page<UserPurchaseHistoryResponseDto> getUserPurchaseHistory(String userId, Pageable pageable, String status);

@@ -120,13 +120,24 @@ spring:
           predicates:
             - Path=/api/v1/payment/vnpay/ipn, /api/v1/payment/vnpay/return
 
-        # - id: chatbot-service
-        #   uri: http://host.docker.internal:5500  # Thay vì http://chatbot:5500
-        #   predicates:
-        #     - Path=/api/chatbot/**
-        #   filters:
-        #     - RewritePath=/api/chatbot/(?<path>.*), /${path}
-        #     - Authentication
+        - id: chatbot-service
+          uri: http://chatbot:5500
+          predicates:
+            - Path=/api/chatbot/query, /api/chatbot/test-filter
+          filters:
+            # - RewritePath=/api/chatbot/(?<path>.*), /${path}
+            # - Authentication
+
+        # RAG endpoints với authentication
+        - id: chatbot-rag-service
+          uri: http://chatbot:5500
+          predicates:
+            - Path=/api/chatbot/rag/**
+          filters:
+            # - RewritePath=/api/chatbot/(?<path>.*), /${path}
+            # - Authentication
+
+
 eureka:
   client:
     serviceUrl:

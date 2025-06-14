@@ -119,19 +119,25 @@ export interface ProductCreateRequest {
 }
   
 export interface Product {
-    productId: string;
-    productName: string;
-    description: string;
-    brand: string;
-    category: string;
-    images: string[];
-    colors: string[];
-    variant: string;
-    type: string;
-    inventories: Inventory[];
+  productId: string;
+  productName: string;
+  description?: string;
+  isNew?: boolean;
+  brand: string;
+  images: Record<string, { url: string; title: string }[]> | null;
+  type: string;
+  warrantyPeriod?: null;
+  productReviews: { title: string; content: string }[];
+  promotions: string[];
+  release: string;
+  original_prices: number[];
+  current_prices: number[];
+  specifications: { name: string; value: string | string[] }[];
+  colors: string[] | null;
+  quantities: number[];
 }
   
-export interface Inventory {
+export interface InventoryDto {
     inventoryId: string;
     color: string | null;
     quantity: number;
@@ -147,6 +153,9 @@ export interface GroupVariantRequest {
     productNames: string[];
     defaultOriginalPrices: (number | null)[];
     defaultCurrentPrices: (number | null)[];
+    defaultColors: (string|null)[];
+    groupName: string;
+    brand: string
 }
   
 export interface GroupVariant {

@@ -10,7 +10,6 @@ web_search_tool = LlmAgent(
     name="SearchAgent",
     instruction="""
     You are a specialist in Google Search, focused solely on retrieving product information (e.g., specifications, features, price, availability) for specifically named electronic products. Your role is to assist when local product information is insufficient.
-
     INSTRUCTIONS:
     - You ONLY handle search queries in the format "thông tin [product_name]" (e.g., "thông tin iPhone 14 Pro Max").
     - Use the `google_search` tool to perform the search and retrieve relevant results.
@@ -24,7 +23,7 @@ web_search_tool = LlmAgent(
 
 product_agent = LlmAgent(
     name="Product",
-    description="Handles product consultation, information, and recommendations based on user preferences.",
+    description="Handles product shopping, product consultation and product information.",
     instruction=PRODUCT_INSTRUCTION,
     tools=[
         FunctionTool(func=product_consultation_tool),

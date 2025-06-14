@@ -547,22 +547,18 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean checkIfUserPurchasedProduct(String userId, String productId, String color) {
-        log.info("Checking if user {} has purchased product {} with color {}", userId, productId, color);
+    public boolean checkIfUserPurchasedProduct(String userId, String productId) {
+        log.info("Checking if user {} has purchased product {}", userId, productId);
         
-        // Normalize color
-        String normalizedColor = normalizeColor(color);
-        
-        // Kiểm tra xem user có đơn hàng nào chứa sản phẩm này với màu và trạng thái DELIVERED không
+        // Kiểm tra xem user có đơn hàng nào chứa sản phẩm này với trạng thái PAYMENT_COMPLETED không
         List<Order> deliveredOrders = orderRepository.findByUserIdAndStatusWithItems(userId, Order.OrderStatus.PAYMENT_COMPLETED);
         
         boolean hasPurchased = deliveredOrders.stream()
                 .flatMap(order -> order.getItems().stream())
-                .anyMatch(item -> item.getProductId().equals(productId) && 
-                         normalizeColor(item.getColor()).equals(normalizedColor));
+                .anyMatch(item -> item.getProductId().equals(productId));
         
-        log.info("User {} {} purchased product {} with color {}", 
-                userId, hasPurchased ? "has" : "has not", productId, normalizedColor);
+        log.info("User {} {} purchased product {}", 
+                userId, hasPurchased ? "has" : "has not", productId);
         return hasPurchased;
     }
 

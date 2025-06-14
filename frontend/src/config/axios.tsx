@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import ENV from './env';
 const instance = axios.create({
   baseURL: 'http://localhost:8070/api',
   headers: {
@@ -38,7 +38,7 @@ instance.interceptors.response.use(
           throw new Error('No refresh token available');
         }
         console.log('Attempting to refresh token with:', refreshToken);
-        const response = await axios.post('http://localhost:8070/api/auth/refresh-token', {
+        const response = await axios.post(`${ENV.API_URL}/auth/refresh-token`, {
           refreshToken,
         });
         const { accessToken, refreshToken: newRefreshToken } = response.data;

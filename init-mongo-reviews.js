@@ -17,8 +17,8 @@ print('Created index on productId');
 db.product_reviews.createIndex({ "userId": 1 });
 print('Created index on userId');
 
-db.product_reviews.createIndex({ "userId": 1, "productId": 1, "color": 1 }, { unique: true });
-print('Created unique compound index on userId, productId and color');
+db.product_reviews.createIndex({ "userId": 1, "productId": 1 }, { unique: true });
+print('Created unique compound index on userId and productId');
 
 db.product_reviews.createIndex({ "isApproved": 1, "isVisible": 1 });
 print('Created index on isApproved and isVisible');
@@ -31,9 +31,6 @@ print('Created descending index on createdAt');
 
 db.product_reviews.createIndex({ "rating": 1 });
 print('Created index on rating');
-
-db.product_reviews.createIndex({ "color": 1 });
-print('Created index on color');
 
 // Compound indexes for efficient queries
 db.product_reviews.createIndex({ 

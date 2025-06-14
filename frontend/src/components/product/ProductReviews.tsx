@@ -20,7 +20,7 @@ interface ProductReviewsProps {
   selectedColor?: string;
 }
 
-const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColor }) => {
+const ProductReviews: React.FC<ProductReviewsProps> = ({ productId }) => {
   const { isAuthenticated, user } = useAuth();
   const [overview, setOverview] = useState<ProductReviewOverview | null>(null);
   const [userReviews, setUserReviews] = useState<ReviewResponse[]>([]);
@@ -41,7 +41,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
       loadUserReviews();
       checkPurchaseStatus();
     }
-  }, [productId, selectedColor, isAuthenticated]);
+  }, [productId, currentPage, isAuthenticated]);
 
   const loadReviewData = async () => {
     try {
@@ -49,8 +49,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
       const data = await getProductReviewOverview(
         productId, 
         currentPage, 
-        10, 
-        selectedColor || undefined
+        10
       );
       console.log('Review data received:', data);
       console.log('Reviews:', data.reviews?.content);
@@ -73,13 +72,12 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
   };
 
   const checkPurchaseStatus = async () => {
-    if (!isAuthenticated || !user || !selectedColor) return;
+    if (!isAuthenticated || !user) return;
     
     try {
       const purchased = await checkIfUserPurchasedProduct(
         user.id, 
-        productId, 
-        selectedColor
+        productId
       );
       setHasPurchased(purchased);
     } catch (error) {
@@ -89,10 +87,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedColor) {
-      alert('Vui lòng chọn màu sản phẩm trước khi đánh giá');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -103,8 +97,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
         const request: CreateReviewRequest = {
           productId,
           rating,
-          content: comment,
-          color: selectedColor,
+          content: comment
         };
         await createReview(request);
       }
@@ -210,17 +203,17 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
       );
     }
 
-    if (!hasPurchased && selectedColor) {
+    if (!hasPurchased) {
       return (
         <div className="bg-yellow-50 p-4 rounded-lg mb-6">
           <p className="text-yellow-800">
-            Bạn cần mua sản phẩm này với màu {selectedColor} để có thể đánh giá
+            Bạn cần mua sản phẩm này để có thể đánh giá
           </p>
         </div>
       );
     }
 
-    const existingReview = userReviews.find(r => r.color === selectedColor);
+    const existingReview = userReviews.find(r => r.productId === productId);
 
     return (
       <div className="mb-6">
@@ -246,7 +239,6 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
             {renderStars(existingReview.rating)}
             <p className="mt-2 text-gray-700">{existingReview.comment}</p>
             <p className="text-sm text-gray-500 mt-2">
-              Màu: {existingReview.color} | 
               Trạng thái: {existingReview.status === 'APPROVED' ? 'Đã duyệt' : 'Chờ duyệt'}
             </p>
           </div>
@@ -357,9 +349,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({ productId, selectedColo
               {renderStars(review.rating)}
             </div>
             <p className="text-gray-700 mb-2">{review.comment}</p>
-            <div className="text-sm text-gray-500">
-              Màu: {review.color}
-            </div>
+
           </div>
         ))}
         

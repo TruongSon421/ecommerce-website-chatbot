@@ -66,9 +66,8 @@ export const getProductReviews = async (
 /**
  * Lấy thống kê đánh giá của sản phẩm (public)
  */
-export const getProductReviewStats = async (productId: string, color?: string): Promise<ReviewStats> => {
-  const params = color ? `?color=${color}` : '';
-  const response = await api.get(`${BASE_URL}/product/${productId}/stats${params}`);
+export const getProductReviewStats = async (productId: string): Promise<ReviewStats> => {
+  const response = await api.get(`${BASE_URL}/product/${productId}/stats`);
   return response.data;
 };
 
@@ -78,17 +77,12 @@ export const getProductReviewStats = async (productId: string, color?: string): 
 export const getProductReviewOverview = async (
   productId: string,
   page: number = 0,
-  size: number = 5,
-  color?: string
+  size: number = 5
 ): Promise<ProductReviewOverview> => {
   const params = new URLSearchParams({
     page: page.toString(),
     size: size.toString(),
   });
-  
-  if (color) {
-    params.append('color', color);
-  }
   
   const response = await api.get(`${BASE_URL}/product/${productId}/overview?${params}`);
   
@@ -113,7 +107,7 @@ export const getUserReviews = async (
   page: number = 0,
   size: number = 10
 ): Promise<ReviewResponse[]> => {
-  const response = await api.get('/reviews/user', {
+  const response = await api.get('/reviews/my-reviews', {
     params: { page, size }
   });
   
@@ -226,15 +220,17 @@ export const toggleReviewVisibility = async (reviewId: string, visible: boolean)
   return response.data;
 };
 
-// Get user's review for a specific product in an order
+/**
+ * Lấy đánh giá của user cho sản phẩm cụ thể trong đơn hàng
+ */
 export const getUserReview = async (orderId: string, productId: string): Promise<ReviewResponse | null> => {
   try {
-    const response = await api.get(`/reviews/order/${orderId}/product/${productId}`);
-    return transformBackendReview(response.data);
-  } catch (error: any) {
-    if (error.response?.status === 404) {
-      return null; // No review found
+    const response = await api.get(`${BASE_URL}/my-reviews/product/${productId}`);
+    if (response.data && response.data.length > 0) {
+      return transformBackendReview(response.data[0]);
     }
-    throw error;
+    return null;
+  } catch (error) {
+    return null;
   }
 }; 

@@ -179,7 +179,7 @@ const AdminNavbar: React.FC = () => {
                         }`}
                         onClick={() => setIsProductDropdownOpen(false)}
                       >
-                        ➕ Quản lý tag
+                        🏷️ Quản lý tag
                       </Link>
 
                       <div className="border-t border-gray-700 my-1"></div>
@@ -272,18 +272,7 @@ const AdminNavbar: React.FC = () => {
               >
                 ⭐ Đánh giá
               </Link>
-
-              {/* Analytics */}
-              <Link
-                to="/admin/analytics"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/admin/analytics')
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                }`}
-              >
-                📈 Thống kê
-              </Link>
+      
             </div>
 
             {/* Right side - Search and User menu */}

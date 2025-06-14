@@ -1,15 +1,11 @@
 from elasticsearch import Elasticsearch
-from qdrant_client import QdrantClient
-from qdrant_client.http import models
-from openai import OpenAI
 import hashlib
 import os
 from dotenv import load_dotenv
 load_dotenv()
-openai_key = os.getenv("OPENAI_API_KEY")
 # Cấu hình kết nối
 
-es_client = Elasticsearch("http://localhost:9200")
+es_client = Elasticsearch("http://elasticsearch:9200")
 
 
 # Truy vấn Elasticsearch

@@ -20,8 +20,9 @@ interface GroupDto {
 }
 
 interface GroupProduct {
-    products: Product[];
-    groupDto: GroupDto;
+  products: Product[];
+  groupDto: GroupDto;
+  elasticsearchScore?: number; // Score from Elasticsearch for search relevance
 }
 
 interface ProductListProps {

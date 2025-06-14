@@ -20,9 +20,41 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   sortByPrice,
   isLoading = false,
 }) => {
-  const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>({});
-  const [priceRange, setPriceRange] = useState<number[]>([0, 50000000]);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Storage keys for persisting state
+  const STORAGE_KEY_FILTERS = `productFilters_${type}`;
+  const STORAGE_KEY_PRICE_RANGE = `priceRange_${type}`;
+  const STORAGE_KEY_SEARCH = `searchQuery_${type}`;
+
+  // Helper functions for localStorage
+  const saveToStorage = (key: string, value: any) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+  };
+
+  const loadFromStorage = (key: string, defaultValue: any) => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : defaultValue;
+    } catch (error) {
+      console.warn('Failed to load from localStorage:', error);
+      return defaultValue;
+    }
+  };
+
+  // Initialize state with persisted values
+  const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>(() => 
+    loadFromStorage(STORAGE_KEY_FILTERS, {})
+  );
+  const [priceRange, setPriceRange] = useState<number[]>(() => 
+    loadFromStorage(STORAGE_KEY_PRICE_RANGE, [0, 50000000])
+  );
+  const [searchQuery, setSearchQuery] = useState<string>(() => 
+    loadFromStorage(STORAGE_KEY_SEARCH, '')
+  );
+  
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldAutoApply, setShouldAutoApply] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,6 +69,31 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     }
   }, [selectedFilters, searchQuery, shouldAutoApply]);
 
+  // Restore filters on component mount
+  useEffect(() => {
+    const hasPersistedFilters = Object.keys(selectedFilters).length > 0 || 
+                               searchQuery.trim() !== '' ||
+                               (priceRange[0] !== 0 || priceRange[1] !== 50000000);
+    
+    if (hasPersistedFilters) {
+      // Apply persisted filters
+      handleApply();
+    }
+  }, []); // Only run on mount
+
+  // Save to localStorage whenever state changes
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_FILTERS, selectedFilters);
+  }, [selectedFilters]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_PRICE_RANGE, priceRange);
+  }, [priceRange]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEY_SEARCH, searchQuery);
+  }, [searchQuery]);
+
   // Calculate number of active filters
   const getSelectedFiltersCount = () => {
     return Object.values(selectedFilters).reduce((acc, curr) => acc + curr.length, 0);
@@ -47,6 +104,15 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     setSelectedFilters({});
     setPriceRange([0, 50000000]);
     setSearchQuery('');
+    
+    // Clear localStorage
+    try {
+      localStorage.removeItem(STORAGE_KEY_FILTERS);
+      localStorage.removeItem(STORAGE_KEY_PRICE_RANGE);
+      localStorage.removeItem(STORAGE_KEY_SEARCH);
+    } catch (error) {
+      console.warn('Failed to clear localStorage:', error);
+    }
     
     // Apply empty filters to trigger data reload
     onApplyFilters({});

@@ -1,142 +1,172 @@
+/* General Navbar Styles */
 .navbar {
-    @apply bg-black text-white;
-  }
-  
+  @apply bg-black text-white;
+  padding: 0 2rem; /* Thêm padding cho navbar */
+}
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Sử dụng space-between để căn chỉnh các phần tử */
+  width: 100%;
+  height: 60px; /* Thêm chiều cao cố định cho navbar */
+}
+
+/* Logo Styles */
+.logo a {
+  display: block;
+}
+
+.logo-img {
+  @apply w-28 h-12;
+  object-fit: contain; /* Đảm bảo logo không bị méo */
+}
+
+/* Navigation Links */
+.nav-links ul {
+  list-style: none;
+  display: flex;
+  gap: 40px; /* Giảm khoảng cách giữa các mục */
+}
+
+.nav-links ul li a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500; /* Tăng độ dày font chữ */
+  font-size: 16px;  /* Tăng kích thước font chữ */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif, system-ui;
+  transition: color 0.3s ease;
+}
+
+.nav-links ul li a:hover {
+    color: #4a90e2; /* Thêm hiệu ứng hover */
+}
+
+/* Navigation Actions: Search, Cart, Profile */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Khoảng cách giữa các icon */
+}
+
+.nav-actions a,
+.nav-actions button.search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background-color: #222;
+  border-radius: 50%;
+  transition: background-color 0.3s ease;
+  position: relative;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-actions a:hover,
+.nav-actions button.search-btn:hover {
+  background-color: #444;
+}
+
+.nav-actions img {
+  width: 20px;
+  height: 20px;
+  filter: invert(1);
+}
+
+/* Cart Badge */
+.cart-badge {
+  position: absolute;
+  top: -5px;      /* Điều chỉnh vị trí */
+  right: -5px;    /* Điều chỉnh vị trí */
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 2px;
+  z-index: 10;
+}
+
+/* Mobile Menu Button */
+.mobile-menu-btn {
+  display: none; /* Ẩn mặc định trên desktop */
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 1001; /* Đảm bảo nút menu luôn ở trên */
+}
+
+.menu-icon {
+  width: 30px;
+  height: 30px;
+  filter: invert(1);
+}
+
+/* 🌟 Responsive Styles */
+@media (max-width: 800px) {
   .navbar-container {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 200px; /* Khoảng cách giữa các phần tử */
+    justify-content: space-between;
+    position: relative; /* Thêm position relative để định vị logo */
   }
-  
-  .nav-links ul {
-    list-style: none;
-    display: flex;
-    gap: 70px; /* Khoảng cách giữa các mục */
-  }
-  
-  .nav-links ul li a Link {
-    color: white;
-    text-decoration: none;
-    font-weight: 14px;
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif, system-ui;
-  }
-  
-  /* Hành động: tìm kiếm và giỏ hàng */
-  .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px; /* Khoảng cách giữa các icon */
-  }
-  
-  .nav-actions a:not(.profile),
-  .nav-actions button.search-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background-color: #222; /* Màu nền đen */
-    border-radius: 50%; /* Bo tròn */
-    transition: background 0.3s ease-in-out;
-    position: relative; /* Add position relative for badge positioning */
-    border: none; /* Remove default button border */
-    cursor: pointer; /* Add cursor pointer for button */
-  }
-  
-  .nav-actions a:hover,
-  .nav-actions button.search-btn:hover {
-    background-color: #444; /* Hiệu ứng hover */
-  }
-  
-  .nav-actions img {
-    width: 20px; /* Kích thước icon */
-    height: 20px;
-    filter: invert(1); /* Đổi màu icon sang trắng nếu cần */
-  }
-  
-  /* Cart Badge Styles */
-  .cart-badge {
+
+  /* Ẩn các link điều hướng và hiện nút menu */
+  .nav-links {
+    display: none;
+    flex-direction: column;
     position: absolute;
-    top: -8px;
-    right: -8px;
-    background-color: #ef4444; /* Red background */
-    color: white;
-    border-radius: 10px; /* More rounded for better "99+" display */
-    min-width: 20px;
-    height: 20px;
-    display: flex;
+    top: 60px; /* Bằng chiều cao của navbar */
+    left: 0;
+    width: 100%;
+    background: #222; /* Màu nền tối hơn */
+    padding: 10px 0;
+    z-index: 1000;
+  }
+
+  .nav-links.active {
+    display: flex; /* Hiện menu khi active */
+  }
+
+  .nav-links ul {
+    flex-direction: column;
+    width: 100%;
     align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-    padding: 0 4px; /* Add padding for "99+" */
-    z-index: 10;
+    gap: 0;
+  }
+
+  .nav-links ul li {
+    width: 100%;
+    text-align: center;
+  }
+
+  .nav-links ul li a {
+    padding: 15px 0;
+    display: block;
+    width: 100%;
+  }
+
+  .mobile-menu-btn {
+    display: block; /* Hiện nút menu */
+  }
+
+  /* Căn giữa logo trên mobile */
+  .logo {
+    position: absolute;
+    left: 50%; /* ✨ ĐIỀU CHỈNH QUAN TRỌNG: Căn giữa logo */
+    transform: translateX(-50%);
   }
   
   .logo-img {
-    @apply w-28 h-12;
-    margin-left: 130px;
-  
+     margin: 0; /* Reset margin */
   }
-  
-  /* Mobile Menu */
-  .mobile-menu-btn {
-    display: none;
-    background: none;
-    border: none;
-    cursor: pointer;
+
+  .nav-actions {
+    margin-left: auto; /* Đẩy các icon hành động về phía cuối */
   }
-  
-  .menu-icon {
-    width: 30px;
-    height: 30px;
-    min-width: 30px; /* Đảm bảo không bị thu nhỏ */
-    min-height: 30px;
-    filter: invert(1);
-  }
-  
-  /* 🌟 Responsive */
-  @media (max-width: 800px) {
-    .nav-links {
-      display: none;
-      flex-direction: column;
-      position: absolute;
-      top: 50px;
-      left: 0;
-      width: 100%;
-      background: #333;
-      padding: 10px;
-    }
-  
-    .nav-links.active {
-      display: flex;
-    }
-  
-    .mobile-menu-btn {
-      display: block; /* Hiện nút menu khi màn hình nhỏ */
-      left: 10px;
-    }
-  
-    .menu-icon {
-      width: 35px;
-      height: 35px;
-      filter: invert(1);
-    }
-  
-    .logo {
-      margin: 0px;
-      position: absolute;
-      left: 40%;
-      transform: translateX(-50%); /* Giữ logo ở giữa */
-    }
-  
-    .nav-actions {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-  }
-  
-  
+}

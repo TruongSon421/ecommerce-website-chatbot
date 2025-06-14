@@ -5,6 +5,7 @@ import { useCartStore } from '../store/cartStore';
 import { checkout, getPaymentUrl, checkPaymentStatus } from '../services/cartService';
 import { getProvinces, getDistricts, getWards } from '../services/addressService';
 import { CartItem, CartItemIdentity, CheckoutPayload, Province, District, Ward } from '../types/cart';
+import ENV from '../config/env';
 
 // Thêm types cho address
 interface UserAddress {
@@ -70,7 +71,7 @@ const CheckoutPage = () => {
       if (!user) return;
       
       try {
-        const response = await fetch('http://localhost:8070/api/users/me', {
+        const response = await fetch(`${ENV.API_URL}/api/users/me`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem("accessToken")}`, // Adjust based on your auth implementation
             'Content-Type': 'application/json',

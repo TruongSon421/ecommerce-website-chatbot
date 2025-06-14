@@ -17,7 +17,6 @@ public class ReviewResponse {
     private String productId;
     private String userId;
     private String username;
-    private String color;
     private Integer rating;
     private String title;
     private String content;

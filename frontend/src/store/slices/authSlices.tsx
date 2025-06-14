@@ -31,7 +31,16 @@ export const login = createAsyncThunk('auth/login', async (credentials: LoginCre
     };
     return { user: userData, accessToken: data.token, refreshToken: data.refreshToken };
   } catch (error: any) {
-    return rejectWithValue(error.response?.data?.message || 'Login failed');
+    // Xử lý lỗi từ server response
+    if (error.response?.data?.message) {
+      return rejectWithValue(error.response.data.message);
+    } else if (error.response?.data?.error) {
+      return rejectWithValue(error.response.data.error);
+    } else if (error.message) {
+      return rejectWithValue(error.message);
+    } else {
+      return rejectWithValue('Login failed');
+    }
   }
 });
 
@@ -42,20 +51,40 @@ export const register = createAsyncThunk(
       if (credentials.password !== credentials.confirmPassword) {
         throw new Error('Passwords do not match');
       }
-      const data = await registerService({
+      
+      // Step 1: Register user
+      const registerResponse = await registerService({
         username: credentials.username,
         password: credentials.password,
         email: credentials.email,
       });
+      
+      // Step 2: Auto login after successful registration
+      const loginData = await loginService({
+        username: credentials.username,
+        password: credentials.password,
+      });
+      
       const userData: User = {
-        id: data.id.toString(),
-        username: data.username,
-        email: data.email,
-        role: data.roles.includes('ROLE_ADMIN') ? 'admin' : 'user',
+        id: loginData.id.toString(),
+        username: loginData.username,
+        email: loginData.email,
+        role: loginData.roles.includes('ROLE_ADMIN') ? 'admin' : 'user',
       };
-      return { user: userData, accessToken: data.token, refreshToken: data.refreshToken };
+      
+      return { user: userData, accessToken: loginData.token, refreshToken: loginData.refreshToken };
+      
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Registration failed');
+      // Xử lý lỗi từ server response
+      if (error.response?.data?.message) {
+        return rejectWithValue(error.response.data.message);
+      } else if (error.response?.data?.error) {
+        return rejectWithValue(error.response.data.error);
+      } else if (error.message) {
+        return rejectWithValue(error.message);
+      } else {
+        return rejectWithValue('Registration failed');
+      }
     }
   }
 );
@@ -110,6 +139,8 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = true;
+        state.error = null;
         localStorage.setItem('user', JSON.stringify(action.payload.user));
         localStorage.setItem('accessToken', action.payload.accessToken);
         localStorage.setItem('refreshToken', action.payload.refreshToken);
@@ -117,6 +148,7 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        state.isAuthenticated = false;
       })
       .addCase(register.pending, (state) => {
         state.loading = true;
@@ -127,6 +159,9 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
+        state.isAuthenticated = true;
+        state.error = null;
+        
         localStorage.setItem('user', JSON.stringify(action.payload.user));
         localStorage.setItem('accessToken', action.payload.accessToken);
         localStorage.setItem('refreshToken', action.payload.refreshToken);
@@ -134,6 +169,7 @@ const authSlice = createSlice({
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        state.isAuthenticated = false;
       })
       .addCase(refreshToken.fulfilled, (state, action) => {
         state.accessToken = action.payload.accessToken;
@@ -152,7 +188,9 @@ const authSlice = createSlice({
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
+        state.isAuthenticated = false;
         state.loading = false;
+        state.error = null;
         localStorage.removeItem('user');
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');

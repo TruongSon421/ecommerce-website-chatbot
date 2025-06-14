@@ -7,26 +7,26 @@ import logging
 from typing import Optional, List, Dict
 import requests
 from models.cart import CheckoutRequest, PaymentMethod, CartIdentity
-from src.share_data import current_group_ids, filter_params
+from share_data import current_group_ids, filter_params
+
 logger = logging.getLogger(__name__)
-es_host: str = "http://localhost:9200"
+
+es_host: str = "http://elasticsearch:9200"
 es = Elasticsearch([es_host])
-def search_product_name_elasticsearch(
-    query_name: str,
+
+def search_product_name(
+    product_name: str,
     size: int = 1,
     
 ) -> dict:
     """
-    Tìm kiếm trong Elasticsearch với query, group_ids liên quan và kích thước kết quả.
+    Tìm kiếm thông tin sản phẩm với tên sản phẩm ở Elasticsearch.
 
     Args:
-        query (str): Chuỗi truy vấn tìm kiếm.
-        group_ids (Optional[List[str]]): Danh sách group_id để lọc kết quả (nếu có).
-        size (int): Số lượng kết quả tối đa trả về (mặc định là 10).
-        es_host (str): Địa chỉ host của Elasticsearch (mặc định là localhost:9200).
+        product_name: tên của sản phẩm.
 
     Returns:
-        dict: Kết quả tìm kiếm từ Elasticsearch.
+        dict: Kết quả thông tin tìm kiếm từ Elasticsearch.
     """
     # Khởi tạo client Elasticsearch
     
@@ -38,8 +38,8 @@ def search_product_name_elasticsearch(
                 "must": [
                     {
                         "multi_match": {
-                            "query": query_name,
-                            "fields": ["name"],  # Tìm trong document và ưu tiên name
+                            "query": product_name,
+                            "fields": ["name^2"],  # Tìm trong document và ưu tiên name
                             "fuzziness": "AUTO"  # Cho phép tìm kiếm gần đúng
                         }
                     }
@@ -56,8 +56,9 @@ def search_product_name_elasticsearch(
             if hits:
                 # Chọn trường cần thiết từ kết quả
                 results = {
-                       "group_name": hits[0]['_source']['name'],
+                       "name": hits[0]['_source']['name'],
                        "group_id": hits[0]['_source']['group_id'],
+                       "document": hits[0]['_source']['document']
                     }
                 return results
             else:
@@ -66,6 +67,141 @@ def search_product_name_elasticsearch(
             return {f"Error: {response['error']}"}
     except Exception as e:
         return {"error": str(e)}
+
+# Tool mới để tìm kiếm sản phẩm từ Elasticsearch
+def search_products_elasticsearch(tool_context, query: str, limit: int = 6) -> dict:
+    """
+    Tìm kiếm sản phẩm từ Elasticsearch dựa trên query của người dùng
+    Args:
+        query: Từ khóa tìm kiếm (tên sản phẩm)
+        limit: Số lượng kết quả tối đa
+    Returns:
+        Dict chứa danh sách sản phẩm tìm được
+    """
+    current_group_ids.clear()
+    try:
+        # URL của Elasticsearch endpoint
+        
+        # Query để tìm kiếm sản phẩm
+        search_body = {
+            "query": {
+                "multi_match": {
+                    "query": query,
+                    "fields": ["name^2", "type"],
+                    "fuzziness": "AUTO"
+                }
+            },
+            "size": limit,
+            "_source": ["name", "type", "group_id"]
+        }
+        
+        response = es.search(index="products", body=search_body)
+        if "error" not in response:
+            hits = response["hits"]["hits"]
+            products = []
+            for hit in hits:
+                source = hit['_source']
+                products.append({
+                    "name": source.get('name'),
+                    "type": source.get('type'),
+                    "group_id": source.get('group_id'),
+                    "score": hit['_score']
+                })
+                current_group_ids.append(source.get('group_id'))
+            return {"status": "success", "products": products}
+        else:
+            return {"status": "error", "message": "Elasticsearch search failed"}
+    except Exception as e:
+        return {"status": "error", "message": f"Search error: {str(e)}"}
+
+
+# Tool để lấy thông tin chi tiết sản phẩm (variants và colors)
+def get_product_details(tool_context, group_id: int) -> dict:
+    """
+    Lấy thông tin chi tiết về các phiên bản và màu sắc của sản phẩm
+    Args:
+        group_id: ID nhóm sản phẩm
+    Returns:
+        Dict chứa thông tin variants và colors
+    """
+    try:
+        # Query để lấy thông tin từ group_product_junction
+        variants_query = """
+        SELECT DISTINCT variant, product_id, product_name 
+        FROM group_product_junction 
+        WHERE group_id = %s 
+        ORDER BY order_number
+        """
+        
+        # Query để lấy thông tin màu sắc từ product_inventory
+        colors_query = """
+        SELECT DISTINCT pi.color, pi.product_id, pi.product_name
+        FROM product_inventory pi
+        INNER JOIN group_product_junction gpj ON pi.product_id = gpj.product_id
+        WHERE gpj.group_id = %s AND pi.quantity > 0
+        ORDER BY pi.color
+        """
+        
+        # Thực hiện query (cần implement database connection)
+        # Ở đây tôi giả sử bạn có hàm execute_query
+        variants = execute_query(variants_query, (group_id,))
+        colors = execute_query(colors_query, (group_id,))
+        
+        return {
+            "status": "success",
+            "group_id": group_id,
+            "variants": variants,
+            "colors": colors
+        }
+    except Exception as e:
+        return {"status": "error", "message": f"Database error: {str(e)}"}
+
+def find_cart_item(tool_context, product_name: str, color: str, variant: str) -> dict:
+    """
+    Tìm sản phẩm cụ thể trong giỏ hàng dựa trên các thông tin có sẵn
+    """
+    try:
+        # Lấy thông tin giỏ hàng hiện tại
+        cart_info = access_cart_information(tool_context)
+        
+        if cart_info.get("status") != "success":
+            return cart_info
+        
+        cart_items = cart_info.get("items", [])
+        matching_items = []
+        
+        for item in cart_items:
+            match = True
+            
+            # Kiểm tra tên sản phẩm (fuzzy matching)
+            if product_name:
+                if product_name.lower() not in item["productName"].lower():
+                    match = False
+            
+            # Kiểm tra màu sắc
+            if color:
+                if color.lower() not in item["color"].lower():
+                    match = False
+            
+            # Kiểm tra variant (từ productName)
+            if variant:
+                if variant.lower() not in item["productName"].lower():
+                    match = False
+            
+            if match:
+                matching_items.append(item)
+        
+        return {
+            "status": "success",
+            "matching_items": matching_items,
+            "total_matches": len(matching_items)
+        }
+    
+    except Exception as e:
+        return {"status": "error", "message": f"Error finding cart item: {str(e)}"}
+
+
+
     
 def access_cart_information(tool_context: ToolContext) -> dict:
     """
@@ -87,7 +223,7 @@ def access_cart_information(tool_context: ToolContext) -> dict:
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get('user_id',None)
     if accessToken!='undefined':
-        url = "http://localhost:8070/api/carts"
+        url = "http://api-gateway:8070/api/carts"
         headers = {
             "Authorization": f"Bearer {accessToken}",
             "Content-Type": "application/json"
@@ -96,13 +232,14 @@ def access_cart_information(tool_context: ToolContext) -> dict:
         logger.info("Accessing cart information using token.")
         try:
             response = requests.get(url, headers=headers)
+            print(response)
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
             logger.error("Error accessing cart: %s", e)
             return {}
     elif user_id:
-        url = f"http://localhost:8070/api/guest-carts/{user_id}"
+        url = f"http://api-gateway:8070/api/guest-carts/{user_id}"
         headers = {
             "Content-Type": "application/json"
         }
@@ -137,7 +274,7 @@ def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: T
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get('user_id',None)
     if accessToken!='undefined':
-        url = "http://localhost:8070/api/carts/items"
+        url = "http://api-gateway:8070/api/carts/items"
         headers = {
             "Authorization": f"Bearer {accessToken}",
             "Content-Type": "application/json"
@@ -159,7 +296,7 @@ def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: T
             logger.error("Error adding item to cart: %s", e)
             return {}
     elif user_id:
-        url = f"http://localhost:8070/api/guest-carts/{user_id}/items"
+        url = f"http://api-gateway:8070/api/guest-carts/{user_id}/items"
         headers = {
             "Content-Type": "application/json"
         }
@@ -202,7 +339,7 @@ def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context:
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get("user_id", None)
     if accessToken!='undefined':
-        url = f"http://localhost:8070/api/carts/items/{product_id}"
+        url = f"http://api-gateway:8070/api/carts/items/{product_id}"
         headers = {
             "Authorization": f"Bearer {accessToken}",
             "Content-Type": "application/json"
@@ -221,7 +358,7 @@ def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context:
             logger.error("Không thể cập nhật item trong giỏ hàng: %s", e)
             return {"error": str(e)}
     elif user_id:
-        url = f"http://localhost:8070/api/guest-carts/{user_id}/items/{product_id}"
+        url = f"http://api-gateway:8070/api/guest-carts/{user_id}/items/{product_id}"
         headers = {
             "Content-Type": "application/json"
         }
@@ -263,7 +400,7 @@ def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get("user_id", None)
     if accessToken!='undefined':
-        url = f"http://localhost:8070/api/carts/items/{product_id}"
+        url = f"http://api-gateway:8070/api/carts/items/{product_id}"
         headers = {
             "Authorization": f"Bearer {accessToken}",
             "Content-Type": "application/json"
@@ -283,7 +420,7 @@ def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext
             logger.error("Error removing item from cart: %s", e)
             return {}
     elif user_id:
-        url = f"http://localhost:8070/api/guest-carts/{user_id}/items/{product_id}"
+        url = f"http://api-gateway:8070/api/guest-carts/{user_id}/items/{product_id}"
         headers = {
             "Content-Type": "application/json"
         }
@@ -300,112 +437,11 @@ def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext
             return {}
     else:
         return {}
-    
-
-def find_variant_by_group_id(name: str) -> dict:
-    """
-    Find variant by group_id in mySQL database.
-    Args:
-        group_id (str): The group_id to search for.
-    Returns:
-        dict: A dictionary containing the variant information.
-    """
-    try:
-        conn = mysql.connector.connect(
-            host='localhost',
-            port=3307,
-            user='tiendoan',
-            password='tiendoan',
-            database='ecommerce_inventory'
-        )
-        cursor = conn.cursor()
-        # Tìm kiếm trong Elasticsearch
-        search_result = search_product_name_elasticsearch(name)
-        if "error" in search_result:
-            return f"Lỗi tìm kiếm: {search_result['error']}"
-
-        group_id = search_result.get("group_id")
-        if not group_id:
-            return "Không tìm thấy group_id cho sản phẩm này."
-        sql_query = """SELECT product_id, product_name, variant
-                        FROM group_product_junction
-                        WHERE group_id = %s
-                    """
-        cursor.execute(sql_query, (group_id))
-        result = cursor.fetchall()
-        combined_df = pd.DataFrame(result, columns=["product_id", "product_name", "variant"])
-        response = combined_df.to_dict(orient='records')
-
-        return {
-            "group_id": group_id,
-            "products": response
-        }
-    except mysql.connector.Error as err:
-        return {"error": f"Error: {err}"}
-    
-def find_color_by_product_id(name: str, variant: str) -> dict:
-    """
-    Find available colors by product_id in MySQL database.
-    
-    Args:
-        product_id (str): The product_id to search for.
-
-    Returns:
-        dict: A dictionary with product_id and list of available colors.
-              Example: { "product_id": "abc123", "color": ["Đen", "Trắng"] }
-    """
-    try:
-        conn = mysql.connector.connect(
-            host='localhost',
-            port=3307,
-            user='tiendoan',
-            password='tiendoan',
-            database='ecommerce_inventory'
-        )
-        cursor = conn.cursor()
-        # Tìm kiếm trong Elasticsearch
-        search_result = search_product_name_elasticsearch(name)
-        if "error" in search_result:
-            return f"Lỗi tìm kiếm: {search_result['error']}"
-
-        group_id = search_result.get("group_id")
-        if not group_id:
-            return "Không tìm thấy group_id cho sản phẩm này."
-        # Bước 1: Tìm product_id theo group_id và variant
-        query_product_id = """
-            SELECT product_id
-            FROM group_product_junction
-            WHERE group_id = %s AND variant = %s
-        """
-        cursor.execute(query_product_id, (group_id, variant))
-        pr = cursor.fetchone()
-        if not pr:
-            return f"Không tìm thấy sản phẩm {group_id} với variant: {variant}"
-        product_id = pr['product_id']
-
-        sql_query = """
-            SELECT DISTINCT color
-            FROM product_inventory
-            WHERE product_id = %s
-        """
-        cursor.execute(sql_query, (product_id,))
-        result = cursor.fetchall()
-        
-        # result = list of tuples, convert to flat list of strings
-        colors = [row[0] for row in result if row[0] is not None]
-        
-        return {
-            "product_id": product_id,
-            "color": colors
-        }
-    
-    except mysql.connector.Error as err:
-        return {"error": f"Error: {err}"}
 
 def find_product(name: str, variant: str, color: str) -> str:
     try:
         conn = mysql.connector.connect(
-            host='localhost',
+            host='api-gateway',
             port=3307,
             user='tiendoan',
             password='tiendoan',
@@ -414,7 +450,7 @@ def find_product(name: str, variant: str, color: str) -> str:
         cursor = conn.cursor(dictionary=True)  # dùng dictionary để dễ xử lý
 
         # Tìm kiếm trong Elasticsearch
-        search_result = search_product_name_elasticsearch(name)
+        search_result = search_product_name(name)
         if "error" in search_result:
             return f"Lỗi tìm kiếm: {search_result['error']}"
 
@@ -456,57 +492,4 @@ def find_product(name: str, variant: str, color: str) -> str:
         if conn.is_connected():
             conn.close()
 
-
-
-def search_elasticsearch(
-    query: str,
-    ids: Optional[List[str]] = None,
-    size: int = 10,
-    es_host: str = "http://localhost:9200"
-) -> dict:
-    """
-    Tìm kiếm trong Elasticsearch với query, group_ids liên quan và kích thước kết quả.
-
-    Args:
-        query (str): Chuỗi truy vấn tìm kiếm.
-        group_ids (Optional[List[str]]): Danh sách group_id để lọc kết quả (nếu có).
-        size (int): Số lượng kết quả tối đa trả về (mặc định là 10).
-        es_host (str): Địa chỉ host của Elasticsearch (mặc định là localhost:9200).
-
-    Returns:
-        dict: Kết quả tìm kiếm từ Elasticsearch.
-    """
-    # Khởi tạo client Elasticsearch
-    es = Elasticsearch([es_host])
-
-    # Xây dựng body truy vấn
-    body = {
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "multi_match": {
-                            "query": query,
-                            "fields": ["document", "name^2"],  # Tìm trong document và ưu tiên name
-                            "fuzziness": "AUTO"  # Cho phép tìm kiếm gần đúng
-                        }
-                    }
-                ]
-            }
-        },
-        "size": size
-    }
-
-    # Nếu có danh sách group_ids, thêm bộ lọc
-    if ids:
-        body["query"]["bool"]["filter"] = [
-            {"terms": {"group_id": ids}}
-        ]
-
-    try:
-        # Thực hiện tìm kiếm
-        response = es.search(index="products", body=body)
-        return response
-    except Exception as e:
-        return {"error": str(e)}
 
