@@ -255,7 +255,7 @@ def access_cart_information(tool_context: ToolContext) -> dict:
         return {}
         
 
-def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: ToolContext) -> dict:
+def add_item_to_cart(product_id: str, tool_context: ToolContext, color: Optional[str] = None, quantity: int = 1) -> dict:
     """
     Thêm một sản phẩm vào giỏ hàng của khách hàng.
 
@@ -281,12 +281,18 @@ def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: T
         }
 
         logger.info("Adding item to cart using token.")
-
-        product_body = {
-            "productId": product_id,
-            "quantity": quantity,
-            "color": color
-        }
+        if color:
+            product_body = {
+                "productId": product_id,
+                "quantity": quantity,
+                "color": color
+            }
+        else:
+            product_body = {
+                "productId": product_id,
+                "quantity": quantity,
+                "color": "default"
+            }
 
         try:
             response = requests.post(url, headers=headers, json=product_body)
@@ -300,11 +306,18 @@ def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: T
         headers = {
             "Content-Type": "application/json"
         }
-        body = {
-            "productId": product_id,
-            "quantity": quantity,
-            "color": color
-        }
+        if color:
+            body = {
+                "productId": product_id,
+                "quantity": quantity,
+                "color": color
+            }
+        else:
+            body = {
+                "productId": product_id,
+                "quantity": quantity,
+                "color": "default"
+            }
         logger.info("Add items to cart information guest user.")
         try:
             response = requests.post(url, headers=headers, json=body)
@@ -316,7 +329,7 @@ def add_item_to_cart(product_id: str, color: str, quantity: int, tool_context: T
     else:
         return {}
     
-def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context: ToolContext) -> dict:
+def update_item_in_cart(product_id: str, quantity: int, tool_context: ToolContext, color: Optional[str] = None) -> dict:
     """
     Cập nhật số lượng hoặc thuộc tính của một sản phẩm trong giỏ hàng.
 
@@ -344,10 +357,16 @@ def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context:
             "Authorization": f"Bearer {accessToken}",
             "Content-Type": "application/json"
         }
-        params = {
-            "quantity": quantity,
-            "color": color
-        }
+        if color:
+            params = {
+                "quantity": quantity,
+                "color": color
+            }
+        else:
+            params = {
+                "quantity": quantity,
+                "color": "default"
+            }
 
         logger.info("Update item in cart using token.")
         try:
@@ -362,10 +381,16 @@ def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context:
         headers = {
             "Content-Type": "application/json"
         }
-        params = {
-            "quantity": quantity,
-            "color": color
-        }
+        if color:
+            params = {
+                "quantity": quantity,
+                "color": color
+            }
+        else:
+            params = {
+                "quantity": quantity,
+                "color": "default"
+            }
         logger.info("Update item in cart information guest user.")
         try:
             response = requests.put(url, headers=headers, params=params)
@@ -378,7 +403,7 @@ def update_item_in_cart(product_id: str, quantity: int, color:int, tool_context:
         return {}
         
     
-def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext) -> dict:
+def remove_item_from_cart(product_id: str, tool_context: ToolContext, color: Optional[str] = None) -> dict:
     """
     Xóa một sản phẩm khỏi giỏ hàng của khách hàng.
 
@@ -406,9 +431,14 @@ def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext
             "Content-Type": "application/json"
         }
     
-        params = {
-            "color": color
-        }
+        if color:
+            params = {
+                "color": color
+            }
+        else:
+            params = {
+                "color": "default"
+            }
 
         logger.info("Removing item %s from cart", product_id)
 
@@ -424,9 +454,14 @@ def remove_item_from_cart(product_id: str, color: str, tool_context: ToolContext
         headers = {
             "Content-Type": "application/json"
         }
-        params = {
-            "color": color
-        }
+        if color:
+            params = {
+                "color": color
+            }
+        else:
+            params = {
+                "color": "default"
+            }
         logger.info("Removing item %s from cart information guest user.", product_id)
         try:
             response = requests.delete(url, headers=headers, params=params)
@@ -490,6 +525,158 @@ def find_product(name: str, variant: str, color: str) -> str:
         return f"Lỗi kết nối CSDL: {str(e)}"
     finally:
         if conn.is_connected():
+            conn.close()
+
+def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = None, variant: Optional[str] = None) -> dict:
+    """
+    Tìm product_id từ group_id và color (nếu có) trong MySQL database
+    
+    Args:
+        group_id (int): ID của nhóm sản phẩm
+        color (str, optional): Màu sắc của sản phẩm
+        variant (str, optional): Phiên bản của sản phẩm
+        
+    Returns:
+        dict: Dictionary chứa danh sách product_id phù hợp hoặc thông báo lỗi
+        
+    Example:
+        >>> find_product_id_by_group_and_color(123, "red")
+        {"status": "success", "products": [{"product_id": "prod-123", "variant": "Size M", "color": "red"}]}
+    """
+    try:
+        # Kết nối database
+        conn = mysql.connector.connect(
+            host='api-gateway',
+            port=3307,
+            user='tiendoan',
+            password='tiendoan',
+            database='ecommerce_inventory'
+        )
+        cursor = conn.cursor(dictionary=True)
+        
+        if color and variant:
+            # Tìm theo cả group_id, color và variant
+            query = """
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                FROM group_product_junction gpj
+                INNER JOIN product_inventory pi ON gpj.product_id = pi.product_id
+                WHERE gpj.group_id = %s AND pi.color = %s AND gpj.variant = %s
+                ORDER BY gpj.order_number
+            """
+            cursor.execute(query, (group_id, color, variant))
+        elif color:
+            # Tìm theo group_id và color
+            query = """
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                FROM group_product_junction gpj
+                INNER JOIN product_inventory pi ON gpj.product_id = pi.product_id
+                WHERE gpj.group_id = %s AND pi.color = %s
+                ORDER BY gpj.order_number
+            """
+            cursor.execute(query, (group_id, color))
+        elif variant:
+            # Tìm theo group_id và variant
+            query = """
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                FROM group_product_junction gpj
+                LEFT JOIN product_inventory pi ON gpj.product_id = pi.product_id
+                WHERE gpj.group_id = %s AND gpj.variant = %s
+                ORDER BY gpj.order_number
+            """
+            cursor.execute(query, (group_id, variant))
+        else:
+            # Chỉ tìm theo group_id
+            query = """
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                FROM group_product_junction gpj
+                LEFT JOIN product_inventory pi ON gpj.product_id = pi.product_id
+                WHERE gpj.group_id = %s
+                ORDER BY gpj.order_number
+            """
+            cursor.execute(query, (group_id,))
+        
+        results = cursor.fetchall()
+        
+        if results:
+            products = []
+            for row in results:
+                products.append({
+                    "product_id": row['product_id'],
+                    "product_name": row['product_name'],
+                    "variant": row['variant'],
+                    "color": row['color'] if row['color'] else None
+                })
+            
+            return {
+                "status": "success",
+                "group_id": group_id,
+                "total_found": len(products),
+                "products": products
+            }
+        else:
+            return {
+                "status": "not_found",
+                "message": f"Không tìm thấy sản phẩm với group_id={group_id}" + 
+                          (f", color={color}" if color else "") + 
+                          (f", variant={variant}" if variant else "")
+            }
+            
+    except mysql.connector.Error as e:
+        logger.error("Database error in find_product_id_by_group_and_color: %s", str(e))
+        return {
+            "status": "error",
+            "message": f"Lỗi kết nối database: {str(e)}"
+        }
+    except Exception as e:
+        logger.error("Unexpected error in find_product_id_by_group_and_color: %s", str(e))
+        return {
+            "status": "error", 
+            "message": f"Lỗi không mong đợi: {str(e)}"
+        }
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+def execute_query(query: str, params: tuple = None) -> list:
+    """
+    Thực hiện truy vấn SQL và trả về kết quả
+    
+    Args:
+        query (str): Câu truy vấn SQL
+        params (tuple, optional): Tham số cho truy vấn
+        
+    Returns:
+        list: Danh sách kết quả từ database
+    """
+    try:
+        conn = mysql.connector.connect(
+            host='api-gateway',
+            port=3307,
+            user='tiendoan',
+            password='tiendoan',
+            database='ecommerce_inventory'
+        )
+        cursor = conn.cursor(dictionary=True)
+        
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+            
+        results = cursor.fetchall()
+        return results
+        
+    except mysql.connector.Error as e:
+        logger.error("Database error in execute_query: %s", str(e))
+        return []
+    except Exception as e:
+        logger.error("Unexpected error in execute_query: %s", str(e))
+        return []
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cursor.close()
             conn.close()
 
 

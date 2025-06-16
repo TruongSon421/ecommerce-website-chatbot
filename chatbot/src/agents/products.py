@@ -2,7 +2,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, agent_tool
 from tools.product_tools import product_consultation_tool, product_information_tool
-from prompts import PRODUCT_INSTRUCTION
+from prompts import PRODUCT_INSTRUCTION, GLOBAL_INSTRUCTION
 from agents.callbacks import *
 
 web_search_tool = LlmAgent(
@@ -24,6 +24,7 @@ web_search_tool = LlmAgent(
 product_agent = LlmAgent(
     name="Product",
     description="Handles product shopping, product consultation and product information.",
+    global_instruction=GLOBAL_INSTRUCTION,
     instruction=PRODUCT_INSTRUCTION,
     tools=[
         FunctionTool(func=product_consultation_tool),

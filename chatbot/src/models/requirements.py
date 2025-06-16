@@ -27,4 +27,41 @@ class LaptopRequirements(BaseModel):
     brand_preference: Optional[str]
     specific_requirements: Optional[str]
 
+class EarHeadphoneRequirements(BaseModel):
+    earHeadphone_tech_boneConduction: bool
+    earHeadphone_tech_airConduction: bool
+    earHeadphone_battery_under4: bool
+    earHeadphone_battery_4to6: bool
+    earHeadphone_battery_6to8: bool
+    earHeadphone_battery_above8: bool
+    earHeadphone_benefit_wirelessCharge: bool
+    earHeadphone_benefit_waterProof: bool
+    earHeadphone_benefit_mic: bool
+    earHeadphone_benefit_anc: bool
+    earHeadphone_benefit_enc: bool
+
+    min_budget: Optional[int]
+    max_budget: Optional[int]
+    brand_preference: Optional[str]
+    specific_requirements: Optional[str]
+
+
+class BackupChargerRequirements(BaseModel):
+    backupChrger_type_smallLight: bool
+    backupChrger_type_forLaptop: bool
+    backupChrger_battery_10k: bool
+    backupChrger_battery_20k: bool
+    backupChrger_battery_above20k: bool
+    backupChrger_benefit_wirelessCharge: bool
+    backupChrger_benefit_fastCharge: bool
+    backupChrger_benefit_magsafe: bool
+
+    min_budget: Optional[int]
+    max_budget: Optional[int]
+    brand_preference: Optional[str]
+    specific_requirements: Optional[str]
+
+
+
+
     
