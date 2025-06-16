@@ -7,7 +7,7 @@ import numpy as np
 import json 
 from rag.retrieve import combine_results,search_elasticsearch,search_name
 from dotenv import load_dotenv
-from models.requirements import PhoneRequirements,LaptopRequirements
+from models.requirements import PhoneRequirements,LaptopRequirements,EarHeadphoneRequirements,BackupChargerRequirements
 from llama_index.llms.google_genai import GoogleGenAI
 from prompts import *
 import sys
@@ -55,6 +55,27 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             reqs = llm.structured_predict(LaptopRequirements, LAPTOP_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "laptop_"
             device_type = "laptop"
+
+        elif device == "wiredEarphone":
+            reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
+            tag_prefix = "earHeadphone_"
+            device_type = "wiredEarphone"
+
+        elif device == "wirelessEarphone":
+            reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
+            tag_prefix = "earHeadphone_"
+            device_type = "wireLessEarphone"
+
+        elif device == "headphone":
+            reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
+            tag_prefix = "earHeadphone_"
+            device_type = "headphone"
+
+        elif device == "backupCharger":
+            reqs = llm.structured_predict(BackupChargerRequirements, BACKUPCHARGER_CONSULTATION_TEMPLATE, query=query)
+            tag_prefix = "backupCharger_"
+            device_type = "backupCharger"
+
         else:
             cursor.close()
             conn.close()
@@ -177,8 +198,6 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
                 brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
                 return f"Không tìm thấy {device}{brand_msg} phù hợp với khoảng giá bạn yêu cầu."
             
-            # **FIX: THÊM CURRENT_GROUP_IDS CHO TRƯỜNG HỢP CHỈ CÓ GIÁ**
-            current_group_ids.extend(combined_df['group_id'].tolist())
             
             # Build response
             brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
@@ -236,7 +255,6 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
                 # Nếu chỉ có brand preference mà không có tag nào, sử dụng brand_filtered_df
                 combined_df = brand_filtered_df.copy()
                 # **FIX: THÊM CURRENT_GROUP_IDS CHO TRƯỜNG HỢP CHỈ CÓ BRAND**
-                current_group_ids.extend(combined_df['group_id'].tolist())
             else:
                 cursor.close()
                 conn.close()

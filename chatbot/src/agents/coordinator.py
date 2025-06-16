@@ -4,10 +4,12 @@ from agents.chatchit import chatchit_agent
 from agents.shop import shop_agent
 from agents.products import product_agent
 from agents.cart import cart_agent
+from prompts import GLOBAL_INSTRUCTION
 
 coordinator = LlmAgent(
     name="HelpDeskCoordinator",
     model="gemini-2.0-flash",  # Adjust model if needed, e.g., "gemini-1.5-flash-latest"
+    global_instruction=GLOBAL_INSTRUCTION,
     instruction="""
     Route user requests to the appropriate agent based on their intent:
     - **ChatChit agent**: Handle casual greetings, general conversation, unrelated topics, or sensitive inquiries that do not involve shop, product, or cart operations.
