@@ -68,6 +68,7 @@ function AppContent() {
           <Route path="register" element={<Register />} />
           <Route path="cart" element={<CartPage />} />
           <Route path=":type" element={<PageCategory />} />
+          <Route path=":type/:subtype" element={<PageCategory />} />
           <Route path="/detail/:type/:product_id" element={<ProductGH />} />
           <Route path="/policies" element={<PoliciesPage />} />
           

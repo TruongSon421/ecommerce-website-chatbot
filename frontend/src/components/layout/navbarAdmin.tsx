@@ -205,13 +205,13 @@ const AdminNavbar: React.FC = () => {
                         💻 Laptop
                       </Link>
                       <Link
-                        to="/admin/products/tablet"
+                        to="/admin/products/audio"
                         className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
-                          isActive('/admin/products/tablet') ? 'bg-blue-600' : ''
+                          isActive('/admin/products/audio') ? 'bg-blue-600' : ''
                         }`}
                         onClick={() => setIsProductDropdownOpen(false)}
                       >
-                        📟 Tablet
+                        🎧 Audio
                       </Link>
                       <Link
                         to="/admin/products/smartwatch"

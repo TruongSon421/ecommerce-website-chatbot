@@ -1,4 +1,4 @@
-// src/pages/PageCategory.tsx (continued)
+// src/pages/PageCategory.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Header from '../components/layout/header';
@@ -9,8 +9,27 @@ import useProductApi from '../components/hooks/useProductApi';
 import { useAuth } from '../components/hooks/useAuth';
 import CategoriesSection from '../components/product/categoriesSection';
 
+// Helper function to get display name for subtype
+const getSubtypeDisplayName = (subtype: string): string => {
+  const subtypeNames: { [key: string]: string } = {
+    'wireless_earphone': 'Tai nghe không dây',
+    'wired_earphone': 'Tai nghe có dây',
+    'headphone': 'Tai nghe chụp tai',
+    'backup_charger': 'Sạc dự phòng',
+  };
+  return subtypeNames[subtype] || subtype;
+};
+
+const getTypeDisplayName = (type: string): string => {
+  const typeNames: { [key: string]: string } = {
+    'phone': 'Điện thoại',
+    'laptop': 'Máy tính', 
+  };
+  return typeNames[type] || type;
+};
+
 function PageCategory() {
-  const { type = '' } = useParams<{ type: string }>();
+  const { type = '', subtype = '' } = useParams<{ type: string; subtype?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] | string }>({});
   
@@ -77,7 +96,7 @@ function PageCategory() {
     });
   }, [filters]);
 
-  // Create query params for API request
+  // Create query params for API request - memoized with stable dependencies
   const createQueryParams = useCallback((
     currentPage: number, 
     appliedFilters: { [key: string]: string[] | number[] | string }
@@ -92,14 +111,15 @@ function PageCategory() {
       queryParams.push(`sortByPrice=${sortByPrice}`);
     }
 
-    if (type) {
-      queryParams.push(`type=${type}`);
+    // Use subtype as type if it exists, otherwise use type
+    const effectiveType = subtype || type;
+    if (effectiveType) {
+      queryParams.push(`type=${effectiveType}`);
     }
 
-    // Add search query if present in URL params
-    const searchQuery = searchParams.get('search');
-    if (searchQuery && searchQuery.trim()) {
-      queryParams.push(`searchQuery=${encodeURIComponent(searchQuery.trim())}`);
+    // Handle search query from filters
+    if (appliedFilters.searchQuery && typeof appliedFilters.searchQuery === 'string' && appliedFilters.searchQuery.trim()) {
+      queryParams.push(`searchQuery=${encodeURIComponent(appliedFilters.searchQuery.trim())}`);
     }
 
     // Process filters
@@ -128,13 +148,8 @@ function PageCategory() {
       }
     }
 
-    // Process searchQuery from filters if present
-    if (appliedFilters.searchQuery && typeof appliedFilters.searchQuery === 'string' && appliedFilters.searchQuery.trim()) {
-      queryParams.push(`searchQuery=${encodeURIComponent(appliedFilters.searchQuery.trim())}`);
-    }
-
     return queryParams.join('&');
-  }, [type, sortByPrice, searchParams]);
+  }, [type, subtype, sortByPrice]); // Added subtype to dependencies
 
   // Fetch products when dependencies change, but only after state is restored
   useEffect(() => {
@@ -149,48 +164,63 @@ function PageCategory() {
     
     console.log('Fetching products with filters:', filters, 'queryString:', queryString, 'hasSearchQuery:', hasSearchQuery);
     fetchProducts(queryString, page === 0, isSortedByPrice, hasSearchQuery);
-  }, [fetchProducts, page, filters, createQueryParams, sortByPrice, isStateRestored, searchParams]);
+  }, [page, filters, sortByPrice, isStateRestored]); // Removed createQueryParams, fetchProducts, searchParams from dependencies
 
-    // Save filters to URL
+  // Save filters to URL
   useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
+    if (!isStateRestored) return; // Don't update URL until state is restored
+    
+    const newParams = new URLSearchParams();
     newParams.set('page', page.toString());
     
     // Only add filters to URL if they exist and are not empty
     if (filters && Object.keys(filters).length > 0) {
       newParams.set('filters', JSON.stringify(filters));
-    } else {
-      // Remove filters from URL if empty
-      newParams.delete('filters');
     }
     
     // Only add sort to URL if it's not empty
     if (sortByPrice && sortByPrice !== '') {
       newParams.set('sort', sortByPrice);
-    } else {
-      // Remove sort from URL if empty
-      newParams.delete('sort');
     }
     
-    setSearchParams(newParams, { replace: true }); // Use replace to avoid adding multiple history entries
-  }, [filters, sortByPrice, page, setSearchParams, searchParams]);
+    // Only update URL if it's actually different from current
+    const currentParams = searchParams.toString();
+    const newParamsString = newParams.toString();
+    
+    if (currentParams !== newParamsString) {
+      console.log('Updating URL params from:', currentParams, 'to:', newParamsString);
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [filters, sortByPrice, page, isStateRestored]); // Removed searchParams and setSearchParams from dependencies
 
-  // Restore state from URL on mount
+  // Initialize state on mount - only once
   useEffect(() => {
     const filtersFromUrl = searchParams.get('filters');
     const sortFromUrl = searchParams.get('sort');
+    const searchFromUrl = searchParams.get('search');
+    
+    console.log('Initial mount - restoring state from URL');
     
     // Restore filters from URL
     if (filtersFromUrl && filtersFromUrl !== 'undefined') {
       try {
         const parsedFilters = JSON.parse(filtersFromUrl);
-        // Only set filters if they're not empty
         if (parsedFilters && Object.keys(parsedFilters).length > 0) {
+          console.log('Setting initial filters from URL:', parsedFilters);
           setFilters(parsedFilters);
         }
       } catch (e) {
         console.error('Error parsing filters from URL:', e);
       }
+    }
+    
+    // Restore search query from URL parameters (fallback)
+    if (searchFromUrl && searchFromUrl.trim() && !filtersFromUrl) {
+      console.log('Setting initial search from URL param:', searchFromUrl);
+      setFilters(prev => ({
+        ...prev,
+        searchQuery: searchFromUrl.trim()
+      }));
     }
     
     // Restore sort from URL (prioritize URL over localStorage)
@@ -208,11 +238,11 @@ function PageCategory() {
       }
     }
     
-    // Mark state as restored with small delay to ensure state is set
-    setTimeout(() => {
-      setIsStateRestored(true);
-    }, 100);
-  }, []); // Only run on mount
+    // Note: No need to auto-apply subtype filter since subtype is now used directly as type in API
+
+    // Mark state as restored
+    setIsStateRestored(true);
+  }, []); // Empty dependency array - only run once on mount
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
@@ -238,7 +268,7 @@ function PageCategory() {
       }
     }
     
-    console.log('Cleaned filters:', cleanedFilters);
+    console.log('Cleaned filters before applying:', cleanedFilters);
     setFilters(cleanedFilters);
     
     // Reset to page 0 when filters change
@@ -252,6 +282,7 @@ function PageCategory() {
         newParams.delete('filters');
       } else {
         console.log('Setting filters in URL:', JSON.stringify(cleanedFilters));
+        newParams.set('filters', JSON.stringify(cleanedFilters));
       }
       
       return newParams;
@@ -303,18 +334,12 @@ function PageCategory() {
     },
     {
       id: 3,
-      name: 'Tablet',
-      imageSrc: '/images/categories/tablet.png',
-      link: '/admin/products/tablet'
-    },
-    {
-      id: 4,
       name: 'Audio',
       imageSrc: '/images/categories/audio.png',
       link: '/admin/products/audio'
     },
     {
-      id: 5,
+      id: 4,
       name: 'Phụ kiện',
       imageSrc: '/images/categories/Phukien.png',
       link: '/admin/products/phukien'
@@ -353,7 +378,7 @@ function PageCategory() {
       {isAdmin && (
         <CategoriesSection categories={categories} />
       )}
-      <Header title={type} />
+      <Header title={subtype ? getSubtypeDisplayName(subtype) : getTypeDisplayName(type)} />
       <div className="flex flex-col gap-6 p-6">
         <div className="w-full">
           {type ? (
@@ -363,6 +388,8 @@ function PageCategory() {
               onSortChange={handleSortChange}
               sortByPrice={sortByPrice}
               isLoading={loading}
+              initialFilters={isStateRestored && Object.keys(filters).length > 0 ? filters : {}} // Chỉ truyền khi có filters và state đã restored
+              key={`${type}-${JSON.stringify(filters)}`} // Force re-render khi filters thay đổi
             />
           ) : (
             <div className="text-center p-4 bg-gray-100 rounded-md">

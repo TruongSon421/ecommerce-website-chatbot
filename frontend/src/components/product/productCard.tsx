@@ -8,7 +8,7 @@ interface imagesUrl {
 }
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   current_prices: string[];
@@ -21,18 +21,14 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
+  type: string;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { name, discount, isNew } = product;
-  
-  // Format href with product name
-  const formatHref = (name: string): string => {
-    return name.replace(/\s+/g, '-').toLowerCase();
-  };
+const ProductCard: React.FC<ProductCardProps> = ({ product, type }) => {
+  const { id, name, discount, isNew } = product;
 
   return (
-    <a href={`phone/${formatHref(name)}`}>
+    <a href={`/detail/${type}/${id}`}>
       <div className="product-card">
         {isNew && <span className="badge new">Mới</span>}
         {discount > 0 && <span className="badge discount">-{discount}%</span>}
@@ -61,10 +57,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 : "Liên hệ"}
             </span>
           </div>
-          
-          <button className="add-to-cart">
-            Thêm vào giỏ
-          </button>
         </div>
       </div>
     </a>

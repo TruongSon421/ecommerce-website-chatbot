@@ -3,7 +3,7 @@ export interface Product {
     name: string;
     description: string;
     price: number;
-    category: 'phone' | 'laptop' | 'tablet' | 'audio' | 'accessory';
+    category: 'phone' | 'laptop' | 'audio' | 'accessory';
     subCategory?: string; // Cho phụ kiện: cáp, sạc, hub, chuột, bàn phím
     imageUrl: string;
     stock: number;

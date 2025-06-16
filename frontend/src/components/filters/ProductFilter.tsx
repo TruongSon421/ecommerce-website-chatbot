@@ -9,8 +9,9 @@ interface ProductFilterProps {
   type: string;
   onApplyFilters: (filters: { [key: string]: string[] | number[] | string }) => void;
   onSortChange: (sortOrder: string) => void;
-  sortByPrice: string; // Có thể là '' (không sắp xếp), 'asc', hoặc 'desc'
+  sortByPrice: string;
   isLoading?: boolean;
+  initialFilters?: { [key: string]: string[] | number[] | string }; // Thêm prop này
 }
 
 const ProductFilter: React.FC<ProductFilterProps> = ({
@@ -19,47 +20,134 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   onSortChange,
   sortByPrice,
   isLoading = false,
+  initialFilters = {}, // Default empty object
 }) => {
   // Storage keys for persisting state
   const STORAGE_KEY_FILTERS = `productFilters_${type}`;
   const STORAGE_KEY_PRICE_RANGE = `priceRange_${type}`;
   const STORAGE_KEY_SEARCH = `searchQuery_${type}`;
 
-  // Helper functions for localStorage
-  const saveToStorage = (key: string, value: any) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+  // Initialize state with initialFilters taking priority over localStorage
+  const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>(() => {
+    // Check if we have initialFilters from URL/chatbot
+    if (Object.keys(initialFilters).length > 0) {
+      console.log('Initializing filters from initialFilters:', initialFilters);
+      
+      const processedFilters: { [key: string]: string[] } = {};
+      
+      // Handle brand
+      if (initialFilters.brand && Array.isArray(initialFilters.brand)) {
+        processedFilters.brand = initialFilters.brand as string[];
+      }
+      
+      // Handle tags
+      if (initialFilters.tags && Array.isArray(initialFilters.tags)) {
+        processedFilters.tags = initialFilters.tags as string[];
+      }
+      
+      return processedFilters;
     }
-  };
+    
+    // Don't load from localStorage to prevent filter persistence across categories
+    return {};
+  });
 
-  const loadFromStorage = (key: string, defaultValue: any) => {
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : defaultValue;
-    } catch (error) {
-      console.warn('Failed to load from localStorage:', error);
-      return defaultValue;
+  const [priceRange, setPriceRange] = useState<number[]>(() => {
+    // Check if we have initialFilters with priceRange
+    if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
+      console.log('Initializing price range from initialFilters:', initialFilters.priceRange);
+      return initialFilters.priceRange as number[];
     }
-  };
+    
+    // Don't load from localStorage to prevent filter persistence across categories
+    return [0, 50000000];
+  });
 
-  // Initialize state with persisted values
-  const [selectedFilters, setSelectedFilters] = useState<{ [key: string]: string[] }>(() => 
-    loadFromStorage(STORAGE_KEY_FILTERS, {})
-  );
-  const [priceRange, setPriceRange] = useState<number[]>(() => 
-    loadFromStorage(STORAGE_KEY_PRICE_RANGE, [0, 50000000])
-  );
-  const [searchQuery, setSearchQuery] = useState<string>(() => 
-    loadFromStorage(STORAGE_KEY_SEARCH, '')
-  );
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    // Check if we have initialFilters with searchQuery
+    if (initialFilters.searchQuery && typeof initialFilters.searchQuery === 'string') {
+      console.log('Initializing search query from initialFilters:', initialFilters.searchQuery);
+      return initialFilters.searchQuery;
+    }
+    
+    // Don't load from localStorage to prevent filter persistence across categories
+    return '';
+  });
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldAutoApply, setShouldAutoApply] = useState(false);
+  const [hasInitialFiltersApplied, setHasInitialFiltersApplied] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const prevTypeRef = useRef<string>(type);
 
   const currentFilterData = filterData[type] || {};
+
+  // Effect to handle when initialFilters change (e.g., from URL navigation)
+  useEffect(() => {
+    if (Object.keys(initialFilters).length > 0 && !hasInitialFiltersApplied) {
+      console.log('Processing new initialFilters:', initialFilters);
+      
+      // Check if initialFilters are actually different from current state
+      const currentState = {
+        brand: selectedFilters.brand || [],
+        tags: selectedFilters.tags || [],
+        priceRange,
+        searchQuery
+      };
+      
+      const newState = {
+        brand: initialFilters.brand || [],
+        tags: initialFilters.tags || [],
+        priceRange: initialFilters.priceRange || [0, 50000000],
+        searchQuery: initialFilters.searchQuery || ''
+      };
+      
+      // Compare states to avoid unnecessary updates
+      const isDifferent = JSON.stringify(currentState) !== JSON.stringify(newState);
+      
+      if (!isDifferent) {
+        console.log('InitialFilters are same as current state, skipping...');
+        setHasInitialFiltersApplied(true);
+        return;
+      }
+      
+      const processedFilters: { [key: string]: string[] } = {};
+      
+      // Handle brand
+      if (initialFilters.brand && Array.isArray(initialFilters.brand)) {
+        processedFilters.brand = initialFilters.brand as string[];
+      }
+      
+      // Handle tags
+      if (initialFilters.tags && Array.isArray(initialFilters.tags)) {
+        processedFilters.tags = initialFilters.tags as string[];
+      }
+      
+      // Update all states first
+      setSelectedFilters(processedFilters);
+      
+      // Update priceRange if provided
+      if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
+        setPriceRange(initialFilters.priceRange as number[]);
+      }
+      
+      // Update searchQuery if provided
+      if (initialFilters.searchQuery && typeof initialFilters.searchQuery === 'string') {
+        setSearchQuery(initialFilters.searchQuery);
+      }
+      
+      // Mark as applied and trigger immediate auto-apply
+      setHasInitialFiltersApplied(true);
+      
+      // Apply filters immediately
+      console.log('Auto-applying initialFilters...');
+      onApplyFilters({
+        ...processedFilters,
+        priceRange: initialFilters.priceRange || [0, 50000000],
+        searchQuery: initialFilters.searchQuery || '',
+      });
+    }
+  }, [initialFilters, hasInitialFiltersApplied, onApplyFilters, selectedFilters, priceRange, searchQuery]);
 
   // Auto-apply effect when shouldAutoApply flag is set
   useEffect(() => {
@@ -68,31 +156,6 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       setShouldAutoApply(false);
     }
   }, [selectedFilters, searchQuery, shouldAutoApply]);
-
-  // Restore filters on component mount
-  useEffect(() => {
-    const hasPersistedFilters = Object.keys(selectedFilters).length > 0 || 
-                               searchQuery.trim() !== '' ||
-                               (priceRange[0] !== 0 || priceRange[1] !== 50000000);
-    
-    if (hasPersistedFilters) {
-      // Apply persisted filters
-      handleApply();
-    }
-  }, []); // Only run on mount
-
-  // Save to localStorage whenever state changes
-  useEffect(() => {
-    saveToStorage(STORAGE_KEY_FILTERS, selectedFilters);
-  }, [selectedFilters]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEY_PRICE_RANGE, priceRange);
-  }, [priceRange]);
-
-  useEffect(() => {
-    saveToStorage(STORAGE_KEY_SEARCH, searchQuery);
-  }, [searchQuery]);
 
   // Calculate number of active filters
   const getSelectedFiltersCount = () => {
@@ -104,6 +167,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     setSelectedFilters({});
     setPriceRange([0, 50000000]);
     setSearchQuery('');
+    setHasInitialFiltersApplied(false);
     
     // Clear localStorage
     try {
@@ -130,16 +194,25 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     };
   }, []);
 
-  const handleFilterChange = (key: string, value: string) => {
+  const handleFilterChange = (key: string, value: string, section?: string) => {
     setSelectedFilters((prev) => {
       const currentValues = prev[key] || [];
       
       // Check if this is a price filter or a filter with multiSelect=false
-      const filterSection = Object.values(currentFilterData).find(section => 
-        section.some((filter: any) => filter.key === key)
-      );
+      let filter: any = null;
       
-      const filter = filterSection?.find((f: any) => f.key === key);
+      if (section) {
+        // If section is provided, look for filter in specific section
+        const filterSection = currentFilterData[section];
+        filter = filterSection?.find((f: any) => f.key === key);
+      } else {
+        // Fallback to original logic if section not provided
+        const filterSection = Object.values(currentFilterData).find(section => 
+          section.some((filter: any) => filter.key === key)
+        );
+        filter = filterSection?.find((f: any) => f.key === key);
+      }
+      
       const isMultiSelect = filter?.multiSelect !== false;
       
       // Special handling for price filters - convert to priceRange
@@ -214,6 +287,12 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   };
 
   const handleApply = () => {
+    // Check if we're in the middle of applying initialFilters
+    if (!hasInitialFiltersApplied && Object.keys(initialFilters).length > 0) {
+      console.log('Skipping manual apply - initialFilters are being processed');
+      return;
+    }
+    
     // Remove price filter since we're using priceRange instead
     const filtersToSend = { ...selectedFilters };
     delete filtersToSend.price;
@@ -231,6 +310,32 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   const toggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
   };
+
+  // Reset state when category changes (since we disabled localStorage)
+  useEffect(() => {
+    const prevType = prevTypeRef.current;
+    
+    if (prevType !== type) {
+      console.log(`Category changed from ${prevType} to ${type}, resetting filters`);
+      
+      // Reset current state only if no initialFilters
+      if (Object.keys(initialFilters).length === 0) {
+        setSelectedFilters({});
+        setPriceRange([0, 50000000]);
+        setSearchQuery('');
+        setHasInitialFiltersApplied(false);
+        
+        // Also trigger onApplyFilters to clear filters on backend
+        onApplyFilters({
+          priceRange: [0, 50000000],
+          searchQuery: '',
+        });
+      }
+      
+      // Update ref to current type
+      prevTypeRef.current = type;
+    }
+  }, [type, initialFilters, onApplyFilters]);
 
   if (isLoading) {
     return <FilterSkeleton />;
