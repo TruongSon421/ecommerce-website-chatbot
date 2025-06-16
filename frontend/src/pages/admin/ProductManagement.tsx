@@ -154,18 +154,12 @@ const categories = [
     },
     {
       id: 3,
-      name: 'Tablet',
-      imageSrc: '/images/categories/tablet.png',
-      link: '/admin/products/tablet'
-    },
-    {
-      id: 4,
       name: 'Audio',
       imageSrc: '/images/categories/audio.png',
       link: '/admin/products/audio'
     },
     {
-      id: 5,
+      id: 4,
       name: 'Phụ kiện',
       imageSrc: '/images/categories/Phukien.png',
       link: '/admin/products/phukien'

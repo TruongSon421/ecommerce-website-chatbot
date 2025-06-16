@@ -70,11 +70,11 @@ const useProductApi = () => {
       setProducts((prevProducts) => {
         // Filter out products with elasticsearchScore = 0.0 when searching
         let filteredContent = data.content;
-        if (hasSearchQuery) {
-          filteredContent = data.content.filter(group => 
-            group.elasticsearchScore === undefined || group.elasticsearchScore > 0.0
-          );
-        }
+        // if (hasSearchQuery) {
+        //   filteredContent = data.content.filter(group => 
+        //     group.elasticsearchScore === undefined || group.elasticsearchScore > 0.0
+        //   );
+        // }
         
         if (resetProducts) {
           // Sort logic based on search type

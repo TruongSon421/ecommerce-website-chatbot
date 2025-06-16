@@ -5,7 +5,7 @@ interface FilterSectionProps {
   section: string;
   currentFilterData: any;
   selectedFilters: { [key: string]: string[] };
-  onFilterChange: (key: string, value: string) => void;
+  onFilterChange: (key: string, value: string, section?: string) => void;
   onPriceRangeChange?: (newValue: number[]) => void;
   isNeeds?: boolean;
 }
@@ -30,7 +30,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
       onPriceRangeChange([300000, 45000000]);
     }
     
-    onFilterChange(key, value);
+    onFilterChange(key, value, section);
   };
 
   return (
@@ -51,7 +51,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   checked={(selectedFilters[filter.key] || []).includes(option.value)}
                   onChange={() => handleFilterChange(filter.key, option.value)}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  name={isPriceFilter || filter.multiSelect === false ? filter.key : undefined}
+                  name={isPriceFilter || filter.multiSelect === false ? `${section}_${filter.key}` : undefined}
                 />
                 <span className={`text-sm ${isNeeds ? 'truncate' : ''}`}>
                   {option.label}

@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService'; // Adjust path as needed
 import { useNotification } from './common/Notification'; // Adjust path as needed
 import ENV from '../config/env';
+
 interface Product {
   productId: string;
   variant: string;
@@ -252,6 +253,9 @@ const ChatbotWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(() => {
     return JSON.parse(localStorage.getItem('chatIsOpen') || 'false');
   });
+  const [isExpanded, setIsExpanded] = useState(() => {
+    return JSON.parse(localStorage.getItem('chatIsExpanded') || 'false');
+  });
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [showHelpButton, setShowHelpButton] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -263,6 +267,10 @@ const ChatbotWidget: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('chatIsOpen', JSON.stringify(isOpen));
   }, [isOpen]);
+
+  useEffect(() => {
+    localStorage.setItem('chatIsExpanded', JSON.stringify(isExpanded));
+  }, [isExpanded]);
 
   useEffect(() => {
     if (isOpen) return;
@@ -318,16 +326,25 @@ const ChatbotWidget: React.FC = () => {
       }
     }
     
+    // Brand mapping
+    if (filterParams.brand && typeof filterParams.brand === 'string' && filterParams.brand.trim()) {
+      filterMapping.brand = [filterParams.brand.trim()];
+      console.log('Set brand:', filterMapping.brand);
+    }
+    
     // Tags mapping - convert comma-separated string to array
-    if (filterParams.tags) {
-      if (typeof filterParams.tags === 'string' && filterParams.tags.trim()) {
-        // Split by comma and clean up each tag
-        filterMapping.tags = filterParams.tags
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0);
-        console.log('Set tags:', filterMapping.tags);
-      }
+    if (filterParams.tags && typeof filterParams.tags === 'string' && filterParams.tags.trim()) {
+      filterMapping.tags = filterParams.tags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+      console.log('Set tags:', filterMapping.tags);
+    }
+    
+    // Search query mapping
+    if (filterParams.search && typeof filterParams.search === 'string' && filterParams.search.trim()) {
+      filterMapping.searchQuery = filterParams.search.trim();
+      console.log('Set search query:', filterMapping.searchQuery);
     }
     
     // Add filters to URL if any exist
@@ -346,7 +363,6 @@ const ChatbotWidget: React.FC = () => {
   };
 
   const shouldShowViewAll = (filterParams: Record<string, any>): boolean => {
-    // Show "Xem toàn bộ" if we have meaningful filter_params
     if (!filterParams) return false;
     
     // Check for price filters
@@ -358,7 +374,17 @@ const ChatbotWidget: React.FC = () => {
                     typeof filterParams.tags === 'string' && 
                     filterParams.tags.trim().length > 0;
     
-    return hasPrice || hasTags;
+    // Check for brand
+    const hasBrand = filterParams.brand && 
+                    typeof filterParams.brand === 'string' && 
+                    filterParams.brand.trim().length > 0;
+    
+    // Check for search query
+    const hasSearch = filterParams.search && 
+                      typeof filterParams.search === 'string' && 
+                      filterParams.search.trim().length > 0;
+    
+    return hasPrice || hasTags || hasBrand || hasSearch;
   };
 
   // Updated handleSend function
@@ -383,7 +409,7 @@ const ChatbotWidget: React.FC = () => {
     try {
 
       const response = await axios.post<QueryResponse>(`${ENV.API_URL}/chatbot/query`, {
-        user_id: user?.id || (localStorage.getItem('guestCartId')),
+        user_id: user?.id || (localStorage.getItem('guestId')),
         session_id: chatSession.session_id,
         query: input,
         access_token: localStorage.getItem('accessToken') 
@@ -517,6 +543,19 @@ const ChatbotWidget: React.FC = () => {
     setIsBotTyping(false);
   };
 
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  // Determine chat dimensions based on expanded state
+  const chatDimensions = isExpanded 
+    ? 'w-[90vw] max-w-[800px] h-[80vh] max-h-[700px]' 
+    : 'w-[350px] h-[500px]';
+
+  const chatPosition = isExpanded
+    ? 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2'
+    : 'relative';
+
   return (
     <div className="fixed bottom-4 right-4 z-[10000] flex flex-col items-end">
       {!isOpen && (
@@ -548,163 +587,215 @@ const ChatbotWidget: React.FC = () => {
       )}
 
       {isOpen && (
-        <div className="w-[350px] h-[500px] bg-white rounded-lg shadow-xl flex flex-col border border-gray-200">
-          <div className="bg-blue-500 text-white p-3 rounded-t-lg flex justify-between items-center">
-            <h3 className="font-semibold">TechZone Assistant</h3>
-            <div className="flex gap-2">
-              <button
-                onClick={handleReset}
-                className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
-                title="Bắt đầu hội thoại mới"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+        <>
+          {/* Backdrop for expanded mode */}
+          {isExpanded && (
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 z-[10001]"
+              onClick={() => setIsExpanded(false)}
+            />
+          )}
+          
+          <div className={`${chatDimensions} ${chatPosition} bg-white rounded-lg shadow-xl flex flex-col border border-gray-200 z-[10002]`}>
+            <div className="bg-blue-500 text-white p-3 rounded-t-lg flex justify-between items-center">
+              <h3 className="font-semibold">TechZone Assistant</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={toggleExpand}
+                  className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
+                  title={isExpanded ? "Thu nhỏ" : "Phóng to"}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
-                title="Thu nhỏ"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  {isExpanded ? (
+                    // Minimize icon
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 9l6 6m0-6l-6 6"
+                      />
+                    </svg>
+                  ) : (
+                    // Expand icon
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                      />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
+                  title="Bắt đầu hội thoại mới"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsExpanded(false);
+                  }}
+                  className="text-white bg-blue-800 hover:bg-blue-300 p-1 rounded-full"
+                  title="Đóng"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="flex-1 p-3 overflow-y-auto">
-            {chatSession.messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`mb-3 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                {msg.sender === 'user' ? (
-                  <div className="max-w-[80%] p-2 rounded-lg bg-blue-500 text-white">{msg.text}</div>
-                ) : msg.products ? (
-                  <div className="w-full relative">
-                    {msg.text && (
-                      <div className="flex mb-2">
-                        <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                        <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">
-                          {msg.text}
-                        </div>
-                      </div>
-                    )}
-                    <div className="relative border rounded-lg p-2 bg-gray-50">
-                      {msg.viewAllUrl && (
-                        <div className="absolute top-2 right-2 z-10">
-                          <button
-                            onClick={() => {
-                              // Navigate to the filter page using the stored URL
-                              window.location.href = msg.viewAllUrl!;
-                            }}
-                            className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white rounded-lg shadow-sm hover:bg-blue-50 transition border border-gray-200"
-                          >
-                            Xem toàn bộ
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-3 w-3 ml-1"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
-                          </button>
+            <div className="flex-1 p-3 overflow-y-auto">
+              {chatSession.messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`mb-3 flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.sender === 'user' ? (
+                    <div className="max-w-[80%] p-2 rounded-lg bg-blue-500 text-white">{msg.text}</div>
+                  ) : msg.products ? (
+                    <div className="w-full relative">
+                      {msg.text && (
+                        <div className="flex mb-2">
+                          <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
+                          <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">
+                            {msg.text}
+                          </div>
                         </div>
                       )}
-                      <div className="overflow-y-auto max-h-60 pr-2">
-                        <ProductList grouplist={msg.products} />
+                      <div className="relative border rounded-lg p-2 bg-gray-50">
+                        {msg.viewAllUrl && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <button
+                              onClick={() => {
+                                // Navigate to the filter page using the stored URL
+                                window.location.href = msg.viewAllUrl!;
+                              }}
+                              className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-white rounded-lg shadow-sm hover:bg-blue-50 transition border border-gray-200"
+                            >
+                              Xem toàn bộ
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-3 w-3 ml-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        <div className={`overflow-y-auto pr-2 ${isExpanded ? 'max-h-96' : 'max-h-60'}`}>
+                          <ProductList grouplist={msg.products} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex">
-                    <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                    <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">{msg.text}</div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    <div className="flex">
+                      <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
+                      <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">{msg.text}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
 
-            {isBotTyping && (
-              <div className="flex justify-start mb-2">
-                <div className="flex items-center">
-                  <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2" />
-                  <div className="bg-gray-200 p-2 rounded-lg flex space-x-1">
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></span>
-                    <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></span>
+              {isBotTyping && (
+                <div className="flex justify-start mb-2">
+                  <div className="flex items-center">
+                    <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2" />
+                    <div className="bg-gray-200 p-2 rounded-lg flex space-x-1">
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></span>
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></span>
+                      <span className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {apiError && (
-              <div className="text-red-500 text-xs text-center mt-2 p-1 bg-red-50 rounded">
-                {apiError}
-              </div>
-            )}
-          </div>
-
-          <div className="p-3 border-t border-gray-200">
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-                placeholder="Nhập tin nhắn..."
-                disabled={isBotTyping}
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isBotTyping}
-                className="absolute right-2 text-gray-400 hover:text-blue-500 disabled:hover:text-gray-400"
-              >
-                <svg
-                  fill="none"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  width="20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12.8147 12.1974L5.28344 13.4526C5.10705 13.482 4.95979 13.6034 4.89723 13.7709L2.29933 20.7283C2.05066 21.3678 2.72008 21.9778 3.33375 21.671L21.3337 12.671C21.8865 12.3946 21.8865 11.6057 21.3337 11.3293L3.33375 2.32933C2.72008 2.0225 2.05066 2.63254 2.29933 3.27199L4.89723 10.2294C4.95979 10.3969 5.10705 10.5183 5.28344 10.5477L12.8147 11.8029C12.9236 11.821 12.9972 11.9241 12.9791 12.033C12.965 12.1173 12.899 12.1834 12.8147 12.1974Z"
-                    fill="currentColor"
-                  />
-                </svg>
-              </button>
+              {apiError && (
+                <div className="text-red-500 text-xs text-center mt-2 p-1 bg-red-50 rounded">
+                  {apiError}
+                </div>
+              )}
             </div>
-            <p className="text-[10px] text-gray-500 text-center mt-1">
-              Thông tin chỉ mang tính tham khảo
-            </p>
+
+            <div className="p-3 border-t border-gray-200">
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                  className="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+                  placeholder="Nhập tin nhắn..."
+                  disabled={isBotTyping}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isBotTyping}
+                  className="absolute right-2 text-gray-400 hover:text-blue-500 disabled:hover:text-gray-400"
+                >
+                  <svg
+                    fill="none"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    width="20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12.8147 12.1974L5.28344 13.4526C5.10705 13.482 4.95979 13.6034 4.89723 13.7709L2.29933 20.7283C2.05066 21.3678 2.72008 21.9778 3.33375 21.671L21.3337 12.671C21.8865 12.3946 21.8865 11.6057 21.3337 11.3293L3.33375 2.32933C2.72008 2.0225 2.05066 2.63254 2.29933 3.27199L4.89723 10.2294C4.95979 10.3969 5.10705 10.5183 5.28344 10.5477L12.8147 11.8029C12.9236 11.821 12.9972 11.9241 12.9791 12.033C12.965 12.1173 12.899 12.1834 12.8147 12.1974Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500 text-center mt-1">
+                Thông tin chỉ mang tính tham khảo
+              </p>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

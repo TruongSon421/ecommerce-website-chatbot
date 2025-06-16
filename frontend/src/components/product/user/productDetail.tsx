@@ -36,7 +36,6 @@ type ExtendedProductProperties = {
 const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> = ({ product: initialProduct }) => {
   const navigate = useNavigate();
   const { productId: urlProductId } = useParams<{ productId: string }>();
-  const { isAuthenticated, user } = useAuth();
   const { showNotification } = useNotification();
   const [product, setProduct] = useState<Product & ExtendedProductProperties>(initialProduct);
   const [groupData, setGroupData] = useState<GroupVariantResponse | null>(null);
@@ -802,6 +801,7 @@ interface ProductTabsProps {
 
 const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, product, selectedColor }) => {
   const productWithSpecs = product as Product & ExtendedProductProperties;
+  
   const tabs = [
     { id: 'overview', name: 'Tổng quan', count: null },
     { id: 'specifications', name: 'Thông số kỹ thuật', count: productWithSpecs.specifications?.length || 0 },
@@ -871,10 +871,11 @@ const ProductTabs: React.FC<ProductTabsProps> = ({ activeTab, onTabChange, produ
             <ProductSpecifications 
               specifications={
                 (productWithSpecs.specifications || []).map(spec => ({
-                  name: spec.name || spec.ori_name || '',
+                  name: spec.name || '',
                   value: spec.value
                 }))
-              } 
+              }
+              productType={product.type}
             />
           </div>
         )}

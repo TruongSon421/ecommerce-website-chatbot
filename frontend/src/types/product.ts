@@ -95,6 +95,57 @@ export interface LaptopConfig {
   os?: string;
 }
 
+export interface AudioConfig {
+  // Pin và sạc
+  earbudsBatteryLife?: string; // thời lượng pin tai nghe
+  chargingCaseBatteryLife?: string; // thời lượng pin hộp sạc
+  chargingPort?: string; // cổng sạc
+  chargingTime?: string; // thời gian sạc
+  fastCharging?: string; // sạc nhanh
+
+  // Công nghệ âm thanh
+  audioTechnology?: string[]; // công nghệ âm thanh
+  driverSize?: string; // kích thước driver
+  frequencyResponse?: string; // đáp ứng tần số
+  impedance?: string; // trở kháng
+  sensitivity?: string; // độ nhạy
+  soundProfile?: string[]; // profile âm thanh
+
+  // Kết nối và tương thích
+  bluetoothVersion?: string; // phiên bản bluetooth
+  codecSupport?: string[]; // codec hỗ trợ
+  wirelessRange?: string; // phạm vi kết nối
+  multiDeviceConnection?: string; // kết nối đa thiết bị
+  compatibility?: string[]; // tương thích
+  connectivityApp?: string; // ứng dụng kết nối
+
+  // Tính năng điều khiển
+  controls?: string[]; // điều khiển
+  touchControls?: string[]; // điều khiển cảm ứng
+  voiceAssistant?: string[]; // trợ lý ảo
+  customization?: string[]; // tùy chỉnh
+
+  // Tính năng đặc biệt
+  noiseCancellation?: string[]; // chống ồn
+  transparency?: string; // chế độ trong suốt
+  waterResistance?: string; // kháng nước
+  dustResistance?: string; // kháng bụi
+  microphone?: string[]; // microphone
+  features?: string[]; // tính năng khác
+
+  // Thiết kế và chất liệu
+  design?: string; // thiết kế
+  materials?: string[]; // chất liệu
+  weight?: string; // khối lượng
+  dimensions?: string; // kích thước
+  colors?: string[]; // màu sắc có sẵn
+
+  // Xuất xứ và thương hiệu
+  brandOrigin?: string; // thương hiệu của
+  manufacturing?: string; // sản xuất tại
+  warranty?: string; // bảo hành
+}
+
 export interface ProductReview {
     title: string;
     content: string;
@@ -108,7 +159,7 @@ export interface ProductRequest {
     colors: string[];           // Bắt buộc, ít nhất 1 màu
     variant: string;            // Bắt buộc
     type: string;               // Bắt buộc (lấy từ groupData.type)
-    config?: PhoneConfig | LaptopConfig; // Không bắt buộc
+    config?: PhoneConfig | LaptopConfig | AudioConfig; // Không bắt buộc
     promotions?: string[];      // Không bắt buộc
     productReviews?: ProductReview[]; // Không bắt buộc
 }

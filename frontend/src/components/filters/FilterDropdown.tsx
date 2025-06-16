@@ -264,7 +264,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   }, [hasPriceRangeSelected]);
 
   return (
-    <div className="absolute z-10 mt-2 w-[600px] max-w-[95vw] bg-white border border-gray-300 rounded-md shadow-lg p-6">
+    <div className="absolute z-10 mt-2 w-[600px] max-w-[95vw] max-h-[80vh] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg p-6">
       {/* Search Query Input */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -458,6 +458,15 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       <FilterSection section="refreshRate" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="cpu" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="storage" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="subcategories" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="connectivity" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneTechnology" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="capacity" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="backupChargerType" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="backupChargerBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="backupChargerBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
 
       <button
         onClick={onApply}

@@ -43,6 +43,22 @@ export const PRICE_RANGES = {
     { min: 15000000, max: 20000000, label: 'Từ 15 - 20 triệu' },
     { min: 20000000, max: 30000000, label: 'Từ 20 - 30 triệu' },
     { min: 30000000, max: null, label: 'Trên 30 triệu' }
+  ],
+  audio: [
+    { min: 0, max: 500000, label: 'Dưới 500 nghìn' },
+    { min: 500000, max: 1000000, label: 'Từ 500k - 1 triệu' },
+    { min: 1000000, max: 2000000, label: 'Từ 1 - 2 triệu' },
+    { min: 2000000, max: 5000000, label: 'Từ 2 - 5 triệu' },
+    { min: 5000000, max: 10000000, label: 'Từ 5 - 10 triệu' },
+    { min: 10000000, max: null, label: 'Trên 10 triệu' }
+  ],
+  phukien: [
+    { min: 0, max: 200000, label: 'Dưới 200 nghìn' },
+    { min: 200000, max: 500000, label: 'Từ 200k - 500k' },
+    { min: 500000, max: 1000000, label: 'Từ 500k - 1 triệu' },
+    { min: 1000000, max: 2000000, label: 'Từ 1 - 2 triệu' },
+    { min: 2000000, max: 5000000, label: 'Từ 2 - 5 triệu' },
+    { min: 5000000, max: null, label: 'Trên 5 triệu' }
   ]
 } as const;
 
@@ -192,6 +208,163 @@ export const filterData: AllFilterData = {
           { label: '256GB SSD', value: '256_ssd' },
           { label: '512GB SSD', value: '512_ssd' },
           { label: '1TB SSD', value: '1tb_ssd' }
+        ]
+      }
+    ]
+  },
+  audio: {
+    brands: [
+      {
+        key: 'brand',
+        label: 'Hãng',
+        isSearchable: true,
+        multiSelect: true,
+        options: [
+          { label: 'Sony', value: 'Sony' },
+          { label: 'JBL', value: 'JBL' },
+          { label: 'Bose', value: 'Bose' },
+          { label: 'Apple', value: 'Apple' },
+          { label: 'Samsung', value: 'Samsung' },
+          { label: 'Sennheiser', value: 'Sennheiser' },
+          { label: 'Audio-Technica', value: 'Audio-Technica' },
+          { label: 'Beats', value: 'Beats' },
+          { label: 'Xiaomi', value: 'Xiaomi' },
+          { label: 'Anker', value: 'Anker' },
+          { label: 'Marshall', value: 'Marshall' },
+          { label: 'Edifier', value: 'Edifier' }
+        ]
+      }
+    ],
+    priceRanges: [
+      {
+        key: 'price',
+        label: 'Giá',
+        multiSelect: false,
+        options: PRICE_RANGES.audio.map(range => ({
+          label: range.label,
+          value: `${range.min}-${range.max || ''}`
+        }))
+      }
+    ],
+    connectivity: [
+      {
+        key: 'tags',
+        label: 'Kết nối',
+        multiSelect: false,
+        options: [
+          { label: 'Bluetooth 5.0+', value: 'bluetooth_5' },
+          { label: 'USB-C', value: 'usb_c' },
+          { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
+          { label: 'Wireless', value: 'wireless' },
+          { label: 'Lightning', value: 'lightning' }
+        ]
+      }
+    ],
+    earphoneTechnology: [
+      {
+        key: 'tags',
+        label: 'Công nghệ dẫn truyền',
+        multiSelect: false,
+        options: [
+          { label: 'Dẫn truyền qua xương', value: 'earHeadphone_tech_boneConduction' },
+          { label: 'Dẫn truyền qua khí', value: 'earHeadphone_tech_airConduction' }
+        ]
+      }
+    ],
+    earphoneBattery: [
+      {
+        key: 'tags',
+        label: 'Thời lượng pin tai nghe',
+        multiSelect: false,
+        options: [
+          { label: 'Dưới 4 tiếng', value: 'earHeadphone_battery_under4' },
+          { label: 'Từ 4 đến 6 tiếng', value: 'earHeadphone_battery_4to6' },
+          { label: 'Từ 6 đến 8 tiếng', value: 'earHeadphone_battery_6to8' },
+          { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_above8' }
+        ]
+      }
+    ],
+    earphoneBenefits: [
+      {
+        key: 'tags',
+        label: 'Tiện ích tai nghe',
+        multiSelect: true,
+        options: [
+          { label: 'Sạc không dây', value: 'earHeadphone_benefit_wirelessCharge' },
+          { label: 'Chống nước', value: 'earHeadphone_benefit_waterProof' },
+          { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
+          { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
+          { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' }
+        ]
+      }
+    ]
+  },
+  phukien: {
+    brands: [
+      {
+        key: 'brand',
+        label: 'Hãng',
+        isSearchable: true,
+        multiSelect: true,
+        options: [
+          { label: 'Anker', value: 'Anker' },
+          { label: 'Samsung', value: 'Samsung' },
+          { label: 'Xiaomi', value: 'Xiaomi' },
+          { label: 'Baseus', value: 'Baseus' },
+          { label: 'UGREEN', value: 'UGREEN' },
+          { label: 'Aukey', value: 'Aukey' },
+          { label: 'RAVPower', value: 'RAVPower' },
+          { label: 'Romoss', value: 'Romoss' },
+          { label: 'Pisen', value: 'Pisen' },
+          { label: 'Remax', value: 'Remax' },
+          { label: 'Belkin', value: 'Belkin' },
+          { label: 'Energizer', value: 'Energizer' }
+        ]
+      }
+    ],
+    priceRanges: [
+      {
+        key: 'price',
+        label: 'Giá',
+        multiSelect: false,
+        options: PRICE_RANGES.phukien.map(range => ({
+          label: range.label,
+          value: `${range.min}-${range.max || ''}`
+        }))
+      }
+    ],
+    backupChargerType: [
+      {
+        key: 'tags',
+        label: 'Loại sạc dự phòng',
+        multiSelect: false,
+        options: [
+          { label: 'Mỏng nhẹ', value: 'backupCharger_type_smallLight' },
+          { label: 'Cho laptop', value: 'backupCharger_tech_forLaptop' }
+        ]
+      }
+    ],
+    backupChargerBattery: [
+      {
+        key: 'tags',
+        label: 'Dung lượng pin sạc dự phòng',
+        multiSelect: false,
+        options: [
+          { label: '10.000 mAh', value: 'backupCharger_battery_10k' },
+          { label: '20.000 mAh', value: 'backupCharger_battery_20k' },
+          { label: 'Trên 20.000 mAh', value: 'backupCharger_battery_above20k' }
+        ]
+      }
+    ],
+    backupChargerBenefits: [
+      {
+        key: 'tags',
+        label: 'Tiện ích sạc dự phòng',
+        multiSelect: true,
+        options: [
+          { label: 'Sạc không dây', value: 'backupCharger_benefit_wirelessCharge' },
+          { label: 'Sạc nhanh', value: 'backupCharger_benefit_fastCharge' },
+          { label: 'Magsafe/Magnetic', value: 'backupCharger_benefit_magesafe' }
         ]
       }
     ]
