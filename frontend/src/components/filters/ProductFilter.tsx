@@ -9,6 +9,7 @@ interface ProductFilterProps {
   type: string;
   onApplyFilters: (filters: { [key: string]: string[] | number[] | string }) => void;
   onSortChange: (sortOrder: string) => void;
+  onSortReset?: () => void; // Callback để reset sort khi xóa filter
   sortByPrice: string;
   isLoading?: boolean;
   initialFilters?: { [key: string]: string[] | number[] | string }; // Thêm prop này
@@ -18,6 +19,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   type,
   onApplyFilters,
   onSortChange,
+  onSortReset,
   sortByPrice,
   isLoading = false,
   initialFilters = {}, // Default empty object
@@ -52,6 +54,28 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     return {};
   });
 
+  // Add separate state for applied filters - only these will show as tags
+  const [appliedFilters, setAppliedFilters] = useState<{ [key: string]: string[] }>(() => {
+    // Initialize with initialFilters if available
+    if (Object.keys(initialFilters).length > 0) {
+      const processedFilters: { [key: string]: string[] } = {};
+      
+      // Handle brand
+      if (initialFilters.brand && Array.isArray(initialFilters.brand)) {
+        processedFilters.brand = initialFilters.brand as string[];
+      }
+      
+      // Handle tags
+      if (initialFilters.tags && Array.isArray(initialFilters.tags)) {
+        processedFilters.tags = initialFilters.tags as string[];
+      }
+      
+      return processedFilters;
+    }
+    
+    return {};
+  });
+
   const [priceRange, setPriceRange] = useState<number[]>(() => {
     // Check if we have initialFilters with priceRange
     if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
@@ -63,6 +87,14 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     return [0, 50000000];
   });
 
+  // Add separate state for applied price range
+  const [appliedPriceRange, setAppliedPriceRange] = useState<number[]>(() => {
+    if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
+      return initialFilters.priceRange as number[];
+    }
+    return [0, 50000000];
+  });
+
   const [searchQuery, setSearchQuery] = useState<string>(() => {
     // Check if we have initialFilters with searchQuery
     if (initialFilters.searchQuery && typeof initialFilters.searchQuery === 'string') {
@@ -71,6 +103,14 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     }
     
     // Don't load from localStorage to prevent filter persistence across categories
+    return '';
+  });
+
+  // Add separate state for applied search query
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState<string>(() => {
+    if (initialFilters.searchQuery && typeof initialFilters.searchQuery === 'string') {
+      return initialFilters.searchQuery;
+    }
     return '';
   });
   
@@ -125,15 +165,18 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       
       // Update all states first
       setSelectedFilters(processedFilters);
+      setAppliedFilters(processedFilters); // Update applied filters too
       
       // Update priceRange if provided
       if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
         setPriceRange(initialFilters.priceRange as number[]);
+        setAppliedPriceRange(initialFilters.priceRange as number[]);
       }
       
       // Update searchQuery if provided
       if (initialFilters.searchQuery && typeof initialFilters.searchQuery === 'string') {
         setSearchQuery(initialFilters.searchQuery);
+        setAppliedSearchQuery(initialFilters.searchQuery);
       }
       
       // Mark as applied and trigger immediate auto-apply
@@ -152,22 +195,40 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   // Auto-apply effect when shouldAutoApply flag is set
   useEffect(() => {
     if (shouldAutoApply) {
-      handleApply();
+      // When auto-applying from filter removal, we need to send the current applied filters
+      // that were already updated by handleRemoveFilter
+      const filtersToSend = { ...appliedFilters };
+      delete filtersToSend.price;
+      
+      onApplyFilters({
+        ...filtersToSend,
+        priceRange: appliedPriceRange,
+        searchQuery: appliedSearchQuery,
+      });
+      
       setShouldAutoApply(false);
     }
-  }, [selectedFilters, searchQuery, shouldAutoApply]);
+  }, [appliedFilters, appliedPriceRange, appliedSearchQuery, shouldAutoApply, onApplyFilters]);
 
-  // Calculate number of active filters
+  // Calculate number of active filters based on applied filters
   const getSelectedFiltersCount = () => {
-    return Object.values(selectedFilters).reduce((acc, curr) => acc + curr.length, 0);
+    return Object.values(appliedFilters).reduce((acc, curr) => acc + curr.length, 0);
   };
 
   // Reset all filters
   const handleResetFilters = () => {
     setSelectedFilters({});
+    setAppliedFilters({}); // Clear applied filters
     setPriceRange([0, 50000000]);
+    setAppliedPriceRange([0, 50000000]); // Clear applied price range
     setSearchQuery('');
+    setAppliedSearchQuery(''); // Clear applied search query
     setHasInitialFiltersApplied(false);
+    
+    // Reset sort when resetting all filters
+    if (onSortReset) {
+      onSortReset();
+    }
     
     // Clear localStorage
     try {
@@ -268,16 +329,68 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     });
   };
 
-  // Handle removing filter and auto-apply
+  // Handle removing filter and auto-apply - work with applied filters
   const handleRemoveFilter = (key: string, value: string) => {
-    handleFilterChange(key, value);
+    // Remove from applied filters directly
+    setAppliedFilters((prev) => {
+      const currentValues = prev[key] || [];
+      const newValues = currentValues.filter((v) => v !== value);
+      
+      const newAppliedFilters = {
+        ...prev,
+        [key]: newValues.length > 0 ? newValues : []
+      };
+      
+      // If no values left for this key, remove the key entirely
+      if (newValues.length === 0) {
+        delete newAppliedFilters[key];
+      }
+      
+      return newAppliedFilters;
+    });
+    
+    // Also remove from selected filters to keep them in sync
+    setSelectedFilters((prev) => {
+      const currentValues = prev[key] || [];
+      const newValues = currentValues.filter((v) => v !== value);
+      
+      const newSelectedFilters = {
+        ...prev,
+        [key]: newValues.length > 0 ? newValues : []
+      };
+      
+      if (newValues.length === 0) {
+        delete newSelectedFilters[key];
+      }
+      
+      return newSelectedFilters;
+    });
+    
+    // Handle price range reset if it's a price filter
+    if (key === 'price') {
+      setPriceRange([0, 50000000]);
+      setAppliedPriceRange([0, 50000000]);
+    }
+    
+    // Reset sort when removing filter
+    if (onSortReset) {
+      onSortReset();
+    }
+    
     // Trigger auto-apply using flag instead of setTimeout
     setShouldAutoApply(true);
   };
 
-  // Handle removing search query and auto-apply
+  // Handle removing search query and auto-apply - work with applied search
   const handleRemoveSearchQuery = () => {
     setSearchQuery('');
+    setAppliedSearchQuery('');
+    
+    // Reset sort when removing search query
+    if (onSortReset) {
+      onSortReset();
+    }
+    
     // Trigger auto-apply using flag instead of setTimeout
     setShouldAutoApply(true);
   };
@@ -292,6 +405,11 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       console.log('Skipping manual apply - initialFilters are being processed');
       return;
     }
+    
+    // Update applied states to match current selected states
+    setAppliedFilters(selectedFilters);
+    setAppliedPriceRange(priceRange);
+    setAppliedSearchQuery(searchQuery);
     
     // Remove price filter since we're using priceRange instead
     const filtersToSend = { ...selectedFilters };
@@ -321,8 +439,11 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       // Reset current state only if no initialFilters
       if (Object.keys(initialFilters).length === 0) {
         setSelectedFilters({});
+        setAppliedFilters({}); // Reset applied filters
         setPriceRange([0, 50000000]);
+        setAppliedPriceRange([0, 50000000]); // Reset applied price range
         setSearchQuery('');
+        setAppliedSearchQuery(''); // Reset applied search query
         setHasInitialFiltersApplied(false);
         
         // Also trigger onApplyFilters to clear filters on backend
@@ -352,9 +473,9 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
             disabled={isLoading}
           >
             <span>Lọc</span>
-            {(getSelectedFiltersCount() > 0 || searchQuery.trim()) && (
+            {(getSelectedFiltersCount() > 0 || appliedSearchQuery.trim()) && (
               <span className="bg-white text-blue-500 px-2 py-0.5 rounded-full text-xs">
-                {getSelectedFiltersCount() + (searchQuery.trim() ? 1 : 0)}
+                {getSelectedFiltersCount() + (appliedSearchQuery.trim() ? 1 : 0)}
               </span>
             )}
             <svg
@@ -383,7 +504,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       </div>
 
       {/* Reset Button and Active Filters */}
-      {(getSelectedFiltersCount() > 0 || searchQuery.trim()) && (
+      {(getSelectedFiltersCount() > 0 || appliedSearchQuery.trim()) && (
         <div className="mb-4">
           <button
             onClick={handleResetFilters}
@@ -394,21 +515,21 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
         </div>
       )}
 
-      {/* Active filters display */}
+      {/* Active filters display - use applied filters */}
       {getSelectedFiltersCount() > 0 && (
         <ActiveFilters
-          selectedFilters={selectedFilters}
+          selectedFilters={appliedFilters}
           currentFilterData={currentFilterData}
           onRemoveFilter={handleRemoveFilter}
         />
       )}
 
-      {/* Show search query as active filter if present */}
-      {searchQuery.trim() && (
+      {/* Show search query as active filter if present - use applied search query */}
+      {appliedSearchQuery.trim() && (
         <div className="mb-4">
           <div className="flex flex-wrap gap-2">
             <span className="inline-flex items-center bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm">
-              Tìm kiếm: "{searchQuery}"
+              Tìm kiếm: "{appliedSearchQuery}"
               <button
                 onClick={handleRemoveSearchQuery}
                 className="ml-1 text-green-600 hover:text-green-800"

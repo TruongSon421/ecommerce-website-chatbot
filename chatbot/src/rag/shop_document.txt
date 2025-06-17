@@ -45,6 +45,7 @@
 - Samsung (Galaxy S series, Note series, A series)
 - Xiaomi (Redmi, Mi series)
 - Oppo, Vivo, Realme
+- Honor, Nokia, Masstel, Mobell, Itel
 
 ### Laptop & Máy tính
 - MacBook (Air, Pro)
@@ -55,13 +56,8 @@
 - MSI Gaming Laptop
 
 ### Phụ kiện công nghệ
-- Tai nghe (AirPods, Sony WH-1000XM5, Bose)
-- Loa bluetooth (JBL, Sony, Harman Kardon)
+- Tai nghe (có dây, không dây, chụp tai)
 - Sạc dự phòng (Anker, Xiaomi, Samsung)
-- Cáp sạc (Lightning, USB-C, Micro USB)
-- Ốp lưng, miếng dán màn hình
-- Chuột, bàn phím không dây
-- Webcam, microphone
 
 ## 8. Chính sách giao hàng
 

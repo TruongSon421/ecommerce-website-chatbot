@@ -33,18 +33,14 @@ function PageCategory() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filters, setFilters] = useState<{ [key: string]: string[] | number[] | string }>({});
   
-  // Storage key for sortByPrice persistence
+  // Storage key for sortByPrice persistence per category
   const SORT_STORAGE_KEY = `sortByPrice_${type}`;
   
-  // Initialize sortByPrice with localStorage backup
-  const [sortByPrice, setSortByPrice] = useState<string>(() => {
-    try {
-      return localStorage.getItem(SORT_STORAGE_KEY) || '';
-    } catch (error) {
-      console.warn('Failed to load sortByPrice from localStorage:', error);
-      return '';
-    }
-  });
+  // Initialize sortByPrice without localStorage - always start fresh
+  const [sortByPrice, setSortByPrice] = useState<string>('');
+  
+  // Track previous type to detect category changes
+  const [prevType, setPrevType] = useState<string>(type);
   
   const { isAdmin } = useAuth();
   
@@ -54,18 +50,42 @@ function PageCategory() {
   // Get page from URL params or default to 0
   const page = Number(searchParams.get('page')) || 0;
   
-  // Save sortByPrice to localStorage whenever it changes
+  // Reset sort when category type changes
   useEffect(() => {
-    try {
-      if (sortByPrice) {
-        localStorage.setItem(SORT_STORAGE_KEY, sortByPrice);
-      } else {
-        localStorage.removeItem(SORT_STORAGE_KEY);
-      }
-    } catch (error) {
-      console.warn('Failed to save sortByPrice to localStorage:', error);
+    if (prevType !== type) {
+      console.log(`Category changed from ${prevType} to ${type}, resetting sort order`);
+      
+      // Reset sort order (will already be empty due to fresh initialization)
+      setSortByPrice('');
+      
+      // Update URL to remove sort parameter
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('sort');
+        newParams.set('page', '0'); // Reset to first page
+        return newParams;
+      });
+      
+      // Update previous type tracker
+      setPrevType(type);
     }
-  }, [sortByPrice, SORT_STORAGE_KEY]);
+  }, [type, prevType]);
+
+  // Don't save sortByPrice to localStorage - we want it to reset when leaving page
+  // Remove the localStorage save effect to ensure sort resets when navigating away
+  
+  // Cleanup effect - clear sort when leaving the category page
+  useEffect(() => {
+    return () => {
+      // Cleanup function runs when component unmounts (when leaving the page)
+      console.log(`Leaving category ${type}, clearing sort order`);
+      try {
+        localStorage.removeItem(SORT_STORAGE_KEY);
+      } catch (error) {
+        console.warn('Failed to clear sortByPrice from localStorage on cleanup:', error);
+      }
+    };
+  }, [type, SORT_STORAGE_KEY]);
 
   // Custom hook for product API operations
   const { 
@@ -223,20 +243,9 @@ function PageCategory() {
       }));
     }
     
-    // Restore sort from URL (prioritize URL over localStorage)
-    if (sortFromUrl && sortFromUrl !== '' && sortFromUrl !== 'undefined') {
-      setSortByPrice(sortFromUrl);
-    } else {
-      // Fallback to localStorage if URL doesn't have sort
-      try {
-        const storedSort = localStorage.getItem(SORT_STORAGE_KEY);
-        if (storedSort && storedSort !== '') {
-          setSortByPrice(storedSort);
-        }
-      } catch (error) {
-        console.warn('Failed to restore sortByPrice from localStorage:', error);
-      }
-    }
+    // Don't restore sort from URL or localStorage - always start fresh
+    // This ensures sort resets when user navigates back to category page
+    console.log('Starting fresh - no sort restoration for new category visit');
     
     // Note: No need to auto-apply subtype filter since subtype is now used directly as type in API
 
@@ -249,6 +258,19 @@ function PageCategory() {
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', nextPage.toString());
+      
+      // Preserve existing filters and sort parameters
+      const currentFilters = prev.get('filters');
+      const currentSort = prev.get('sort');
+      
+      if (currentFilters && currentFilters !== 'undefined') {
+        newParams.set('filters', currentFilters);
+      }
+      
+      if (currentSort && currentSort !== '' && currentSort !== 'undefined') {
+        newParams.set('sort', currentSort);
+      }
+      
       return newParams;
     });
   };
@@ -272,9 +294,16 @@ function PageCategory() {
     setFilters(cleanedFilters);
     
     // Reset to page 0 when filters change
+    // Keep sort order when applying filters (user choice)
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', '0');
+      
+      // Keep the sort parameter if it exists (don't reset when applying filters)
+      const currentSort = prev.get('sort');
+      if (currentSort && currentSort !== '' && currentSort !== 'undefined') {
+        newParams.set('sort', currentSort);
+      }
       
       // If empty filters, remove the filters param from URL
       if (Object.keys(cleanedFilters).length === 0) {
@@ -299,22 +328,29 @@ function PageCategory() {
     });
   };
 
-  const handleClearFilters = () => {
-    setFilters({});
+  const handleSortReset = () => {
+    console.log('Resetting sort order due to filter removal');
     setSortByPrice('');
     
-    // Clear localStorage
-    try {
-      localStorage.removeItem(SORT_STORAGE_KEY);
-    } catch (error) {
-      console.warn('Failed to clear sortByPrice from localStorage:', error);
-    }
+    // Update URL to remove sort parameter
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      newParams.delete('sort');
+      return newParams;
+    });
+  };
+
+  const handleClearFilters = () => {
+    setFilters({});
+    // Reset sort order when clearing filters in same category
+    setSortByPrice('');
     
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
       newParams.set('page', '0');
       newParams.delete('filters');
-      newParams.delete('sort');
+      newParams.delete('sort'); // Remove sort when clearing filters
+      
       return newParams;
     });
   };
@@ -386,6 +422,7 @@ function PageCategory() {
               type={type}
               onApplyFilters={handleApplyFilters}
               onSortChange={handleSortChange}
+              onSortReset={handleSortReset}
               sortByPrice={sortByPrice}
               isLoading={loading}
               initialFilters={isStateRestored && Object.keys(filters).length > 0 ? filters : {}} // Chỉ truyền khi có filters và state đã restored

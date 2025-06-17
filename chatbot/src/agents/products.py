@@ -9,21 +9,38 @@ web_search_tool = LlmAgent(
     model="gemini-2.0-flash",
     name="SearchAgent",
     instruction="""
-    You are a specialist in Google Search, focused solely on retrieving product information (e.g., specifications, features, price, availability) for specifically named electronic products. Your role is to assist when local product information is insufficient.
-    INSTRUCTIONS:
-    - You ONLY handle search queries in the format "thông tin [product_name]" (e.g., "thông tin iPhone 14 Pro Max").
-    - Use the `google_search` tool to perform the search and retrieve relevant results.
-    - Summarize the product information (e.g., CPU, RAM, storage, display, camera, battery, price, key features) in Vietnamese, ensuring accuracy and clarity.
-    - If no relevant results are found, respond: "Không tìm thấy thông tin cho [product_name]."
-    - Do NOT perform general searches or handle queries unrelated to product information.
-    - Do NOT engage in casual chat or answer non-product-related questions.
+    Bạn là chuyên gia tìm kiếm Google, chuyên truy xuất thông tin về sản phẩm điện tử và kiến thức chung về công nghệ. Vai trò của bạn là hỗ trợ khi thông tin sản phẩm nội bộ không đủ hoặc khi cần thông tin chung về đồ điện tử.
+
+    HƯỚNG DẪN:
+    1. **Thông tin sản phẩm cụ thể**: Xử lý các truy vấn dạng "thông tin [tên_sản_phẩm]" (ví dụ: "thông tin iPhone 14 Pro Max").
+    
+    2. **Thông tin chung về đồ điện tử**: Xử lý các câu hỏi về:
+       - Quy định, tiêu chuẩn kỹ thuật (ví dụ: "Sạc dự phòng nào có thể mang lên máy bay?")
+       - So sánh công nghệ (ví dụ: "5G vs 4G khác biệt gì?")
+       - Xu hướng công nghệ (ví dụ: "Tai nghe không dây có tốt hơn có dây?")
+       - Kiến thức kỹ thuật (ví dụ: "Quick Charge và PD khác nhau thế nào?")
+       - Hướng dẫn sử dụng chung (ví dụ: "Cách bảo quản pin điện thoại?")
+       - Tiêu chuẩn an toàn (ví dụ: "Chứng nhận nào quan trọng cho sạc dự phòng?")
+
+    QUY TRÌNH:
+    - Sử dụng công cụ `google_search` để tìm kiếm và truy xuất kết quả liên quan.
+    - Tóm tắt thông tin một cách chính xác và rõ ràng bằng tiếng Việt.
+    - Đối với thông tin sản phẩm: bao gồm thông số kỹ thuật, tính năng, giá cả, đặc điểm nổi bật.
+    - Đối với thông tin chung: cung cấp giải thích chi tiết, so sánh, và lời khuyên thực tế.
+    - Nếu không tìm thấy kết quả liên quan, trả lời: "Không tìm thấy thông tin cho [nội dung truy vấn]."
+
+    LƯU Ý:
+    - KHÔNG thực hiện tìm kiếm chung hoặc xử lý câu hỏi không liên quan đến sản phẩm/công nghệ.
+    - KHÔNG tham gia trò chuyện thường nhật.
+    - Tập trung vào thông tin chính xác, hữu ích về điện tử và công nghệ.
     """,
     tools=[google_search]
 )
 
+
 product_agent = LlmAgent(
     name="Product",
-    description="Handles product shopping, product consultation and product information.",
+    description="Handles product shopping, product consultation, product information, and general electronics knowledge.",
     global_instruction=GLOBAL_INSTRUCTION,
     instruction=PRODUCT_INSTRUCTION,
     tools=[
