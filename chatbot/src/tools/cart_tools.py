@@ -222,7 +222,7 @@ def access_cart_information(tool_context: ToolContext) -> dict:
     print('state...', tool_context.state.to_dict())
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get('user_id',None)
-    if accessToken!='undefined':
+    if accessToken!='undefined' and accessToken != None:
         url = "http://api-gateway:8070/api/carts"
         headers = {
             "Authorization": f"Bearer {accessToken}",
@@ -273,7 +273,7 @@ def add_item_to_cart(product_id: str, tool_context: ToolContext, color: Optional
     print('state...', tool_context.state.to_dict())
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get('user_id',None)
-    if accessToken!='undefined':
+    if accessToken!='undefined' and accessToken!=None:
         url = "http://api-gateway:8070/api/carts/items"
         headers = {
             "Authorization": f"Bearer {accessToken}",
@@ -351,7 +351,7 @@ def update_item_in_cart(product_id: str, quantity: int, tool_context: ToolContex
     print('state...', tool_context.state.to_dict())
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get("user_id", None)
-    if accessToken!='undefined':
+    if accessToken!='undefined' and accessToken!=None:
         url = f"http://api-gateway:8070/api/carts/items/{product_id}"
         headers = {
             "Authorization": f"Bearer {accessToken}",
@@ -424,7 +424,7 @@ def remove_item_from_cart(product_id: str, tool_context: ToolContext, color: Opt
     print('state...', tool_context.state.to_dict())
     accessToken = tool_context.state.get("access_token", None)
     user_id = tool_context.state.get("user_id", None)
-    if accessToken!='undefined':
+    if accessToken!='undefined' and accessToken!=None:
         url = f"http://api-gateway:8070/api/carts/items/{product_id}"
         headers = {
             "Authorization": f"Bearer {accessToken}",

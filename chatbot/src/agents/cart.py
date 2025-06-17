@@ -40,7 +40,7 @@ AddItemToCart = LlmAgent(
 # Agent cải tiến cho việc quản lý giỏ hàng
 cart_agent = LlmAgent(
     model=GEMINI_2_FLASH,
-    name="EnhancedCartAgent",
+    name="Cart",
     description="Agent quản lý giỏ hàng thông minh với khả năng xử lý thông tin không đầy đủ",
     global_instruction=GLOBAL_INSTRUCTION,
     instruction="""

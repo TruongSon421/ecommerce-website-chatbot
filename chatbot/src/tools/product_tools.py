@@ -56,25 +56,25 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             tag_prefix = "laptop_"
             device_type = "laptop"
 
-        elif device == "wiredEarphone":
+        elif device == "wired_earphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "earHeadphone_"
-            device_type = "wiredEarphone"
+            device_type = "wired_earphone"
 
-        elif device == "wirelessEarphone":
+        elif device == "wireless_earphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "earHeadphone_"
-            device_type = "wireLessEarphone"
+            device_type = "wireless_earphone"
 
         elif device == "headphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "earHeadphone_"
             device_type = "headphone"
 
-        elif device == "backupCharger":
+        elif device == "backup_charger":
             reqs = llm.structured_predict(BackupChargerRequirements, BACKUPCHARGER_CONSULTATION_TEMPLATE, query=query)
             tag_prefix = "backupCharger_"
-            device_type = "backupCharger"
+            device_type = "backup_charger"
 
         else:
             cursor.close()
@@ -409,7 +409,7 @@ def product_information_tool(query: str) -> str:
             continue
 
         # Add product information to output
-        output.append(f"\n=== Kết quả cho '{product_name}' ===")
+        output.append(f"\n=== Kết quả tham khảo cho '{product_name}' ===")
         for i, r in enumerate(qualified_results, 1):
             output.append(f"\nSản phẩm {i}:")
             output.append(r.get('document', 'Thông tin không khả dụng'))

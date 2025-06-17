@@ -12,7 +12,7 @@ from google.genai.types import Content, Part
 from asgiref.wsgi import WsgiToAsgi
 import os
 from dotenv import load_dotenv
-from share_data import current_group_ids, filter_params
+from share_data import current_group_ids, filter_params, user_language
 from filter.preprocess import Filter  # Import Filter class
 
 # Import RAG functions
@@ -243,17 +243,18 @@ async def handle_query():
                    # Lấy dữ liệu từ shared variables
                    temp1 = current_group_ids.copy()
                    temp2 = filter_params.copy()
+                   temp3 = user_language.copy()
                    current_group_ids.clear()
                    filter_params.clear()
-                   
-                   print("group_ids:", temp1, "filter_params:", temp2)
+                   user_language.clear()
+                   print("group_ids:", temp1, "filter_params:", temp2,"user_language:",temp3)
                    
                    return jsonify({
                        "response": response,
                        "group_ids": temp1,
                        "filter_params": temp2,
                        "filter_applied": False,
-                       "detected_language": detected_lang
+                       "user_language": temp3[0]
                    })
            
            # Trường hợp không xác định được kết quả filter

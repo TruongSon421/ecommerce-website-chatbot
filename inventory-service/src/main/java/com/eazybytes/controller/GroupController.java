@@ -124,7 +124,7 @@ public class GroupController {
             @RequestParam(required = true) String type,
             @RequestParam(required = false) String tags,
             @RequestParam(required = false) String brand,
-            @RequestParam(required = false, defaultValue = "asc") String sortByPrice,
+            @RequestParam(required = false) String sortByPrice,
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice,
             @RequestParam(required = false) String searchQuery) { // Thêm tham số tìm kiếm
@@ -138,16 +138,39 @@ public class GroupController {
                     ? Arrays.asList(brand.split(","))
                     : Collections.emptyList();
 
-            // Lấy toàn bộ dữ liệu đã lọc
+            // Lấy toàn bộ dữ liệu đã lọc để tính tổng số phần tử
             List<GroupWithProductsDto> allFilteredGroups = groupService.getAllProductsByGroup(
                     0, Integer.MAX_VALUE, type, tagList, brandList, sortByPrice, minPrice, maxPrice, searchQuery);
 
-            // Build response
+            // Sắp xếp dữ liệu - chỉ sắp xếp theo orderNumber khi không có sortByPrice
+            // Khi có sortByPrice (cả "asc" và "desc"), service đã xử lý sắp xếp theo giá
+            if (sortByPrice == null || sortByPrice.isEmpty()) {
+                // Không có sortByPrice: sắp xếp theo orderNumber tăng dần (orderNumber nhỏ nhất ưu tiên hiển thị trước)
+                allFilteredGroups.sort((g1, g2) -> {
+                    Integer order1 = (g1.getGroupDto() != null) ? g1.getGroupDto().getOrderNumber() : null;
+                    Integer order2 = (g2.getGroupDto() != null) ? g2.getGroupDto().getOrderNumber() : null;
+                    // Xử lý trường hợp null - đặt null cuối cùng
+                    if (order1 == null && order2 == null) return 0;
+                    if (order1 == null) return 1;
+                    if (order2 == null) return -1;
+                    return order1.compareTo(order2);
+                });
+            }
+            // Khi có sortByPrice ("asc" hoặc "desc"), giữ nguyên thứ tự đã được service sắp xếp theo giá
+
+            // Tính toán phân trang
             int totalElements = allFilteredGroups.size();
             int totalPages = (int) Math.ceil((double) totalElements / size);
+            
+            // Cắt dữ liệu theo trang hiện tại
+            int startIndex = page * size;
+            int endIndex = Math.min(startIndex + size, totalElements);
+            List<GroupWithProductsDto> pagedGroups = (startIndex < totalElements) 
+                ? allFilteredGroups.subList(startIndex, endIndex)
+                : Collections.emptyList();
 
             Map<String, Object> response = new LinkedHashMap<>();
-            response.put("content", allFilteredGroups);
+            response.put("content", pagedGroups);
             response.put("totalElements", totalElements);
             response.put("totalPages", totalPages);
             response.put("currentPage", page);

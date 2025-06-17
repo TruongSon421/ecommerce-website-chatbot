@@ -179,6 +179,8 @@ class Filter:
 
     @classmethod
     def filter_query(cls, query):
+        user_language.clear()
+        
         # 1. Kiểm tra lời chào trước (chính xác hoàn toàn)
         if cls.check_common_greetings(query)[0]:
             return 2
@@ -187,7 +189,13 @@ class Filter:
         if cls.check_sensitive_words(query)[0]:
             return 0
         
-        # 3. Get top 2 languages with probabilities
+        # 3. LOGIC MỚI: Nếu query ngắn hơn 5 ký tự, pass với tiếng Việt
+        if len(query.strip()) < 5:
+            user_language.append(cls.lang_dict['vie'])  # Set to Vietnamese
+            print(f"Short query detected (length: {len(query.strip())}), defaulting to Vietnamese")
+            return 3, 'vie'
+        
+        # 4. Kiểm tra ngôn ngữ cho query dài hơn 5 ký tự
         lang_results = cls.check_lang(query)
         print(lang_results)
         supported_langs = ['vie', 'eng']
@@ -198,7 +206,7 @@ class Filter:
             if lang_code in supported_langs and prob > 0.4:
                 has_supported_lang = True
                 userLang = lang_code
-                user_language = cls.lang_dict[lang_code]
+                user_language.append(cls.lang_dict[lang_code])
                 break
         
         if not has_supported_lang:

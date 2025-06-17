@@ -47,14 +47,14 @@ class EarHeadphoneRequirements(BaseModel):
 
 
 class BackupChargerRequirements(BaseModel):
-    backupChrger_type_smallLight: bool
-    backupChrger_type_forLaptop: bool
-    backupChrger_battery_10k: bool
-    backupChrger_battery_20k: bool
-    backupChrger_battery_above20k: bool
-    backupChrger_benefit_wirelessCharge: bool
-    backupChrger_benefit_fastCharge: bool
-    backupChrger_benefit_magsafe: bool
+    backupCharger_type_smallLight: bool
+    backupCharger_type_forLaptop: bool
+    backupCharger_battery_10k: bool
+    backupCharger_battery_20k: bool
+    backupCharger_battery_above20k: bool
+    backupCharger_benefit_wirelessCharge: bool
+    backupCharger_benefit_fastCharge: bool
+    backupCharger_benefit_magsafe: bool
 
     min_budget: Optional[int]
     max_budget: Optional[int]

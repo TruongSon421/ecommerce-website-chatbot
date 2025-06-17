@@ -93,13 +93,13 @@ const categories = [
     id: 3,
     name: 'Âm thanh',
     imageSrc: '/images/categories/audio.png',
-    link: '/audio'
+    link: '/audio/wireless_earphone'
   },
   {
     id: 4,
     name: 'Phụ kiện',
     imageSrc: '/images/categories/Phukien.png',
-    link: '/phukien'
+    link: '/phukien/backup_charger'
   }
 ];
 

@@ -34,7 +34,7 @@ const SortMenu: React.FC<SortMenuProps> = ({ sortByPrice, onSortChange, isLoadin
 
   return (
     <div className="flex items-center space-x-2 mt-4">
-      <span className="text-gray-700">Sắp xếp theo:</span>
+      <span className="text-white">Sắp xếp theo:</span>
       <div className="relative" ref={sortMenuRef}>
         <button
           onClick={toggleSortMenu}
