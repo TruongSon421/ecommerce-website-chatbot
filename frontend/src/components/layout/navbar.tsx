@@ -11,13 +11,14 @@ const Navbar: React.FC = () => {
   const [showAccessoryDropdown, setShowAccessoryDropdown] = useState(false);
   const [showSearchBar, setShowSearchBar] = useState(false);
   const { user, logout } = useAuth();
-  const { items } = useCartStore();
+  const { items, clearCart } = useCartStore();
   
   // Calculate number of unique products in cart (not total quantity)
   const totalItemsInCart = items.length;
   
   const handleLogout = async () => {
     await logout();
+    clearCart(); // Reset cart khi logout
     console.log("After logout - User:", user);
     console.log("After logout - localStorage:", localStorage);
   };
@@ -87,7 +88,7 @@ const Navbar: React.FC = () => {
           <nav className={`nav-links ${showMobileMenu ? 'active' : ''}`}>
             <ul>
               <li><a href="/phone">Điện thoại</a></li>
-              <li><a href="/laptop">Máy tính</a></li>
+              <li><a href="/laptop">Laptop</a></li>
               
               {/* Audio Dropdown */}
               <li className="relative">
@@ -95,7 +96,7 @@ const Navbar: React.FC = () => {
                   onClick={handleAudioDropdownToggle}
                   className="flex items-center space-x-1"
                 >
-                  <span>Âm thanh</span>
+                  <span>Tai nghe</span>
                   <svg 
                     className={`w-4 h-4 transform transition-transform duration-200 ${showAudioDropdown ? 'rotate-180' : ''}`}
                     fill="none" 
@@ -109,13 +110,13 @@ const Navbar: React.FC = () => {
                 {/* Audio Dropdown Menu */}
                 <div className={`dropdown-menu ${showAudioDropdown ? 'active' : ''}`}>
                   <a href="/audio/wireless_earphone" className="dropdown-item">
-                    <span>Wireless Earphone</span>
+                    <span>Tai nghe không dây</span>
                   </a>
                   <a href="/audio/wired_earphone" className="dropdown-item">
-                    <span>Wired Earphone</span>
+                    <span>Tai nghe có dây</span>
                   </a>
                   <a href="/audio/headphone" className="dropdown-item">
-                    <span>Headphone</span>
+                    <span>Tai nghe chụp tai</span>
                   </a>
                 </div>
               </li>
@@ -140,7 +141,7 @@ const Navbar: React.FC = () => {
                 {/* Accessory Dropdown Menu */}
                 <div className={`dropdown-menu ${showAccessoryDropdown ? 'active' : ''}`}>
                   <a href="/phukien/backup_charger" className="dropdown-item">
-                    <span>Backup Charger</span>
+                    <span>Sạc dự phòng</span>
                   </a>
                 </div>
               </li>

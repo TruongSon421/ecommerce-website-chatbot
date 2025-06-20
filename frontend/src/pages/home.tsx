@@ -8,7 +8,12 @@ import CategoriesSection from '../components/product/categoriesSection';
 function Home() {
   return (
     <div className="home">
-      <Slider slides={slides}/>
+      <Slider 
+        slides={slides}
+        aspectRatio="banner" // Tỉ lệ banner cho slider chính
+        autoSlide={true}
+        slideInterval={5000}
+      />
       <CategoriesSection 
         categories={categories}
       />
@@ -22,12 +27,12 @@ function Home() {
         altText="iPad mới" 
       />
       <ProductSection 
-        title="Máy tính" 
+        title="Laptop" 
         type="laptop"
         size={5}
       />
       <ProductSection 
-        title="Âm thanh" 
+        title="Tai nghe" 
         type="wireless_earphone"
         size={5}
       />
@@ -45,36 +50,29 @@ function Home() {
 const slides = [
   {
     id: 1,
-    image: '/images/slider/slide1.png',
+    image: "https://images.macrumors.com/article-new/2023/11/iPhone-16-Pro-Mock-Header-Updated.jpg",
     title: 'iPhone 15 mới - Siêu phẩm từ Apple',
-    link: '/iphone-15'
+    link: '/detail/phone/6801ddb47fa8c71ab16251c7'
   },
   {
     id: 2,
-    image: '/images/slider/slide2.png',
-    title: 'MacBook Air M2 - Mỏng nhẹ, mạnh mẽ',
-    link: '/macbook-air'
+    image: "https://www.notebookcheck.net/fileadmin/Notebooks/Apple/MacBook_Pro_14_2023_M3/IMG_1034.JPG",
+    title: 'Laptop MacBook Pro 14 inch M4 16GB/512GB',
+    link: '/detail/laptop/6801ddde7fa8c71ab1625382'
   },
   {
     id: 3,
-    image: '/images/slider/slide3.png',
-    title: 'Apple Watch Series 9 - Đo nhịp tim, SpO2',
-    link: '/apple-watch-series-9'
+    image: "https://happyphone.vn/wp-content/uploads/2024/07/Tai-nghe-Bluetooth-Samsung-Galaxy-Buds3-Galaxy-AI.png",
+    title: 'Tai nghe TWS Samsung Galaxy Buds3 Pro R630N',
+    link: '/detail/wireless_earphone/68518ff8b33de75ae44553c2'
   },
   {
-      id: 4,
-      image: '/images/slider/slide4.png',
-      title: 'AirPods 3 - Chống ồn, chống nước',
-      link: '/airpods-3'
-  },
-  {
-      id: 5,
-      image: '/images/slider/slide5.png',
-      title: 'iPad Pro 2022 - Màn hình ProMotion',
-      link: '/ipad-pro-2022'
+    id: 4,
+    image: "https://www.amazona.de/wp-content/uploads/2026/01/10-apple-airpodsmax-foto-rotated-e1610043098439.jpeg",
+    title: 'AirPods Max cổng USB C',
+    link: '/detail/headphone/68517e875379a67d7cdc28ac'
   }
 ];
-
 
 const categories = [
   {
@@ -85,13 +83,13 @@ const categories = [
   },
   {
     id: 2,
-    name: 'Máy tính',
+    name: 'Laptop',
     imageSrc: '/images/categories/laptop.png',
     link: '/laptop'
   },
   {
     id: 3,
-    name: 'Âm thanh',
+    name: 'Tai nghe',
     imageSrc: '/images/categories/audio.png',
     link: '/audio/wireless_earphone'
   },
@@ -102,6 +100,5 @@ const categories = [
     link: '/phukien/backup_charger'
   }
 ];
-
 
 export default Home;

@@ -39,18 +39,21 @@ public class BackupChargerResponse extends ProductResponse {
         List<Integer> currentPrices = new ArrayList<>();
         List<Integer> quantities = new ArrayList<>();
         List<String> productNames = new ArrayList<>();
+        List<String> colors = new ArrayList<>();
 
         for (InventoryDto inventoryDto : inventoryDtos) {
             originalPrices.add(inventoryDto.getOriginalPrice());
             currentPrices.add(inventoryDto.getCurrentPrice());
             quantities.add(inventoryDto.getQuantity());
             productNames.add(inventoryDto.getProductName());
+            colors.add(inventoryDto.getColor());
         }
 
         response.setOriginal_prices(originalPrices);
         response.setCurrent_prices(currentPrices);
         response.setQuantities(quantities);
         response.setProductNames(productNames);
+        response.setColors(colors);
 
         List<Specification> specs = new ArrayList<>();
 

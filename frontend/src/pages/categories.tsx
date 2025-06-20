@@ -23,7 +23,12 @@ const getSubtypeDisplayName = (subtype: string): string => {
 const getTypeDisplayName = (type: string): string => {
   const typeNames: { [key: string]: string } = {
     'phone': 'Điện thoại',
-    'laptop': 'Máy tính', 
+    'laptop': 'Laptop', 
+    'wireless_earphone': 'Tai nghe không dây',
+    'wired_earphone': 'Tai nghe có dây',
+    'headphone': 'Tai nghe chụp tai',
+    'backup_charger': 'Sạc dự phòng',
+
   };
   return typeNames[type] || type;
 };
@@ -47,8 +52,8 @@ function PageCategory() {
   // Track if initial state has been restored
   const [isStateRestored, setIsStateRestored] = useState(false);
   
-  // Get page from URL params or default to 0
-  const page = Number(searchParams.get('page')) || 0;
+  // Get size from URL params or default to 20
+  const size = Number(searchParams.get('size')) || 20;
   
   // Reset sort when category type changes
   useEffect(() => {
@@ -58,11 +63,11 @@ function PageCategory() {
       // Reset sort order (will already be empty due to fresh initialization)
       setSortByPrice('');
       
-      // Update URL to remove sort parameter
+      // Update URL to remove sort parameter and reset size
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
         newParams.delete('sort');
-        newParams.set('page', '0'); // Reset to first page
+        newParams.set('size', '20'); // Reset to initial size
         return newParams;
       });
       
@@ -118,12 +123,12 @@ function PageCategory() {
 
   // Create query params for API request - memoized with stable dependencies
   const createQueryParams = useCallback((
-    currentPage: number, 
+    currentSize: number, 
     appliedFilters: { [key: string]: string[] | number[] | string }
   ) => {
     const queryParams: string[] = [
-      `page=${currentPage}`,
-      `size=20`
+      `page=0`, // Always fetch from page 0
+      `size=${currentSize}` // Use dynamic size
     ];
 
     // Only add sortByPrice if user explicitly chooses price sorting
@@ -176,22 +181,23 @@ function PageCategory() {
     // Don't fetch until initial state is restored
     if (!isStateRestored) return;
     
-    const queryString = createQueryParams(page, filters);
+    const queryString = createQueryParams(size, filters);
     const isSortedByPrice = sortByPrice === 'asc' || sortByPrice === 'desc';
     
     // Check if there's a search query (either from filters or URL)
     const hasSearchQuery = !!(filters.searchQuery || searchParams.get('search'));
     
     console.log('Fetching products with filters:', filters, 'queryString:', queryString, 'hasSearchQuery:', hasSearchQuery);
-    fetchProducts(queryString, page === 0, isSortedByPrice, hasSearchQuery);
-  }, [page, filters, sortByPrice, isStateRestored]); // Removed createQueryParams, fetchProducts, searchParams from dependencies
+    // Always replace products since we're fetching from page 0 with current size
+    fetchProducts(queryString, true, isSortedByPrice, hasSearchQuery);
+  }, [size, filters, sortByPrice, isStateRestored]); // Changed from page to size
 
   // Save filters to URL
   useEffect(() => {
     if (!isStateRestored) return; // Don't update URL until state is restored
     
     const newParams = new URLSearchParams();
-    newParams.set('page', page.toString());
+    newParams.set('size', size.toString());
     
     // Only add filters to URL if they exist and are not empty
     if (filters && Object.keys(filters).length > 0) {
@@ -211,12 +217,11 @@ function PageCategory() {
       console.log('Updating URL params from:', currentParams, 'to:', newParamsString);
       setSearchParams(newParams, { replace: true });
     }
-  }, [filters, sortByPrice, page, isStateRestored]); // Removed searchParams and setSearchParams from dependencies
+  }, [filters, sortByPrice, size, isStateRestored]); // Changed from page to size
 
   // Initialize state on mount - only once
   useEffect(() => {
     const filtersFromUrl = searchParams.get('filters');
-    const sortFromUrl = searchParams.get('sort');
     const searchFromUrl = searchParams.get('search');
     
     console.log('Initial mount - restoring state from URL');
@@ -254,10 +259,10 @@ function PageCategory() {
   }, []); // Empty dependency array - only run once on mount
 
   const handleLoadMore = () => {
-    const nextPage = page + 1;
+    const nextSize = size + 20; // Increase size by 20
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
-      newParams.set('page', nextPage.toString());
+      newParams.set('size', nextSize.toString());
       
       // Preserve existing filters and sort parameters
       const currentFilters = prev.get('filters');
@@ -293,11 +298,11 @@ function PageCategory() {
     console.log('Cleaned filters before applying:', cleanedFilters);
     setFilters(cleanedFilters);
     
-    // Reset to page 0 when filters change
+    // Reset to initial size when filters change
     // Keep sort order when applying filters (user choice)
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
-      newParams.set('page', '0');
+      newParams.set('size', '20'); // Reset to initial size
       
       // Keep the sort parameter if it exists (don't reset when applying filters)
       const currentSort = prev.get('sort');
@@ -320,10 +325,10 @@ function PageCategory() {
 
   const handleSortChange = (order: string) => {
     setSortByPrice(order);
-    // Reset to page 0 when sort changes
+    // Reset to initial size when sort changes
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
-      newParams.set('page', '0');
+      newParams.set('size', '20'); // Reset to initial size
       return newParams;
     });
   };
@@ -347,7 +352,7 @@ function PageCategory() {
     
     setSearchParams(prev => {
       const newParams = new URLSearchParams(prev);
-      newParams.set('page', '0');
+      newParams.set('size', '20'); // Reset to initial size
       newParams.delete('filters');
       newParams.delete('sort'); // Remove sort when clearing filters
       
@@ -419,14 +424,14 @@ function PageCategory() {
         <div className="w-full">
           {type ? (
             <ProductFilter
-              type={type}
+              type={subtype || type} // Use subtype if available, otherwise use type
               onApplyFilters={handleApplyFilters}
               onSortChange={handleSortChange}
               onSortReset={handleSortReset}
               sortByPrice={sortByPrice}
               isLoading={loading}
               initialFilters={isStateRestored && Object.keys(filters).length > 0 ? filters : {}} // Chỉ truyền khi có filters và state đã restored
-              key={`${type}-${JSON.stringify(filters)}`} // Force re-render khi filters thay đổi
+              key={`${subtype || type}-${JSON.stringify(filters)}`} // Force re-render khi filters thay đổi
             />
           ) : (
             <div className="text-center p-4 bg-gray-100 rounded-md">

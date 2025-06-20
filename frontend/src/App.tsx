@@ -36,7 +36,9 @@ import TagManagement from "./pages/admin/TagManagement";
 import PaymentPage from "./pages/PaymentPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import VNPayReturnPage from "./pages/VNPayReturnPage";
+import VNPayBackendReturnPage from "./pages/VNPayBackendReturnPage";
 import PaymentProcessingPage from "./pages/PaymentProcessingPage";
+import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/PaymentFailedPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import Profile from "./components/user/profile";
@@ -115,27 +117,27 @@ function AppContent() {
           />
           <Route 
             path="vnpay-return"
-            element={
-              <UserPrivateRoute>
-                <VNPayReturnPage />
-              </UserPrivateRoute>
-            }
+            element={<VNPayReturnPage />}
+          />
+          <Route 
+            path="api/v1/payment/vnpay/return"
+            element={<VNPayBackendReturnPage />}
+          />
+          <Route 
+            path="payment-processing"
+            element={<PaymentProcessingPage />}
           />
           <Route 
             path="payment-processing/:orderId"
-            element={
-              <UserPrivateRoute>
-                <PaymentProcessingPage />
-              </UserPrivateRoute>
-            }
+            element={<PaymentProcessingPage />}
           />
           <Route 
             path="payment-failed"
-            element={
-              <UserPrivateRoute>
-                <PaymentFailedPage />
-              </UserPrivateRoute>
-            }
+            element={<PaymentFailedPage />}
+          />
+          <Route 
+            path="payment-success"
+            element={<PaymentSuccessPage />}
           />
         </Route>
 

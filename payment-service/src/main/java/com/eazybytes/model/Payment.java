@@ -48,6 +48,9 @@ public class Payment {
 
     private String failureReason;
     
+    @Column(length = 1000)
+    private String paymentUrl; // Lưu VNPay URL để reuse
+    
     
 
     private LocalDateTime createdAt;

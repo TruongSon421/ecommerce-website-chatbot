@@ -1,11 +1,9 @@
-
-
 from google.adk.tools.agent_tool import AgentTool
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.agents import LlmAgent
 from google.genai import types
 from tools.cart_tools import *
-from tools.product_tools import product_information_tool
+from tools.product_tools import product_information_tool_for_cart
 from models.cart import CheckoutRequest
 from agents.callbacks import *
 from prompts import GLOBAL_INSTRUCTION
@@ -22,15 +20,23 @@ AddItemToCart = LlmAgent(
     Mục tiêu chính của bạn là thêm sản phẩm vào giỏ hàng.
     Luôn sử dụng ngữ cảnh/trạng thái hội thoại hoặc công cụ để lấy thông tin. Ưu tiên công cụ hơn kiến ​​thức nội bộ của bạn
     ** Năng lực của bạn:**
-    - 1 **Đưa ra các options có sẵn cho người dùng chọn nếu người dùng thêm sản phẩm chưa rõ thông tin để xác định và giỏ hàng.**
+    - 1 ** Đưa ra các options có sẵn cho người dùng chọn nếu người dùng thêm sản phẩm chưa rõ thông tin để xác định và giỏ hàng.**
     - 2 ** Thêm sản phẩm vào giỏ hàng **
     - 3 ** Đang tư vấn ở Product Agent thì tự động chuyển sang AddItemToCart Agent để thêm sản phẩm vào giỏ hàng nếu người dùng muốn thêm sản phẩm vào giỏ hàng. Nhưng phải sử dụng find_product_id_by_group_and_color để tìm productId từ group_id, color (nếu có), variant (nếu có) trong MySQL database**
     ** Tools có sẵn:**
-    - `product_information_tool`: Tìm thông tin sản phẩm dựa trên tên sản phẩm. Trong thông tin đó cho ta biết sản phẩm đó có màu nào, phiên bản nào.
+    - `product_information_tool`: Tìm thông tin sản phẩm dựa trên tên sản phẩm. Trong thông tin đó cho ta biết sản phẩm đó có màu nào, phiên bản nào và group_id.
     - `find_product_id_by_group_and_color`: Tìm productId từ group_id, color (nếu có), variant (nếu có) trong MySQL database
     - `add_item_to_cart`: Thêm sản phẩm (cần productId, color (nếu có))
+    ** Bắt buộc:**
+    - Bắt buộc sử dụng tool product_information_tool_for_cart để tìm thông tin sản phẩm dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện. Để đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. Phải đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. 
+    ** Luồng xử lý:**
+    1. Tìm thông tin sản phẩm dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện.
+    2. Đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng.
+    3. Người dùng chọn sản phẩm vào giỏ hàng.
+    4. Thêm sản phẩm vào giỏ hàng.
+    5. Thông báo thành công.
     """,
-    tools=[product_information_tool, find_product_id_by_group_and_color, add_item_to_cart],
+    tools=[product_information_tool_for_cart, find_product_id_by_group_and_color, add_item_to_cart],
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
@@ -45,7 +51,8 @@ cart_agent = LlmAgent(
     global_instruction=GLOBAL_INSTRUCTION,
     instruction="""
     Bạn là TechZone, trợ lý ảo chuyên về sản phẩm điện tử thông minh với khả năng quản lý giỏ hàng tiên tiến.
-
+    NGÔN NGỮ: Hãy trả lời lại theo ngôn ngữ của người dùng.
+    ** Quan trọng: Luôn sử dụng tool access_cart_information để xem giỏ hàng hiện tại trước khi thực hiện các thao tác với giỏ hàng. **
     **Chức năng chính:**
     - Thêm sản phẩm vào giỏ hàng 
     - Cập nhật số lượng sản phẩm trong giỏ hàng
@@ -61,8 +68,7 @@ cart_agent = LlmAgent(
     Giá trị color có thể: null hoặc default nếu sản phẩm không có phiên bản màu nào
     **Tools có sẵn:**
     - `access_cart_information`: Xem giỏ hàng hiện tại
-    - `find_cart_item`: Tìm sản phẩm trong giỏ dựa trên thông tin có sẵn
-    - `add_item_to_cart`: Thêm sản phẩm 
+    - `find_cart_item`: Tìm sản phẩm trong giỏ dựa trên thông tin có sẵn (chỉ cần product_name, color và variant là optional)
     - `update_item_in_cart`: Cập nhật số lượng (cần productId, color và quantity)
     - `remove_item_from_cart`: Xóa sản phẩm (cần productId và color)
 

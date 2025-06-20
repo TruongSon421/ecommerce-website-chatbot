@@ -14,7 +14,7 @@ export default defineConfig({
       'localhost', 
       '127.0.0.1',
       '.ngrok-free.app', // Cho phép tất cả subdomain ngrok
-      'dca8-42-116-6-46.ngrok-free.app', // Hoặc chỉ định cụ thể
+      'dev.truongson.shop', // Hoặc chỉ định cụ thể
     ]
   }
 })

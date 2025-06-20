@@ -1,5 +1,4 @@
 import pandas as pd
-import mysql.connector
 from elasticsearch import Elasticsearch
 from google.adk.tools import ToolContext
 import json
@@ -8,7 +7,7 @@ from typing import Optional, List, Dict
 import requests
 from models.cart import CheckoutRequest, PaymentMethod, CartIdentity
 from share_data import current_group_ids, filter_params
-
+import mysql.connector
 logger = logging.getLogger(__name__)
 
 es_host: str = "http://elasticsearch:9200"
@@ -156,9 +155,18 @@ def get_product_details(tool_context, group_id: int) -> dict:
     except Exception as e:
         return {"status": "error", "message": f"Database error: {str(e)}"}
 
-def find_cart_item(tool_context, product_name: str, color: str, variant: str) -> dict:
+def find_cart_item(tool_context, product_name: str, color: Optional[str] = None, variant: Optional[str] = None) -> dict:
     """
     Tìm sản phẩm cụ thể trong giỏ hàng dựa trên các thông tin có sẵn
+    
+    Args:
+        tool_context: Tool context
+        product_name (str): Tên sản phẩm cần tìm
+        color (str, optional): Màu sắc sản phẩm. Defaults to None.
+        variant (str, optional): Variant/phân loại sản phẩm. Defaults to None.
+        
+    Returns:
+        dict: Kết quả tìm kiếm với matching_items và total_matches
     """
     try:
         # Lấy thông tin giỏ hàng hiện tại
@@ -178,12 +186,12 @@ def find_cart_item(tool_context, product_name: str, color: str, variant: str) ->
                 if product_name.lower() not in item["productName"].lower():
                     match = False
             
-            # Kiểm tra màu sắc
+            # Kiểm tra màu sắc (chỉ khi có giá trị)
             if color:
                 if color.lower() not in item["color"].lower():
                     match = False
             
-            # Kiểm tra variant (từ productName)
+            # Kiểm tra variant (từ productName, chỉ khi có giá trị)
             if variant:
                 if variant.lower() not in item["productName"].lower():
                     match = False
@@ -476,13 +484,13 @@ def remove_item_from_cart(product_id: str, tool_context: ToolContext, color: Opt
 def find_product(name: str, variant: str, color: str) -> str:
     try:
         conn = mysql.connector.connect(
-            host='api-gateway',
-            port=3307,
+            host='mysql',
+            port=3306,
             user='tiendoan',
             password='tiendoan',
             database='ecommerce_inventory'
         )
-        cursor = conn.cursor(dictionary=True)  # dùng dictionary để dễ xử lý
+        cursor = conn.cursor(dictionary=True)
 
         # Tìm kiếm trong Elasticsearch
         search_result = search_product_name(name)
@@ -521,10 +529,10 @@ def find_product(name: str, variant: str, color: str) -> str:
         else:
             return f"Sản phẩm {product_id} không có màu '{color}'"
 
-    except mysql.connector.Error as e:
+    except Exception as e:
         return f"Lỗi kết nối CSDL: {str(e)}"
     finally:
-        if conn.is_connected():
+        if 'conn' in locals() and conn:
             conn.close()
 
 def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = None, variant: Optional[str] = None) -> dict:
@@ -546,18 +554,18 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
     try:
         # Kết nối database
         conn = mysql.connector.connect(
-            host='api-gateway',
-            port=3307,
+            host='mysql',
+            port=3306,
             user='tiendoan',
             password='tiendoan',
             database='ecommerce_inventory'
         )
         cursor = conn.cursor(dictionary=True)
-        
+
         if color and variant:
             # Tìm theo cả group_id, color và variant
             query = """
-                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name, gpj.order_number
                 FROM group_product_junction gpj
                 INNER JOIN product_inventory pi ON gpj.product_id = pi.product_id
                 WHERE gpj.group_id = %s AND pi.color = %s AND gpj.variant = %s
@@ -567,7 +575,7 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
         elif color:
             # Tìm theo group_id và color
             query = """
-                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name, gpj.order_number
                 FROM group_product_junction gpj
                 INNER JOIN product_inventory pi ON gpj.product_id = pi.product_id
                 WHERE gpj.group_id = %s AND pi.color = %s
@@ -577,7 +585,7 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
         elif variant:
             # Tìm theo group_id và variant
             query = """
-                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name, gpj.order_number
                 FROM group_product_junction gpj
                 LEFT JOIN product_inventory pi ON gpj.product_id = pi.product_id
                 WHERE gpj.group_id = %s AND gpj.variant = %s
@@ -587,7 +595,7 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
         else:
             # Chỉ tìm theo group_id
             query = """
-                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name
+                SELECT DISTINCT gpj.product_id, gpj.variant, pi.color, gpj.product_name, gpj.order_number
                 FROM group_product_junction gpj
                 LEFT JOIN product_inventory pi ON gpj.product_id = pi.product_id
                 WHERE gpj.group_id = %s
@@ -621,21 +629,16 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
                           (f", variant={variant}" if variant else "")
             }
             
-    except mysql.connector.Error as e:
+    except Exception as e:
         logger.error("Database error in find_product_id_by_group_and_color: %s", str(e))
         return {
             "status": "error",
             "message": f"Lỗi kết nối database: {str(e)}"
         }
-    except Exception as e:
-        logger.error("Unexpected error in find_product_id_by_group_and_color: %s", str(e))
-        return {
-            "status": "error", 
-            "message": f"Lỗi không mong đợi: {str(e)}"
-        }
     finally:
-        if 'conn' in locals() and conn.is_connected():
-            cursor.close()
+        if 'conn' in locals() and conn:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
             conn.close()
 
 
@@ -652,8 +655,8 @@ def execute_query(query: str, params: tuple = None) -> list:
     """
     try:
         conn = mysql.connector.connect(
-            host='api-gateway',
-            port=3307,
+            host='mysql',
+            port=3306,
             user='tiendoan',
             password='tiendoan',
             database='ecommerce_inventory'
@@ -668,15 +671,180 @@ def execute_query(query: str, params: tuple = None) -> list:
         results = cursor.fetchall()
         return results
         
-    except mysql.connector.Error as e:
+    except Exception as e:
         logger.error("Database error in execute_query: %s", str(e))
         return []
-    except Exception as e:
-        logger.error("Unexpected error in execute_query: %s", str(e))
-        return []
     finally:
-        if 'conn' in locals() and conn.is_connected():
-            cursor.close()
+        if 'conn' in locals() and conn:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
             conn.close()
+
+def modify_cart(tool_context: ToolContext, items_to_add: list[dict] = None, items_to_remove: list[dict] = None) -> dict:
+    """
+    Thêm và xóa nhiều sản phẩm trong giỏ hàng cùng lúc.
+
+    Args:
+        tool_context (ToolContext): Context chứa thông tin xác thực
+        items_to_add (list[dict], optional): Danh sách sản phẩm cần thêm vào giỏ hàng
+            Mỗi dict có format: {"product_id": str, "color": str, "quantity": int}
+        items_to_remove (list[dict], optional): Danh sách sản phẩm cần xóa khỏi giỏ hàng
+            Mỗi dict có format: {"product_id": str, "color": str}
+
+    Returns:
+        dict: Kết quả thao tác với thông tin chi tiết về các thành công/thất bại
+
+    Example:
+        >>> modify_cart(
+        ...     tool_context=context,
+        ...     items_to_add=[
+        ...         {"product_id": "soil-123", "color": "red", "quantity": 2},
+        ...         {"product_id": "fert-456", "color": "blue", "quantity": 1}
+        ...     ],
+        ...     items_to_remove=[
+        ...         {"product_id": "old-123", "color": "green"}
+        ...     ]
+        ... )
+        {
+            "status": "completed",
+            "added_items": {...},
+            "removed_items": {...},
+            "errors": []
+        }
+    """
+    print('modify_cart')
+    print('state...', tool_context.state.to_dict())
+    
+    # Xác định loại user và validate
+    accessToken = tool_context.state.get("access_token", None)
+    user_id = tool_context.state.get('user_id', None)
+    
+    if accessToken != 'undefined' and accessToken is not None:
+        logger.info("Modifying cart for authenticated user")
+        user_type = "authenticated"
+    elif user_id:
+        logger.info("Modifying cart for guest user")
+        user_type = "guest"
+    else:
+        logger.error("No valid authentication found")
+        return {
+            "status": "error",
+            "message": "Không tìm thấy thông tin xác thực. Cần access_token hoặc user_id.",
+            "added_items": [],
+            "removed_items": [],
+            "errors": ["No authentication found"]
+        }
+    
+    result = {
+        "status": "completed",
+        "user_type": user_type,
+        "added_items": [],
+        "removed_items": [],
+        "errors": []
+    }
+    
+    try:
+        # Xử lý xóa sản phẩm trước
+        if items_to_remove:
+            logger.info(f"Removing {len(items_to_remove)} items from cart")
+            for item in items_to_remove:
+                try:
+                    product_id = item.get("product_id")
+                    color = item.get("color")
+                    
+                    if not product_id:
+                        result["errors"].append(f"Missing product_id for remove item: {item}")
+                        continue
+                    
+                    remove_result = remove_item_from_cart(
+                        product_id=product_id,
+                        tool_context=tool_context,
+                        color=color
+                    )
+                    
+                    if remove_result:
+                        result["removed_items"].append({
+                            "product_id": product_id,
+                            "color": color,
+                            "result": remove_result
+                        })
+                        logger.info(f"Successfully removed item {product_id} (color: {color})")
+                    else:
+                        result["errors"].append(f"Failed to remove item {product_id} (color: {color})")
+                        
+                except Exception as e:
+                    error_msg = f"Error removing item {item}: {str(e)}"
+                    result["errors"].append(error_msg)
+                    logger.error(error_msg)
+
+        # Xử lý thêm sản phẩm
+        if items_to_add:
+            logger.info(f"Adding {len(items_to_add)} items to cart")
+            for item in items_to_add:
+                try:
+                    product_id = item.get("product_id")
+                    color = item.get("color")
+                    quantity = item.get("quantity", 1)
+                    
+                    if not product_id:
+                        result["errors"].append(f"Missing product_id for add item: {item}")
+                        continue
+                    
+                    # Validate quantity
+                    if quantity <= 0:
+                        result["errors"].append(f"Invalid quantity {quantity} for product {product_id}")
+                        continue
+                    
+                    add_result = add_item_to_cart(
+                        product_id=product_id,
+                        tool_context=tool_context,
+                        color=color,
+                        quantity=quantity
+                    )
+                    
+                    if add_result:
+                        result["added_items"].append({
+                            "product_id": product_id,
+                            "color": color,
+                            "quantity": quantity,
+                            "result": add_result
+                        })
+                        logger.info(f"Successfully added {quantity} of item {product_id} (color: {color})")
+                    else:
+                        result["errors"].append(f"Failed to add item {product_id} (color: {color}, quantity: {quantity})")
+                        
+                except Exception as e:
+                    error_msg = f"Error adding item {item}: {str(e)}"
+                    result["errors"].append(error_msg)
+                    logger.error(error_msg)
+
+        # Đặt status dựa trên kết quả
+        if result["errors"]:
+            if result["added_items"] or result["removed_items"]:
+                result["status"] = "partial_success"
+            else:
+                result["status"] = "failed"
+        else:
+            result["status"] = "success"
+            
+        # Lấy thông tin giỏ hàng cập nhật
+        try:
+            updated_cart = access_cart_information(tool_context)
+            result["updated_cart"] = updated_cart
+        except Exception as e:
+            logger.warning(f"Could not fetch updated cart info: {str(e)}")
+            result["cart_fetch_error"] = str(e)
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Unexpected error in modify_cart: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Unexpected error: {str(e)}",
+            "added_items": result.get("added_items", []),
+            "removed_items": result.get("removed_items", []),
+            "errors": result.get("errors", [])
+        }
 
 

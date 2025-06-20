@@ -9,11 +9,10 @@ const Footer: React.FC = () => {
           <div className="footer-col">
             <h3>Sản phẩm</h3>
             <ul>
-              <li><a href="/iphone">iPhone</a></li>
-              <li><a href="/samsung">Samsung</a></li>
-              <li><a href="/xiaomi">Xiaomi</a></li>
+              <li><a href="/phone">Điện thoại</a></li>
               <li><a href="/laptop">Laptop</a></li>
-              <li><a href="/accessories">Phụ kiện</a></li>
+              <li><a href="/audio/wireless_earphone">Tai nghe</a></li>
+              <li><a href="/phukien/backup_charger">Sạc dự phòng</a></li>
             </ul>
           </div>
           

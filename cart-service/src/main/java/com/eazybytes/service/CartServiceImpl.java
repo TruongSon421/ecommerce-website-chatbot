@@ -94,7 +94,7 @@ public class CartServiceImpl implements CartService {
         return toCartResponse(cart);
     }
 
-    private void logDatabaseItems(String userId, Long cartId) {
+    private void logDatabaseItems(String userId, int cartId) {
         try {
             Optional<Cart> dbCart = cartRepository.findByUserId(userId);
             if (dbCart.isPresent()) {
@@ -970,7 +970,7 @@ public class CartServiceImpl implements CartService {
         return price != null ? price : 0;
     }
 
-    private int calculateTotalPrice(Cart cart) {
+    private Integer calculateTotalPrice(Cart cart) {
         return cart.getItems().stream()
                 .mapToInt(item -> parsePriceToInt(item.getPrice()) * item.getQuantity())
                 .sum();
@@ -1016,7 +1016,7 @@ public class CartServiceImpl implements CartService {
                 })
                 .collect(Collectors.toList());
 
-        int totalPrice = calculateTotalPrice(cart);
+        Integer totalPrice = calculateTotalPrice(cart);
 
         return new CartResponse(cart.getUserId(), totalPrice, itemResponses);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Slider, TextField } from '@mui/material';
 import { debounce } from 'lodash';
 import BrandFilter from './BrandFilter';
@@ -31,26 +31,39 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
   // State to control custom price range
   const [showCustomPriceRange, setShowCustomPriceRange] = useState(true);
   
-  // Debounced price range change
-  const debouncedPriceChange = debounce((newValue: number[]) => {
-    onPriceRangeChange(newValue);
-  }, 300);
+  // Local state for smooth slider interaction - không trigger re-render của parent
+  const [localPriceRange, setLocalPriceRange] = useState<number[]>(priceRange);
+  
+  // Sync local state with prop changes
+  useEffect(() => {
+    setLocalPriceRange(priceRange);
+  }, [priceRange]);
+
+  // Optimized debounced price change with longer delay for smoother experience
+  const debouncedPriceChange = useMemo(
+    () => debounce((newValue: number[]) => {
+      onPriceRangeChange(newValue);
+    }, 500), // Increased from 300ms to 500ms for smoother sliding
+    [onPriceRangeChange]
+  );
+
+  // Memoize price ranges for better performance
+  const priceRangeOptions = useMemo(() => {
+    return currentFilterData.priceRanges?.[0]?.options || [];
+  }, [currentFilterData.priceRanges]);
 
   // Hàm chuyển đổi giá trị button giá thành min/max
-  const parsePriceRangeValue = (value: string): { min: number; max: number } => {
+  const parsePriceRangeValue = useCallback((value: string): { min: number; max: number } => {
     const [minStr, maxStr] = value.split('-');
     const min = minStr ? parseInt(minStr, 10) : 0;
-    const max = maxStr ? parseInt(maxStr, 10) : 50000000;
+    const max = maxStr ? parseInt(maxStr, 10) : 200000000;
     
     return { min, max };
-  };
+  }, []);
 
-  // Hàm kiểm tra xem custom price range có trùng với button giá nào không
-  const findMatchingPriceRange = (min: number, max: number): string | null => {
-    // Lấy danh sách price ranges từ currentFilterData.priceRanges (section có filter với key 'price')
-    const priceRangesSection = currentFilterData.priceRanges?.[0]?.options || [];
-    
-    for (const option of priceRangesSection) {
+  // Optimized function để kiểm tra xem custom price range có trùng với button giá nào không
+  const findMatchingPriceRange = useCallback((min: number, max: number): string | null => {
+    for (const option of priceRangeOptions) {
       const { min: optionMin, max: optionMax } = parsePriceRangeValue(option.value);
       
       if (min === optionMin && max === optionMax) {
@@ -58,104 +71,97 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       }
     }
     return null;
-  };
+  }, [priceRangeOptions, parsePriceRangeValue]);
 
-  const handlePriceRangeChange = (event: Event, newValue: number | number[]) => {
+  // Optimized slider change handler - chỉ update local state ngay lập tức
+  const handlePriceRangeChange = useCallback((event: Event, newValue: number | number[]) => {
     const [min, max] = newValue as number[];
     
-    // Kiểm tra xem có button giá nào trùng với khoảng giá này không
+    // Update local state immediately for smooth UI
+    setLocalPriceRange([min, max]);
+    
+    // Debounce the expensive operations
+    debouncedPriceChange([min, max]);
+  }, [debouncedPriceChange]);
+
+  // Simplified price matching logic - no automatic selections to avoid loops
+  useEffect(() => {
+    const [min, max] = priceRange;
     const matchingRange = findMatchingPriceRange(min, max);
     
-    if (matchingRange) {
-      // Nếu trùng với button giá → chọn button giá và ẩn custom range
-      if (selectedFilters.price && selectedFilters.price.length > 0) {
-        // Xóa button giá cũ trước
-        selectedFilters.price.forEach(value => {
-          onFilterChange('price', value);
-        });
-      }
-      // Chọn button giá mới
-      onFilterChange('price', matchingRange);
+    if (matchingRange && selectedFilters.price?.includes(matchingRange)) {
+      // Nếu có button giá trùng và đã được chọn → ẩn custom range
       setShowCustomPriceRange(false);
     } else {
-      // Nếu không trùng → xóa button giá đã chọn và hiển thị custom range
-      if (selectedFilters.price && selectedFilters.price.length > 0) {
-        selectedFilters.price.forEach(value => {
-          onFilterChange('price', value);
-        });
-      }
+      // Trong tất cả các trường hợp khác → hiển thị custom range
       setShowCustomPriceRange(true);
     }
-    
-    debouncedPriceChange(newValue as number[]);
-  };
+  }, [priceRange, findMatchingPriceRange, selectedFilters.price]);
 
   // State tạm thời cho input giá
   const [inputMinPrice, setInputMinPrice] = useState(priceRange[0].toString());
   const [inputMaxPrice, setInputMaxPrice] = useState(priceRange[1].toString());
 
-  // Đồng bộ input với priceRange khi priceRange thay đổi
+  // Đồng bộ input với localPriceRange để cập nhật ngay lập tức khi kéo slider
   React.useEffect(() => {
-    setInputMinPrice(priceRange[0].toString());
-    setInputMaxPrice(priceRange[1].toString());
-  }, [priceRange]);
+    setInputMinPrice(localPriceRange[0].toString());
+    setInputMaxPrice(localPriceRange[1].toString());
+  }, [localPriceRange]);
 
-  // Xử lý thay đổi từ input
-  const handleInputChange = (type: 'min' | 'max', value: string) => {
+  // Debounced input change handler
+  const debouncedInputChange = useMemo(
+    () => debounce((type: 'min' | 'max', numericValue: string) => {
+      if (type === 'min') {
+        const min = numericValue ? parseInt(numericValue, 10) : 0;
+        if (min <= priceRange[1]) {
+          onPriceRangeChange([min, priceRange[1]]);
+        }
+      } else {
+        const max = numericValue ? parseInt(numericValue, 10) : 200000000;
+        if (max >= priceRange[0]) {
+          onPriceRangeChange([priceRange[0], max]);
+        }
+      }
+    }, 300),
+    [onPriceRangeChange, priceRange]
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedPriceChange.cancel();
+      debouncedInputChange.cancel();
+    };
+  }, [debouncedPriceChange, debouncedInputChange]);
+
+  // Xử lý thay đổi từ input - optimized for performance
+  const handleInputChange = useCallback((type: 'min' | 'max', value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
     
     if (type === 'min') {
       setInputMinPrice(numericValue);
+      // Update local state immediately for instant feedback
       const min = numericValue ? parseInt(numericValue, 10) : 0;
-      if (min <= priceRange[1]) {
-        const matchingRange = findMatchingPriceRange(min, priceRange[1]);
-        if (matchingRange && selectedFilters.price?.[0] !== matchingRange) {
-          // Chuyển sang button giá nếu trùng
-          if (selectedFilters.price && selectedFilters.price.length > 0) {
-            selectedFilters.price.forEach(val => onFilterChange('price', val));
-          }
-          onFilterChange('price', matchingRange);
-          setShowCustomPriceRange(false);
-        } else if (!matchingRange) {
-          // Xóa button giá nếu không trùng
-          if (selectedFilters.price && selectedFilters.price.length > 0) {
-            selectedFilters.price.forEach(val => onFilterChange('price', val));
-          }
-          setShowCustomPriceRange(true);
-        }
-        onPriceRangeChange([min, priceRange[1]]);
-      }
+      setLocalPriceRange([min, localPriceRange[1]]);
+      // Trigger debounced change for actual update
+      debouncedInputChange(type, numericValue);
     } else {
       setInputMaxPrice(numericValue);
-      const max = numericValue ? parseInt(numericValue, 10) : 50000000;
-      if (max >= priceRange[0]) {
-        const matchingRange = findMatchingPriceRange(priceRange[0], max);
-        if (matchingRange && selectedFilters.price?.[0] !== matchingRange) {
-          // Chuyển sang button giá nếu trùng
-          if (selectedFilters.price && selectedFilters.price.length > 0) {
-            selectedFilters.price.forEach(val => onFilterChange('price', val));
-          }
-          onFilterChange('price', matchingRange);
-          setShowCustomPriceRange(false);
-        } else if (!matchingRange) {
-          // Xóa button giá nếu không trùng
-          if (selectedFilters.price && selectedFilters.price.length > 0) {
-            selectedFilters.price.forEach(val => onFilterChange('price', val));
-          }
-          setShowCustomPriceRange(true);
-        }
-        onPriceRangeChange([priceRange[0], max]);
-      }
+      // Update local state immediately for instant feedback
+      const max = numericValue ? parseInt(numericValue, 10) : 200000000;
+      setLocalPriceRange([localPriceRange[0], max]);
+      // Trigger debounced change for actual update
+      debouncedInputChange(type, numericValue);
     }
-  };
+  }, [debouncedInputChange, localPriceRange]);
 
-  // Xử lý khi input mất focus để đảm bảo giá trị hợp lệ
-  const handleInputBlur = (type: 'min' | 'max') => {
+  // Xử lý khi input mất focus để đảm bảo giá trị hợp lệ - optimized
+  const handleInputBlur = useCallback((type: 'min' | 'max') => {
     let min = parseInt(inputMinPrice, 10) || 0;
-    let max = parseInt(inputMaxPrice, 10) || 50000000;
+    let max = parseInt(inputMaxPrice, 10) || 200000000;
 
-    min = Math.max(0, Math.min(min, 50000000));
-    max = Math.max(0, Math.min(max, 50000000));
+    min = Math.max(0, Math.min(min, 200000000));
+    max = Math.max(0, Math.min(max, 200000000));
 
     if (min > max) {
       min = max;
@@ -164,25 +170,14 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       max = min;
     }
 
-    // Kiểm tra xem có trùng với button giá nào không
-    const matchingRange = findMatchingPriceRange(min, max);
-    if (matchingRange && selectedFilters.price?.[0] !== matchingRange) {
-      if (selectedFilters.price && selectedFilters.price.length > 0) {
-        selectedFilters.price.forEach(val => onFilterChange('price', val));
-      }
-      onFilterChange('price', matchingRange);
-      setShowCustomPriceRange(false);
-    } else if (!matchingRange) {
-      if (selectedFilters.price && selectedFilters.price.length > 0) {
-        selectedFilters.price.forEach(val => onFilterChange('price', val));
-      }
-      setShowCustomPriceRange(true);
+    // Only update if values actually changed
+    if (min !== priceRange[0] || max !== priceRange[1]) {
+      onPriceRangeChange([min, max]);
     }
 
-    onPriceRangeChange([min, max]);
     setInputMinPrice(min.toString());
     setInputMaxPrice(max.toString());
-  };
+  }, [inputMinPrice, inputMaxPrice, priceRange, onPriceRangeChange]);
 
   // Hàm định dạng giá trị hiển thị
   const formatPrice = (value: number) => {
@@ -199,16 +194,13 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     }
     
     // Reset price range và show custom range
-    onPriceRangeChange([0, 50000000]);
+    onPriceRangeChange([0, 200000000]);
     setShowCustomPriceRange(true);
     
-    // Auto-apply sau khi state đã update
-    queueMicrotask(() => {
-      onApply();
-    });
+    // Chỉ xóa khoảng giá, không tự động áp dụng
   };
 
-  // Hàm hiển thị nhãn cho bộ lọc
+  // Hàm hiển thị nhãn cho bộ lọc - Updated để hỗ trợ tags tốt hơn
   const getFilterLabel = (key: string, value: string): string => {
     // Tìm trong tất cả các filter của key
     const filterSections = Object.values(currentFilterData);
@@ -222,10 +214,20 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       }
     }
     
-    // Nếu không tìm thấy label, loại bỏ prefix nếu có dấu '_'
+    // Fallback cho tag values - parse tag names để hiển thị thân thiện hơn
     if (value.includes('_')) {
-      // Split by underscore, remove the first part (prefix), join with space
-      // and capitalize first letter of each word
+      // Special handling for common tag patterns
+      if (value.startsWith('phone_')) {
+        return parsePhoneTag(value);
+      } else if (value.startsWith('laptop_')) {
+        return parseLaptopTag(value);
+      } else if (value.startsWith('earHeadphone_')) {
+        return parseEarHeadphoneTag(value);
+      } else if (value.startsWith('backupCharger_')) {
+        return parseBackupChargerTag(value);
+      }
+      
+      // Generic parsing for other tags
       return value
         .split('_')
         .slice(1)
@@ -236,18 +238,82 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
     return value;
   };
 
+  // Helper functions to parse specific tag types
+  const parsePhoneTag = (tag: string): string => {
+    const tagMap: { [key: string]: string } = {
+      'phone_highSpecs': 'Chơi game / Cấu hình cao',
+      'phone_battery': 'Pin khủng trên 5000 mAh',
+      'phone_camera': 'Chụp ảnh, quay phim',
+      'phone_livestream': 'Livestream',
+      'phone_slimLight': 'Mỏng nhẹ',
+      'phone_specialFeature_5g': 'Hỗ trợ 5G',
+      'phone_specialFeature_aiEdit': 'Chỉnh sửa ảnh AI',
+      'phone_specialFeature_waterDustProof': 'Kháng nước, bụi',
+      'phone_charge_fastCharge20': 'Sạc nhanh (từ 20W)',
+      'phone_charge_superFastCharge60': 'Sạc siêu nhanh (từ 60W)',
+      'phone_charge_wirelessCharge': 'Sạc không dây'
+    };
+    return tagMap[tag] || tag;
+  };
+
+  const parseLaptopTag = (tag: string): string => {
+    const tagMap: { [key: string]: string } = {
+      'laptop_gaming': 'Chơi game / Cấu hình cao',
+      'laptop_office': 'Học tập - Văn phòng',
+      'laptop_design': 'Đồ họa - Kỹ thuật',
+      'laptop_slimLight': 'Mỏng nhẹ',
+      'laptop_screen_13inch': 'Khoảng 13 inch',
+      'laptop_screen_14inch': 'Khoảng 14 inch',
+      'laptop_screen_15inch': 'Khoảng 15 inch',
+      'laptop_screen_16inch': 'Trên 16 inch',
+      'laptop_specialFeature_touchScreen': 'Cảm ứng',
+      'laptop_specialFeature_oled': 'Màn hình OLED',
+      'laptop_specialFeature_antiGlare': 'Chống chói',
+      'laptop_specialFeature_360': 'Gập 360 độ'
+    };
+    return tagMap[tag] || tag;
+  };
+
+  const parseEarHeadphoneTag = (tag: string): string => {
+    const tagMap: { [key: string]: string } = {
+      'earHeadphone_tech_boneConduction': 'Dẫn truyền qua xương',
+      'earHeadphone_tech_airConduction': 'Dẫn truyền qua khí',
+      'earHeadphone_battery_under4': 'Dưới 4 tiếng',
+      'earHeadphone_battery_4to6': 'Từ 4 đến 6 tiếng',
+      'earHeadphone_battery_6to8': 'Từ 6 đến 8 tiếng',
+      'earHeadphone_battery_above8': 'Trên 8 tiếng',
+      'earHeadphone_benefit_wirelessCharge': 'Sạc không dây',
+      'earHeadphone_benefit_waterProof': 'Chống nước',
+      'earHeadphone_benefit_mic': 'Mic đàm thoại',
+      'earHeadphone_benefit_anc': 'Chống ồn ANC',
+      'earHeadphone_benefit_enc': 'Chống ồn ENC'
+    };
+    return tagMap[tag] || tag;
+  };
+
+  const parseBackupChargerTag = (tag: string): string => {
+    const tagMap: { [key: string]: string } = {
+      'backupCharger_type_smallLight': 'Mỏng nhẹ',
+      'backupCharger_type_forLaptop': 'Cho laptop',
+      'backupCharger_battery_10k': '10.000 mAh',
+      'backupCharger_battery_20k': '20.000 mAh',
+      'backupCharger_battery_above20k': 'Trên 20.000 mAh',
+      'backupCharger_benefit_wirelessCharge': 'Sạc không dây',
+      'backupCharger_benefit_fastCharge': 'Sạc nhanh',
+      'backupCharger_benefit_magsafe': 'Magsafe/Magnetic'
+    };
+    return tagMap[tag] || tag;
+  };
+
   // Kiểm tra xem có button giá nào được chọn không
   const hasPriceRangeSelected = selectedFilters.price && selectedFilters.price.length > 0;
   
   // Kiểm tra xem có sử dụng custom price range không (khác với giá trị mặc định - toàn bộ range)
-  const hasCustomPriceRange = priceRange[0] !== 0 || priceRange[1] !== 50000000;
+  const hasCustomPriceRange = priceRange[0] !== 0 || priceRange[1] !== 200000000;
 
-  // Logic hiển thị custom price range:
-  // - Hiển thị khi chưa chọn button giá hoặc khi showCustomPriceRange = true
-  // - Ẩn khi đã chọn button giá và showCustomPriceRange = false
+  // Đồng bộ custom price range với button giá đã chọn
   React.useEffect(() => {
     if (hasPriceRangeSelected) {
-      // Khi chọn button giá → đồng bộ custom price range với giá trị button
       const selectedValue = selectedFilters.price?.[0];
       if (selectedValue) {
         const { min, max } = parsePriceRangeValue(selectedValue);
@@ -256,12 +322,8 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
           onPriceRangeChange([min, max]);
         }
       }
-      setShowCustomPriceRange(false);
-    } else {
-      // Khi không có button giá → hiển thị custom price range
-      setShowCustomPriceRange(true);
     }
-  }, [hasPriceRangeSelected]);
+  }, [hasPriceRangeSelected, selectedFilters.price, parsePriceRangeValue, priceRange, onPriceRangeChange]);
 
   return (
     <div className="absolute z-10 mt-2 w-[600px] max-w-[95vw] max-h-[80vh] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg p-6">
@@ -272,7 +334,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
         </label>
         <input
           type="text"
-          placeholder="Tìm kiếm thông số kỹ thuật (vd: ip68)..."
+          placeholder="vd: ip68,... (Kết quả được sắp xếp lại theo độ tương đồng)"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}
@@ -294,10 +356,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                 <button
                   onClick={() => {
                     onFilterChange(key, value);
-                    // Auto-apply sau khi state đã update
-                    queueMicrotask(() => {
-                      onApply();
-                    });
+                    // Chỉ xóa filter, không tự động áp dụng
                   }}
                   className="ml-1 text-blue-600 hover:text-blue-800"
                   aria-label="Remove filter"
@@ -346,7 +405,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
             onFilterChange={(key, value) => {
               onFilterChange(key, value);
               
-              if (key === 'priceRanges') {
+              if (key === 'price') {
                 const isCurrentlySelected = (selectedFilters[key] || []).includes(value);
                 
                 if (!isCurrentlySelected) {
@@ -383,7 +442,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   value={inputMaxPrice.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
                   onChange={(e) => handleInputChange('max', e.target.value)}
                   onBlur={() => handleInputBlur('max')}
-                  placeholder="50.000.000"
+                  placeholder="200.000.000"
                   variant="outlined"
                   size="small"
                   sx={{ width: '120px' }}
@@ -391,11 +450,11 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                 />
               </div>
               <Slider
-                value={priceRange}
+                value={localPriceRange}
                 onChange={handlePriceRangeChange}
                 valueLabelDisplay="off"
                 min={0}
-                max={50000000}
+                max={200000000}
                 step={100000}
                 sx={{
                   color: '#3b82f6',
@@ -405,9 +464,11 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                     width: 16,
                     backgroundColor: '#fff',
                     border: '2px solid currentColor',
+                    transition: 'none', // Remove transition for smoother dragging
                   },
                   '& .MuiSlider-track': {
                     height: 6,
+                    transition: 'none', // Remove transition for smoother dragging
                   },
                   '& .MuiSlider-rail': {
                     height: 6,
@@ -424,10 +485,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
                   if (selectedFilters.price && selectedFilters.price.length > 0) {
                     selectedFilters.price.forEach(value => onFilterChange('price', value));
                   }
-                  // Auto-apply sau khi state đã update
-                  queueMicrotask(() => {
-                    onApply();
-                  });
+                  // Chỉ chuyển về custom price range, không tự động áp dụng
                 }}
                 className="text-blue-500 hover:text-blue-700 font-medium flex items-center p-2 border border-blue-300 rounded-md hover:bg-blue-50 transition-colors"
               >
@@ -450,7 +508,26 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
         </div>
       </div>
 
-      {/* Other Filter Sections */}
+      {/* Product-Specific Filter Sections - Updated order and organization */}
+      {/* Phone specific sections */}
+      <FilterSection section="specialFeatures" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="chargeFeatures" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      
+      {/* Laptop specific sections */}
+      <FilterSection section="screen" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      
+      {/* Audio specific sections */}
+      <FilterSection section="connectivity" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneTechnology" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="earphoneBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      
+      {/* Phukien specific sections */}
+      <FilterSection section="backupChargerType" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="backupChargerBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+      <FilterSection section="backupChargerBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
+
+      {/* Legacy sections - keep for backward compatibility if needed */}
       <FilterSection section="privileges" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="phoneTypes" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="ram" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
@@ -459,14 +536,7 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
       <FilterSection section="cpu" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="storage" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="subcategories" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="connectivity" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="earphoneTechnology" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="earphoneBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="earphoneBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
       <FilterSection section="capacity" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="backupChargerType" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="backupChargerBattery" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
-      <FilterSection section="backupChargerBenefits" currentFilterData={currentFilterData} selectedFilters={selectedFilters} onFilterChange={onFilterChange} />
 
       <button
         onClick={onApply}

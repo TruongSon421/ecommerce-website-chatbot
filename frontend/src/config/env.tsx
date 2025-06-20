@@ -1,5 +1,5 @@
 const ENV = {
-    API_URL: "http://localhost:8070/api",
+    API_URL: "https://api.truongson.shop/api",
   };
   
 export default ENV;

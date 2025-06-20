@@ -67,10 +67,16 @@ const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> 
       console.log('Fetched product:', data);
       setProduct(data);
       setRetryCount(0);
-      if (data.colors && data.colors.length > 0 && data.colors[0] != null) {
-        setSelectedColor(data.colors[0]);
+      // Only set color if there are valid colors
+      if (data.colors && data.colors.length > 0) {
+        const validColors = data.colors.filter(color => color != null && color.trim() !== '');
+        if (validColors.length > 0) {
+          setSelectedColor(validColors[0]);
+        } else {
+          setSelectedColor(''); // Don't show color section if no valid colors
+        }
       } else {
-        setSelectedColor('Không xác định');
+        setSelectedColor(''); // Don't show color section if no colors array
       }
     } catch (error: any) {
       console.error('Error fetching product:', error);
@@ -101,10 +107,16 @@ const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> 
       fetchProduct(urlProductId, true);
     } else {
       setProduct(initialProduct);
-      if (initialProduct.colors && initialProduct.colors.length > 0 && initialProduct.colors[0] != null) {
-        setSelectedColor(initialProduct.colors[0]);
+      // Only set color if there are valid colors for initial product
+      if (initialProduct.colors && initialProduct.colors.length > 0) {
+        const validColors = initialProduct.colors.filter(color => color != null && color.trim() !== '');
+        if (validColors.length > 0) {
+          setSelectedColor(validColors[0]);
+        } else {
+          setSelectedColor(''); // Don't show color section if no valid colors
+        }
       } else {
-        setSelectedColor('Không xác định');
+        setSelectedColor(''); // Don't show color section if no colors array
       }
     }
   }, [urlProductId, initialProduct, fetchProduct]);
@@ -197,7 +209,7 @@ const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> 
     fetchVariants();
   };
 
-  const colorIndex = product.colors && product.colors.length > 0
+  const colorIndex = product.colors && product.colors.length > 0 && selectedColor
     ? product.colors.indexOf(selectedColor)
     : -1;
 
@@ -312,7 +324,7 @@ const ProductDetail: React.FC<{ product: Product & ExtendedProductProperties }> 
                     productId: product.productId,
                     productName: product.productName,
                     price: currentPrice,
-                    color: selectedColor,
+                    color: selectedColor || null, // Use null if no color selected
                     productType: product.type,
                     quantity: quantity,
                   }}
@@ -487,12 +499,13 @@ const ProductOptions: React.FC<ProductOptionsProps> = ({
         </div>
       </div>
     )}
-    {colorOptions && colorOptions.length > 0 && (
+    {colorOptions && colorOptions.length > 0 && 
+     colorOptions.some(color => color != null && color.trim() !== '') && (
       <div className="mb-6">
         <h3 className="text-sm font-medium text-gray-900 mb-3">Màu sắc: {selectedColor}</h3>
         <div className="flex items-center space-x-3">
           {colorOptions
-            .filter((color): color is string => color != null)
+            .filter((color): color is string => color != null && color.trim() !== '')
             .map((color) => (
               <button
                 key={color}
@@ -680,7 +693,9 @@ interface ActionButtonsProps {
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification }) => {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
 
   const handleAddToCart = async () => {
     if (isAddingToCart) return;
@@ -692,7 +707,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
       productName: product.productName,
       price: product.price,
       quantity: 1,
-      color: product.color === 'default' || !product.color ? 'Không xác định' : product.color,
+      color: product.color || 'default',
       available: true,
     };
 
@@ -705,6 +720,45 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
       showNotification(error.message || 'Lỗi khi thêm vào giỏ hàng', 'error');
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    if (isBuyingNow) return;
+
+    // Kiểm tra người dùng đã đăng nhập chưa
+    if (!isAuthenticated) {
+      showNotification('Vui lòng đăng nhập để mua hàng', 'warning');
+      return;
+    }
+
+    const cartItem: CartItem = {
+      productId: product.productId,
+      productName: product.productName,
+      price: product.price,
+      quantity: 1,
+      color: product.color || 'default',
+      available: true,
+    };
+
+    setIsBuyingNow(true);
+    try {
+      // Bước 1: Thêm sản phẩm vào cart trước
+      await addItemToCart(user?.id || 'guest', cartItem, isAuthenticated);
+      
+      // Bước 2: Chuyển đến checkout với key của sản phẩm vừa thêm
+      const itemKey = `${cartItem.productId}-${cartItem.color}`;
+      navigate('/checkout', {
+        state: {
+          selectedItemKeys: [itemKey],
+          fromBuyNow: true
+        }
+      });
+    } catch (error: any) {
+      console.error('Error during buy now:', error);
+      showNotification(error.message || 'Lỗi khi thực hiện mua ngay', 'error');
+    } finally {
+      setIsBuyingNow(false);
     }
   };
 
@@ -740,14 +794,29 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
         </button>
 
         <button
-          disabled={isOutOfStock}
+          onClick={handleBuyNow}
+          disabled={isOutOfStock || isBuyingNow}
           className={`max-w-xs flex-1 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             isOutOfStock
               ? 'bg-gray-400 text-white cursor-not-allowed'
+              : isBuyingNow
+              ? 'bg-red-400 text-white cursor-not-allowed'
               : 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
           }`}
         >
-          {isOutOfStock ? 'Không thể mua' : 'Mua ngay'}
+          {isBuyingNow ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Đang xử lý...
+            </>
+          ) : isOutOfStock ? (
+            'Không thể mua'
+          ) : (
+            'Mua ngay'
+          )}
         </button>
       </div>
 

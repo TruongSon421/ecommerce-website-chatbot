@@ -1,4 +1,4 @@
-// src/types/datafilter.ts
+// src/types/datafilter.ts - Updated version
 export interface FilterOption {
   label: string;
   value: string;
@@ -13,18 +13,18 @@ export interface Filter {
   multiSelect?: boolean; // Cho phép chọn nhiều
 }
 
-export interface PriceRange {
-  min: number;
-  max: number | null;
-  label: string;
-}
-
 export interface FilterData {
   [key: string]: Filter[];
 }
 
 export interface AllFilterData {
   [key: string]: FilterData;
+}
+
+export interface PriceRange {
+  min: number;
+  max: number | null;
+  label: string;
 }
 
 // Export price ranges as a constant
@@ -62,7 +62,7 @@ export const PRICE_RANGES = {
   ]
 } as const;
 
-// Phone Filters
+// Phone Filters - Updated to use 'tags' key consistently
 export const phoneFilterData: FilterData = {
   brands: [
     {
@@ -106,7 +106,413 @@ export const phoneFilterData: FilterData = {
         { label: 'Pin khủng trên 5000 mAh', value: 'phone_battery' },
         { label: 'Chụp ảnh, quay phim', value: 'phone_camera' },
         { label: 'Livestream', value: 'phone_livestream' },
-        { label: 'Mỏng nhẹ', value: 'phone_slimLight' }
+        { label: 'Mỏng nhẹ', value: 'phone_slimLight' },
+      ]
+    }
+  ],
+  specialFeatures: [
+    {
+      key: 'tags',
+      label: 'Tính năng đặc biệt',
+      multiSelect: true,
+      options: [
+        { label: 'Hỗ trợ 5G', value: 'phone_specialFeature_5g' },
+        { label: 'Chỉnh sửa ảnh AI', value: 'phone_specialFeature_aiEdit' },
+        { label: 'Kháng nước, bụi', value: 'phone_specialFeature_waterDustProof' }
+      ]
+    }
+  ],
+  chargeFeatures: [
+    {
+      key: 'tags',
+      label: 'Tính năng sạc',
+      multiSelect: true,
+      options: [
+        { label: 'Sạc nhanh (từ 20W)', value: 'phone_charge_fastCharge20' },
+        { label: 'Sạc siêu nhanh (từ 60W)', value: 'phone_charge_superFastCharge60' },
+        { label: 'Sạc không dây', value: 'phone_charge_wirelessCharge' }
+      ]
+    }
+  ]
+};
+
+// Laptop Filters - Updated structure
+export const laptopFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'Dell', value: 'Dell' },
+        { label: 'HP', value: 'HP' },
+        { label: 'Lenovo', value: 'Lenovo' },
+        { label: 'Asus', value: 'Asus' },
+        { label: 'Acer', value: 'Acer' },
+        { label: 'MSI', value: 'MSI' },
+        { label: 'MacBook', value: 'MacBook,Apple' }
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.laptop.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ],
+  needs: [
+    {
+      key: 'tags',
+      label: 'Nhu cầu',
+      multiSelect: true,
+      options: [
+        { label: 'Chơi game / Cấu hình cao', value: 'laptop_gaming' },
+        { label: 'Học tập - Văn phòng', value: 'laptop_office' },
+        { label: 'Đồ họa - Kỹ thuật', value: 'laptop_design' },
+        { label: 'Mỏng nhẹ', value: 'laptop_slimLight' }
+      ]
+    }
+  ],
+  screen: [
+    {
+      key: 'tags',
+      label: 'Kích thước màn hình',
+      multiSelect: true,
+      options: [
+        { label: 'Khoảng 13 inch', value: 'laptop_screen_13inch' },
+        { label: 'Khoảng 14 inch', value: 'laptop_screen_14inch' },
+        { label: 'Khoảng 15 inch', value: 'laptop_screen_15inch' },
+        { label: 'Trên 16 inch', value: 'laptop_screen_16inch' },
+      ]
+    }
+  ],
+  specialFeatures: [
+    {
+      key: 'tags',
+      label: 'Tính năng đặc biệt',
+      multiSelect: true,
+      options: [
+        { label: 'Cảm ứng', value: 'laptop_specialFeature_touchScreen' },
+        { label: 'Màn hình OLED', value: 'laptop_specialFeature_oled' },
+        { label: 'Chống chói', value: 'laptop_specialFeature_antiGlare' },
+        { label: 'Gập 360 độ', value: 'laptop_specialFeature_360' },
+      ]
+    }
+  ]
+};
+
+// Wired Earphone Filters (Tai nghe có dây)
+export const wiredEarphoneFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'JBL', value: 'JBL' },
+        { label: 'Xiaomi', value: 'Xiaomi' },
+        { label: 'Baseus', value: 'Baseus' },
+        { label: 'OPPO', value: 'OPPO' },
+        { label: 'HP HyperX', value: 'HP HyperX' },
+        { label: 'Sony', value: 'Sony' },
+        { label: 'Asus', value: 'Asus' },
+        { label: 'Apple', value: 'Apple' },
+        { label: 'AVA+', value: 'AVA+' },
+        { label: 'Samsung', value: 'Samsung' },       
+        
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.audio.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ],
+  connectivity: [
+    {
+      key: 'tags',
+      label: 'Kết nối',
+      multiSelect: false,
+      options: [
+        { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
+        { label: 'USB-C', value: 'usb_c' },
+        { label: 'Lightning', value: 'lightning' }
+      ]
+    }
+  ],
+  earphoneBenefits: [
+    {
+      key: 'tags',
+      label: 'Tiện ích',
+      multiSelect: true,
+      options: [
+        { label: 'Chống nước', value: 'earHeadphone_benefit_waterProof' },
+        { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
+        { label: 'Điều khiển âm lượng', value: 'wiredEarphone_benefit_volumeControl' },
+        { label: 'Chống rối dây', value: 'wiredEarphone_benefit_tangleFree' }
+      ]
+    }
+  ]
+};
+
+// Wireless Earphone Filters (Tai nghe không dây)
+export const wirelessEarphoneFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'Apple', value: 'Apple' },
+        { label: 'Samsung', value: 'Samsung' },
+        { label: 'Sony', value: 'Sony' },
+        { label: 'JBL', value: 'JBL' },
+        { label: 'Beats', value: 'Beats' },
+        { label: 'Marshall', value: 'Marshall' },
+        { label: 'Xiaomi', value: 'Xiaomi' },
+        { label: 'OPPO', value: 'OPPO' },
+        { label: 'realme', value: 'realme' },
+        { label: 'Shokz', value: 'Shokz' },
+        { label: 'soundcore', value: 'soundcore' },
+        { label: 'Soundpeats', value: 'Soundpeats' },
+        { label: 'HAVIT', value: 'HAVIT' },
+        { label: 'AVA+', value: 'AVA+' },
+        { label: 'Baseus', value: 'Baseus' },
+        { label: 'Rezo', value: 'Rezo' },
+        { label: 'Alpha Works', value: 'Alpha Works' },
+        { label: 'Soul', value: 'Soul' },
+        { label: 'SOUNARC', value: 'SOUNARC' },
+        { label: 'Asus', value: 'Asus' },
+        { label: 'MONSTER', value: 'MONSTER' },
+        { label: 'Denon', value: 'Denon' },
+        { label: 'Mozard', value: 'Mozard' }
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.audio.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ],
+  earphoneTechnology: [
+    {
+      key: 'tags',
+      label: 'Công nghệ dẫn truyền',
+      multiSelect: false,
+      options: [
+        { label: 'Dẫn truyền qua xương', value: 'earHeadphone_tech_boneConduction' },
+        { label: 'Dẫn truyền qua khí', value: 'earHeadphone_tech_airConduction' }
+      ]
+    }
+  ],
+  earphoneBattery: [
+    {
+      key: 'tags',
+      label: 'Thời lượng pin',
+      multiSelect: false,
+      options: [
+        { label: 'Dưới 4 tiếng', value: 'earHeadphone_battery_under4' },
+        { label: 'Từ 4 đến 6 tiếng', value: 'earHeadphone_battery_4to6' },
+        { label: 'Từ 6 đến 8 tiếng', value: 'earHeadphone_battery_6to8' },
+        { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_above8' }
+      ]
+    }
+  ],
+  earphoneBenefits: [
+    {
+      key: 'tags',
+      label: 'Tiện ích',
+      multiSelect: true,
+      options: [
+        { label: 'Sạc không dây', value: 'earHeadphone_benefit_wirelessCharge' },
+        { label: 'Chống nước', value: 'earHeadphone_benefit_waterProof' },
+        { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
+        { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
+        { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' },
+        { label: 'Tự động tạm dừng', value: 'wirelessEarphone_benefit_autoPause' }
+      ]
+    }
+  ]
+};
+
+// Headphone Filters (Tai nghe chụp tai)
+export const headphoneFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'HAVIT', value: 'HAVIT' },
+        { label: 'Baseus', value: 'Baseus' },
+        { label: 'Sony', value: 'Sony' },
+        { label: 'Alpha Works', value: 'Alpha Works' },
+        { label: 'JBL', value: 'JBL' },
+        { label: 'Asus', value: 'Asus' },
+        { label: 'soundcore', value: 'soundcore' },
+        { label: 'Marshall', value: 'Marshall' },
+        { label: 'Zadez', value: 'Zadez' },
+        { label: 'HP HyperX', value: 'HP HyperX' },
+        { label: 'Apple', value: 'Apple' },
+        { label: 'Beats', value: 'Beats' }
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.audio.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ],
+  connectivity: [
+    {
+      key: 'tags',
+      label: 'Kết nối',
+      multiSelect: false,
+      options: [
+        { label: 'Bluetooth 5.0+', value: 'bluetooth_5' },
+        { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
+        { label: 'USB-C', value: 'usb_c' },
+        { label: 'Có dây + Bluetooth', value: 'hybrid_connection' }
+      ]
+    }
+  ],
+  headphoneType: [
+    {
+      key: 'tags',
+      label: 'Loại headphone',
+      multiSelect: false,
+      options: [
+        { label: 'Over-ear', value: 'headphone_type_overEar' },
+        { label: 'On-ear', value: 'headphone_type_onEar' },
+        { label: 'Gaming', value: 'headphone_type_gaming' },
+        { label: 'Studio/Monitor', value: 'headphone_type_studio' }
+      ]
+    }
+  ],
+  headphoneBattery: [
+    {
+      key: 'tags',
+      label: 'Thời lượng pin',
+      multiSelect: false,
+      options: [
+        { label: 'Dưới 10 tiếng', value: 'headphone_battery_under10' },
+        { label: 'Từ 10 đến 20 tiếng', value: 'headphone_battery_10to20' },
+        { label: 'Từ 20 đến 30 tiếng', value: 'headphone_battery_20to30' },
+        { label: 'Trên 30 tiếng', value: 'headphone_battery_above30' }
+      ]
+    }
+  ],
+  headphoneBenefits: [
+    {
+      key: 'tags',
+      label: 'Tiện ích',
+      multiSelect: true,
+      options: [
+        { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
+        { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
+        { label: 'Có thể gập lại', value: 'headphone_benefit_foldable' },
+        { label: 'Âm thanh 360', value: 'headphone_benefit_360sound' },
+        { label: 'Equalizer tùy chỉnh', value: 'headphone_benefit_customEQ' },
+        { label: 'Phím điều khiển', value: 'headphone_benefit_controls' }
+      ]
+    }
+  ]
+};
+
+// Audio Filters - Backward compatibility (sẽ được deprecated)
+export const audioFilterData: FilterData = wirelessEarphoneFilterData;
+
+// Phukien Filters - Updated structure  
+export const phukienFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'Anker', value: 'Anker' },
+        { label: 'AVA', value: 'AVA,AVA+' },
+        { label: 'Baseus', value: 'Baseus' },
+        { label: 'Hydrus', value: 'Hydrus' },
+        { label: 'Mazer', value: 'Mazer' },
+        { label: 'Samsung', value: 'Samsung' },
+        { label: 'Ugreen', value: 'Ugreen' },
+        { label: 'Xiaomi', value: 'Xiaomi' },
+        { label: 'Xmobile', value: 'Xmobile' }
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.phukien.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ],
+  backupChargerType: [
+    {
+      key: 'tags',
+      label: 'Loại sạc dự phòng',
+      multiSelect: false,
+      options: [
+        { label: 'Mỏng nhẹ', value: 'backupCharger_type_smallLight' },
+        { label: 'Cho laptop', value: 'backupCharger_type_forLaptop' }
+      ]
+    }
+  ],
+  backupChargerBattery: [
+    {
+      key: 'tags',
+      label: 'Dung lượng pin sạc dự phòng',
+      multiSelect: false,
+      options: [
+        { label: '10.000 mAh', value: 'backupCharger_battery_10k' },
+        { label: '20.000 mAh', value: 'backupCharger_battery_20k' },
+        { label: 'Trên 20.000 mAh', value: 'backupCharger_battery_above20k' }
+      ]
+    }
+  ],
+  backupChargerBenefits: [
+    {
+      key: 'tags',
+      label: 'Tiện ích sạc dự phòng',
+      multiSelect: true,
+      options: [
+        { label: 'Sạc không dây', value: 'backupCharger_benefit_wirelessCharge' },
+        { label: 'Sạc nhanh', value: 'backupCharger_benefit_fastCharge' },
+        { label: 'Magsafe/Magnetic', value: 'backupCharger_benefit_magsafe' }
       ]
     }
   ]
@@ -131,242 +537,10 @@ export const getPriceRange = (type: string, value: string): PriceRange => {
 // Main export
 export const filterData: AllFilterData = {
   phone: phoneFilterData,
-  laptop: {
-    brands: [
-      {
-        key: 'brand',
-        label: 'Hãng',
-        isSearchable: true,
-        multiSelect: true,
-        options: [
-          { label: 'Dell', value: 'dell' },
-          { label: 'HP', value: 'hp' },
-          { label: 'Lenovo', value: 'lenovo' },
-          { label: 'Asus', value: 'asus' },
-          { label: 'Acer', value: 'acer' },
-          { label: 'MSI', value: 'msi' },
-          { label: 'MacBook', value: 'macbook' }
-        ]
-      }
-    ],
-    priceRanges: [
-      {
-        key: 'price',
-        label: 'Giá',
-        multiSelect: false,
-        options: PRICE_RANGES.laptop.map(range => ({
-          label: range.label,
-          value: `${range.min}-${range.max || ''}`
-        }))
-      }
-    ],
-    needs: [
-      {
-        key: 'tags',
-        label: 'Nhu cầu',
-        multiSelect: true,
-        options: [
-          { label: 'Chơi game / Cấu hình cao', value: 'laptop_gaming' },
-          { label: 'Học tập - Văn phòng', value: 'laptop_office' },
-          { label: 'Đồ họa - Kỹ thuật', value: 'laptop_design' },
-          { label: 'Mỏng nhẹ', value: 'laptop_slimLight' }
-        ]
-      }
-    ],
-    ram: [
-      {
-        key: 'ram',
-        label: 'RAM',
-        multiSelect: true,
-        options: [
-          { label: '8GB', value: '8' },
-          { label: '16GB', value: '16' },
-          { label: '32GB', value: '32' }
-        ]
-      }
-    ],
-    cpu: [
-      {
-        key: 'cpu',
-        label: 'CPU',
-        multiSelect: true,
-        options: [
-          { label: 'Intel i3', value: 'intel_i3' },
-          { label: 'Intel i5', value: 'intel_i5' },
-          { label: 'Intel i7', value: 'intel_i7' },
-          { label: 'AMD Ryzen 5', value: 'amd_ryzen5' },
-          { label: 'AMD Ryzen 7', value: 'amd_ryzen7' }
-        ]
-      }
-    ],
-    storage: [
-      {
-        key: 'storage',
-        label: 'Ổ cứng',
-        multiSelect: true,
-        options: [
-          { label: '256GB SSD', value: '256_ssd' },
-          { label: '512GB SSD', value: '512_ssd' },
-          { label: '1TB SSD', value: '1tb_ssd' }
-        ]
-      }
-    ]
-  },
-  audio: {
-    brands: [
-      {
-        key: 'brand',
-        label: 'Hãng',
-        isSearchable: true,
-        multiSelect: true,
-        options: [
-          { label: 'Sony', value: 'Sony' },
-          { label: 'JBL', value: 'JBL' },
-          { label: 'Bose', value: 'Bose' },
-          { label: 'Apple', value: 'Apple' },
-          { label: 'Samsung', value: 'Samsung' },
-          { label: 'Sennheiser', value: 'Sennheiser' },
-          { label: 'Audio-Technica', value: 'Audio-Technica' },
-          { label: 'Beats', value: 'Beats' },
-          { label: 'Xiaomi', value: 'Xiaomi' },
-          { label: 'Anker', value: 'Anker' },
-          { label: 'Marshall', value: 'Marshall' },
-          { label: 'Edifier', value: 'Edifier' }
-        ]
-      }
-    ],
-    priceRanges: [
-      {
-        key: 'price',
-        label: 'Giá',
-        multiSelect: false,
-        options: PRICE_RANGES.audio.map(range => ({
-          label: range.label,
-          value: `${range.min}-${range.max || ''}`
-        }))
-      }
-    ],
-    connectivity: [
-      {
-        key: 'tags',
-        label: 'Kết nối',
-        multiSelect: false,
-        options: [
-          { label: 'Bluetooth 5.0+', value: 'bluetooth_5' },
-          { label: 'USB-C', value: 'usb_c' },
-          { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
-          { label: 'Wireless', value: 'wireless' },
-          { label: 'Lightning', value: 'lightning' }
-        ]
-      }
-    ],
-    earphoneTechnology: [
-      {
-        key: 'tags',
-        label: 'Công nghệ dẫn truyền',
-        multiSelect: false,
-        options: [
-          { label: 'Dẫn truyền qua xương', value: 'earHeadphone_tech_boneConduction' },
-          { label: 'Dẫn truyền qua khí', value: 'earHeadphone_tech_airConduction' }
-        ]
-      }
-    ],
-    earphoneBattery: [
-      {
-        key: 'tags',
-        label: 'Thời lượng pin tai nghe',
-        multiSelect: false,
-        options: [
-          { label: 'Dưới 4 tiếng', value: 'earHeadphone_battery_under4' },
-          { label: 'Từ 4 đến 6 tiếng', value: 'earHeadphone_battery_4to6' },
-          { label: 'Từ 6 đến 8 tiếng', value: 'earHeadphone_battery_6to8' },
-          { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_above8' }
-        ]
-      }
-    ],
-    earphoneBenefits: [
-      {
-        key: 'tags',
-        label: 'Tiện ích tai nghe',
-        multiSelect: true,
-        options: [
-          { label: 'Sạc không dây', value: 'earHeadphone_benefit_wirelessCharge' },
-          { label: 'Chống nước', value: 'earHeadphone_benefit_waterProof' },
-          { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
-          { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
-          { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' }
-        ]
-      }
-    ]
-  },
-  phukien: {
-    brands: [
-      {
-        key: 'brand',
-        label: 'Hãng',
-        isSearchable: true,
-        multiSelect: true,
-        options: [
-          { label: 'Anker', value: 'Anker' },
-          { label: 'Samsung', value: 'Samsung' },
-          { label: 'Xiaomi', value: 'Xiaomi' },
-          { label: 'Baseus', value: 'Baseus' },
-          { label: 'UGREEN', value: 'UGREEN' },
-          { label: 'Aukey', value: 'Aukey' },
-          { label: 'RAVPower', value: 'RAVPower' },
-          { label: 'Romoss', value: 'Romoss' },
-          { label: 'Pisen', value: 'Pisen' },
-          { label: 'Remax', value: 'Remax' },
-          { label: 'Belkin', value: 'Belkin' },
-          { label: 'Energizer', value: 'Energizer' }
-        ]
-      }
-    ],
-    priceRanges: [
-      {
-        key: 'price',
-        label: 'Giá',
-        multiSelect: false,
-        options: PRICE_RANGES.phukien.map(range => ({
-          label: range.label,
-          value: `${range.min}-${range.max || ''}`
-        }))
-      }
-    ],
-    backupChargerType: [
-      {
-        key: 'tags',
-        label: 'Loại sạc dự phòng',
-        multiSelect: false,
-        options: [
-          { label: 'Mỏng nhẹ', value: 'backupCharger_type_smallLight' },
-          { label: 'Cho laptop', value: 'backupCharger_tech_forLaptop' }
-        ]
-      }
-    ],
-    backupChargerBattery: [
-      {
-        key: 'tags',
-        label: 'Dung lượng pin sạc dự phòng',
-        multiSelect: false,
-        options: [
-          { label: '10.000 mAh', value: 'backupCharger_battery_10k' },
-          { label: '20.000 mAh', value: 'backupCharger_battery_20k' },
-          { label: 'Trên 20.000 mAh', value: 'backupCharger_battery_above20k' }
-        ]
-      }
-    ],
-    backupChargerBenefits: [
-      {
-        key: 'tags',
-        label: 'Tiện ích sạc dự phòng',
-        multiSelect: true,
-        options: [
-          { label: 'Sạc không dây', value: 'backupCharger_benefit_wirelessCharge' },
-          { label: 'Sạc nhanh', value: 'backupCharger_benefit_fastCharge' },
-          { label: 'Magsafe/Magnetic', value: 'backupCharger_benefit_magesafe' }
-        ]
-      }
-    ]
-  }
+  laptop: laptopFilterData,
+  audio: audioFilterData, // Deprecated - dùng cho backward compatibility
+  wiredEarphone: wiredEarphoneFilterData,
+  wirelessEarphone: wirelessEarphoneFilterData,
+  headphone: headphoneFilterData,
+  phukien: phukienFilterData
 };
