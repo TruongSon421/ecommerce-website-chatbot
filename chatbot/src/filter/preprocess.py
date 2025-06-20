@@ -3,94 +3,74 @@ import fasttext
 import re
 from dotenv import load_dotenv
 import os
-from share_data import user_language
 load_dotenv()
 
 
 class Filter:
     # Class variables instead of instance variables
-    # Từ ngữ nhạy cảm cần filter
     lang_dict = {'vie':"tiếng Việt",'eng':"tiếng Anh"}
-    sensitive_words = [
-        # Từ ngữ bạo lực - Tiếng Việt
-        'fuck', 'shit', 'giết', 'chết', 'máu', 'đánh', 'bắn', 'cướp',
-        'tử hình', 'sát hại', 'xác', 'kill', 'die', 'death',
-        'murder', 'rob', 'ass', 'shitty',
-        
-        # Từ ngữ bạo lực bổ sung - Tiếng Việt
-        'giết chóc', 'sát nhân', 'ám sát', 'thảm sát', 'đâm chém', 'chém giết',
-        'thiêu đốt', 'đốt cháy', 'nổ tung', 'bom đạn', 'súng đạn', 'dao găm',
-        'chặt đầu', 'treo cổ', 'bóp cổ', 'nghiền nát', 'tra tấn', 'hành hạ',
-        'đánh đập', 'tàn sát', 'thủ tiêu', 'hạ sát', 'đoạt mạng', 'cướp mạng',
-        'tự tử', 'tự sát', 'tự vẫn', 'tử vong', 'chết chóc', 'thi thể',
-        'xác chết', 'thây ma', 'ma lai', 'quỷ dữ', 'ác quỷ',
-        
-        # Từ ngữ bạo lực bổ sung - Tiếng Anh
-        'assault', 'attack', 'beat', 'stab', 'shoot', 'bomb', 'weapon', 'gun',
-        'knife', 'blade', 'sword', 'poison', 'torture', 'abuse', 'violence',
-        'brutal', 'savage', 'massacre', 'slaughter', 'execute', 'hang', 'drown',
-        'suffocate', 'strangle', 'assassinate', 'terminate', 'eliminate',
-        'suicide', 'homicide', 'genocide', 'corpse', 'cadaver', 'bloodshed',
-        'carnage', 'butcher', 'slayer', 'killer', 'murderer', 'criminal',
-        'terrorist', 'destroy', 'demolish', 'annihilate', 'exterminate',
-        
-        # Từ ngữ tình dục - Tiếng Việt
-        'tình dục', 'quan hệ', 'làm tình', 'ân ái', 'giao hợp',
-        'nude', 'khỏa thân', 'cởi truồng', 'khỏa thể', 'sex toy', 'đồ chơi tình dục',
-        'porn', 'phim sex', 'phim khiêu dâm', 'khiêu dâm', 'dâm dục',
-        'mại dâm', 'gái điếm', 'điếm đĩ', 'đĩ thỏa', 'cave', 'gái gọi',
-        'massage', 'karaoke ôm', 'quán bar', 'pub girl',
-        
-        # Từ ngữ tình dục - Tiếng Anh
-        'porn', 'porno', 'pornography', 'nude', 'naked', 'strip', 'sexy',
-        'erotic', 'adult', 'xxx', 'sexual', 'intercourse', 'orgasm',
-        'masturbate', 'prostitute', 'whore', 'slut', 'bitch', 'hooker',
-        'escort', 'brothel', 'fetish', 'kinky', 'hardcore', 'softcore',
-        
-        # Từ ngữ chửi thề - Tiếng Việt
-        'đồ chó', 'con chó', 'thằng chó', 'đồ lợn', 'con lợn', 'thằng lợn',
-        'đồ khốn', 'thằng khốn', 'đồ súc sinh', 'đồ đần', 'thằng đần',
-        'đồ ngu', 'thằng ngu', 'con ngu', 'đầu óc lợn', 'não lợn',
-        'mặt lợn', 'mồm lợn', 'miệng hôi', 'ngu như lợn', 'ngu như chó',
-        'chết tiệt', 'khốn nạn', 'đồ khốn kiếp', 'thằng khốn kiếp',
-        'đú má', 'địt mẹ', 'cặc', 'lồn', 'buồi', 'cave', 'đĩ',
-        'mẹ kiếp', 'đéo', 'vãi', 'vãi lồn', 'đụ má', 'đụ mẹ',
-        
-        # Từ ngữ chửi thề - Tiếng Anh
-        'damn', 'bastard', 'asshole', 'dickhead', 'motherfucker',
-        'bitch', 'cunt', 'dick', 'cock', 'pussy', 'tits', 'boobs',
-        'nipple', 'penis', 'vagina', 'anus', 'rectum', 'testicle',
-        'screw', 'piss', 'crap', 'bullshit', 'goddamn', 'jesus christ',
-        'holy shit', 'what the fuck', 'son of a bitch',
-        
-        # Từ ngữ ma túy - Tiếng Việt
-        'ma túy', 'thuốc phiện', 'heroin', 'cocaine', 'cần sa', 'cỏ Mỹ',
-        'thuốc lắc', 'ecstasy', 'methamphetamine', 'ketamine', 'opium',
-        'morphine', 'crystal meth', 'ice', 'speed', 'crack', 'lsd',
-        'mdma', 'weed', 'marijuana', 'hashish', 'cannabis', 'ganja',
-        
-        # Từ ngữ chính trị nhạy cảm - Tiếng Việt
-        'chống phá', 'phản động', 'tuyên truyền', 'xuyên tạc', 'bôi nhọ',
-        'vu khống', 'làm loạn', 'gây rối', 'biểu tình', 'đình công',
-        'chính quyền', 'độc tài', 'chuyên chế', 'dân chủ hóa', 'tự do hóa',
-        
-        # Từ ngữ tôn giáo nhạy cảm
-        'dị giáo', 'ngoại đạo', 'tà giáo', 'ma quỷ', 'quỷ satan', 'địa ngục',
-        'chúa trời', 'thượng đế', 'allah', 'buddha', 'phật tổ', 'chúa jesus',
-        
-        # Từ ngữ phân biệt chủng tộc
-        'da đen', 'da đỏ', 'da vàng', 'da trắng',
-        'nigger', 'negro', 'chink', 'gook', 'slant', 'jap', 'nazi',
-        
-        # Từ viết tắt và biến thể
-        'wtf', 'omfg', 'stfu', 'lmao', 'lmfao', 'dmm', 'vcl', 'vkl',
-        'wtf', 'lol', 'rofl', 'lmao', 'rotfl', 'bff', 'smh', 'cmm', 'lmm',
-        'loz', 'cc', 'dkm', 'cdm', 'dcm'
-        
-        # Số điện thoại và thông tin cá nhân pattern
-        'sdt:', 'số điện thoại:', 'phone:', 'tel:', 'zalo:', 'facebook:',
-        'fb:', 'messenger:', 'instagram:', 'ig:', 'tiktok:', 'telegram:',
+    
+    # Vietnamese keywords for better language detection
+    vietnamese_keywords = [
+        # Common Vietnamese words (with and without diacritics)
+        'toi', 'tôi', 'ban', 'bạn', 'tim', 'tìm', 'muon', 'muốn', 'mua', 
+        'can', 'cần', 'co', 'có', 'khong', 'không', 'tai nghe', 'tainghe',
+        'dien thoai', 'điện thoại', 'laptop', 'may tinh', 'máy tính',
+        'gia', 'giá', 'bao nhieu', 'bao nhiêu', 'nao', 'nào', 'nha', 'nhà',
+        'cua hang', 'cửa hàng', 'san pham', 'sản phẩm', 'hang', 'hàng',
+        'moi', 'mới', 'cu', 'cũ', 'tot', 'tốt', 'xau', 'xấu', 'dep', 'đẹp',
+        'nhanh', 'cham', 'chậm', 're', 'rẻ', 'dat', 'đắt', 'chat luong', 'chất lượng',
+        'mau', 'màu', 'den', 'đen', 'trang', 'trắng', 'đỏ', 'xanh',
+        'cam on', 'cảm ơn', 'xin loi', 'xin lỗi', 'duoc', 'được', 'roi', 'rồi',
+        'day', 'đây', 'do', 'đó', 'kia', 'nay', 'này', 'ay', 'ấy', 'chinh', 'sach', 'quy',
+        'dinh', 'xin chaof', 'xin chao'
     ]
+    
+    # Load sensitive words from external files
+    @classmethod
+    def _load_sensitive_words(cls):
+        """Load sensitive words from Vietnamese and English text files"""
+        sensitive_words = []
+        
+        # Đường dẫn tới các file từ nhạy cảm
+        vie_file = os.path.join(os.path.dirname(__file__), 'sensitive_words_vie.txt')
+        en_file = os.path.join(os.path.dirname(__file__), 'sensitive_words_en.txt')
+        
+        # Load từ tiếng Việt
+        try:
+            with open(vie_file, 'r', encoding='utf-8') as f:
+                vie_words = [line.strip() for line in f if line.strip()]
+                sensitive_words.extend(vie_words)
+                print(f"Loaded {len(vie_words)} Vietnamese sensitive words")
+        except Exception as e:
+            print(f"Error loading Vietnamese sensitive words: {e}")
+        
+        # Load từ tiếng Anh
+        try:
+            with open(en_file, 'r', encoding='utf-8') as f:
+                en_words = [line.strip() for line in f if line.strip()]
+                sensitive_words.extend(en_words)
+                print(f"Loaded {len(en_words)} English sensitive words")
+        except Exception as e:
+            print(f"Error loading English sensitive words: {e}")
+        
+        print(f"Total sensitive words loaded: {len(sensitive_words)}")
+        return sensitive_words
+    
+    # Initialize sensitive_words as None, will be loaded on first access
+    _sensitive_words_cache = None
+    
+    @classmethod
+    def get_sensitive_words(cls):
+        """Get sensitive words, loading them if not already cached"""
+        if cls._sensitive_words_cache is None:
+            cls._sensitive_words_cache = cls._load_sensitive_words()
+        return cls._sensitive_words_cache
+    
+    @classmethod
+    def sensitive_words(cls):
+        """Property to access sensitive words"""
+        return cls.get_sensitive_words()
 
     # Lời chào thông thường
     common_greetings = [
@@ -129,26 +109,77 @@ class Filter:
     def check_sensitive_words(cls, query):
         """Kiểm tra xem query có chứa từ nhạy cảm riêng biệt không"""
         query_lower = query.lower()
-        # Tách câu thành các từ riêng biệt
+        # Tách query thành các từ riêng biệt
         words_in_query = query_lower.split()
+        # Chuẩn hóa query: thay thế dấu _ bằng dấu cách
+        query_normalized = query_lower.replace('_', ' ')
         found_words = []
         
-        for word in cls.sensitive_words:
+        for word in cls.get_sensitive_words():
             word_lower = word.lower().strip()
-            # Kiểm tra từ nhạy cảm có xuất hiện như một từ riêng biệt không
+            
+            # Chuẩn hóa: thay thế dấu _ bằng dấu cách
+            word_normalized = word_lower.replace('_', ' ')
+            
+            # Kiểm tra 3 trường hợp:
+            # 1. Từ gốc là một từ riêng biệt trong query (ví dụ: "nứng_lồn" là một từ trong "nứng_lồn abc")
             if word_lower in words_in_query:
                 found_words.append(word)
+                continue
+                
+            # 2. Từ chuẩn hóa là một cụm từ chính xác trong query chuẩn hóa
+            # (ví dụ: "nứng lồn" là một cụm từ trong "nứng lồn abc")
+            if f" {word_normalized} " in f" {query_normalized} ":
+                found_words.append(word)
+                continue
+                
+            # 3. Từ chuẩn hóa là toàn bộ câu query
+            if word_normalized == query_normalized:
+                found_words.append(word)
+                continue
         
         return len(found_words) > 0, found_words
     
-    
+    @classmethod
+    def check_vietnamese_keywords(cls, query):
+        """Kiểm tra xem query có chứa từ khóa tiếng Việt không"""
+        query_lower = query.lower()
+        words_in_query = query_lower.split()
+        # Thêm dấu cách ở đầu và cuối để dễ kiểm tra cụm từ
+        query_with_spaces = f" {query_lower} "
+        
+        vietnamese_word_count = 0
+        found_keywords = []
+        
+        for keyword in cls.vietnamese_keywords:
+            keyword = keyword.strip().lower()
+            
+            # Kiểm tra từ khóa là một từ riêng biệt trong danh sách từ
+            if keyword in words_in_query:
+                vietnamese_word_count += 1
+                found_keywords.append(keyword)
+                continue
+                
+            # Kiểm tra từ khóa là một cụm từ chính xác trong query
+            if f" {keyword} " in query_with_spaces:
+                vietnamese_word_count += 1
+                found_keywords.append(keyword)
+                continue
+                
+            # Kiểm tra từ khóa là toàn bộ câu query
+            if keyword == query_lower:
+                vietnamese_word_count += 1
+                found_keywords.append(keyword)
+        
+        # Nếu có ít nhất 1 từ tiếng Việt thì có thể là tiếng Việt
+        return vietnamese_word_count > 0, found_keywords, vietnamese_word_count
     
     @classmethod
     def check_lang(cls, query):
         model = fasttext.load_model(cls.model_path)
         
         # Get the top 3 language predictions
-        labels, probabilities = model.predict(query, k=2)
+        labels, probabilities = model.predict(query, k=3)
         
         # Process the results
         detected_langs = []
@@ -179,7 +210,6 @@ class Filter:
 
     @classmethod
     def filter_query(cls, query):
-        user_language.clear()
         
         # 1. Kiểm tra lời chào trước (chính xác hoàn toàn)
         if cls.check_common_greetings(query)[0]:
@@ -191,25 +221,47 @@ class Filter:
         
         # 3. LOGIC MỚI: Nếu query ngắn hơn 5 ký tự, pass với tiếng Việt
         if len(query.strip()) < 5:
-            user_language.append(cls.lang_dict['vie'])  # Set to Vietnamese
             print(f"Short query detected (length: {len(query.strip())}), defaulting to Vietnamese")
             return 3, 'vie'
         
-        # 4. Kiểm tra ngôn ngữ cho query dài hơn 5 ký tự
+        # 4. Kiểm tra từ khóa tiếng Việt trước khi dùng fasttext
+        has_viet_keywords, viet_keywords, viet_count = cls.check_vietnamese_keywords(query)
+        
+        # 5. Kiểm tra ngôn ngữ cho query dài hơn 5 ký tự
         lang_results = cls.check_lang(query)
-        print(lang_results)
+        print(f"Fasttext results: {lang_results}")
+        
         supported_langs = ['vie', 'eng']
         has_supported_lang = False
         userLang = 'vie'  # Default language
         
+        # Nếu có từ khóa tiếng Việt và fasttext không detect được 'vie' với confidence cao
+        if has_viet_keywords:
+            vie_detected = any(lang_code == 'vie' and prob > 0.3 for lang_code, prob in lang_results)
+            if not vie_detected:
+                print(f"Vietnamese keywords detected: {viet_keywords} (count: {viet_count})")
+                print("Overriding fasttext detection, using Vietnamese")
+                return 3, 'vie'
+        
+        # Logic cũ với threshold thấp hơn cho supported languages
         for lang_code, prob in lang_results:
-            if lang_code in supported_langs and prob > 0.4:
-                has_supported_lang = True
-                userLang = lang_code
-                user_language.append(cls.lang_dict[lang_code])
-                break
+            if lang_code in supported_langs:
+                # Giảm threshold cho việc detect ngôn ngữ supported
+                threshold = 0.3 if lang_code == 'vie' else 0.4
+                if prob > threshold:
+                    has_supported_lang = True
+                    userLang = lang_code
+                    print(f"Language detected: {lang_code} with confidence {prob:.4f}")
+                    break
+        
+        # Nếu có từ khóa tiếng Việt nhưng không detect được ngôn ngữ supported
+        if not has_supported_lang and has_viet_keywords:
+            print(f"No supported language detected but Vietnamese keywords found: {viet_keywords}")
+            print("Defaulting to Vietnamese based on keyword detection")
+            return 3, 'vie'
         
         if not has_supported_lang:
+            print("No supported language detected and no Vietnamese keywords found")
             return 1
                 
         return 3, userLang

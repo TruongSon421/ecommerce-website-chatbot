@@ -13,7 +13,9 @@ import java.util.List;
 public class Headphone extends BaseProduct{
     private String batteryLife;
     private String chargingPort;
+    private List<String> audioTechnology;
     private List<String> compatibility;
+    private String connectionApp;
     private String audioJack;
     private String cableLength;
     private List<String> features;

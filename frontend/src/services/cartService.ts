@@ -31,7 +31,7 @@ export const createGuestCart = async (): Promise<CartResponse> => {
 export const addItemToCart = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
-    const apiColor = color === 'Không xác định' ? 'default' : color;
+    const apiColor = (!color || color === 'default') ? null : color;
     console.log('Adding item to cart for user:', userId, 'Item:', { productId, quantity, color: apiColor });
 
     if (isAuthenticated) {
@@ -50,10 +50,7 @@ export const addItemToCart = async (userId: string, item: CartItem, isAuthentica
       }
       const response = await axios.post<CartResponse>(`/guest-carts/${guestId}/items`, { productId, quantity, color: apiColor });
       console.log('Added item to guest cart:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
-        ...item,
-        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-      })));
+      useCartStore.getState().setItems(response.data.items);
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to add item to cart';
@@ -77,12 +74,8 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
       });
     }
     console.log('Fetched cart items:', response.data);
-    const updatedItems = response.data.items.map((item: CartItem) => ({
-      ...item,
-      color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-    }));
-    useCartStore.getState().setItems(updatedItems);
-    return updatedItems;
+    useCartStore.getState().setItems(response.data.items);
+    return response.data.items;
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch cart items';
     console.error('Failed to fetch cart items:', errorMessage);
@@ -93,7 +86,7 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
 export const updateCartItem = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
-    const apiColor = color === 'Không xác định' ? 'default' : color;
+    const apiColor = (!color || color === 'default') ? null : color;
     if (isAuthenticated) {
       const response = await axios.put(`/carts/items/${productId}`, {}, {
         headers: {
@@ -119,10 +112,7 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
         },
       });
       console.log('Updated guest cart item:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
-        ...item,
-        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-      })));
+      useCartStore.getState().setItems(response.data.items);
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to update cart item';
@@ -133,7 +123,7 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
 
 export const removeItemFromCart = async (userId: string, productId: string, color: string, isAuthenticated: boolean): Promise<void> => {
   try {
-    const apiColor = color === 'Không xác định' ? 'default' : color;
+    const apiColor = (!color || color === 'default') ? null : color;
     console.log('Deleting item:', { productId, color: apiColor, isAuthenticated });
     if (isAuthenticated) {
       const response = await axios.delete(`/carts/items/${productId}`, {
@@ -158,10 +148,7 @@ export const removeItemFromCart = async (userId: string, productId: string, colo
         },
       });
       console.log('Removed guest cart item:', response.data);
-      useCartStore.getState().setItems(response.data.items.map((item: CartItem) => ({
-        ...item,
-        color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-      })));
+      useCartStore.getState().setItems(response.data.items);
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || 'Failed to remove cart item';
@@ -219,11 +206,7 @@ export const mergeCart = async (userId: string): Promise<void> => {
       }
     );
     console.log('Cart merge successful:', response.data);
-    const updatedItems = response.data.items.map((item: CartItem) => ({
-      ...item,
-      color: item.color === 'default' || !item.color ? 'Không xác định' : item.color,
-    }));
-    useCartStore.getState().setItems(updatedItems);
+    useCartStore.getState().setItems(response.data.items);
     
     // Remove guest ID after successful merge
     removeGuestId();

@@ -12,7 +12,7 @@ from google.genai.types import Content, Part
 from asgiref.wsgi import WsgiToAsgi
 import os
 from dotenv import load_dotenv
-from share_data import current_group_ids, filter_params, user_language
+from share_data import current_group_ids, filter_params, selected_item_keys
 from filter.preprocess import Filter  # Import Filter class
 
 # Import RAG functions
@@ -117,12 +117,23 @@ async def call_agent_async(user_id: str, session_id: str, access_token: str, que
     
     with app.app_context():  # Cần ngữ cảnh Flask cho flaskext.mysql
         async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+            function_responses = event.get_function_responses()
+            if function_responses:
+                for func_resp in function_responses:
+                    if func_resp.name == "redirect_to_checkout":
+                        tool_output = func_resp.response
+                        if tool_output.get("action") == "checkout_redirect" and tool_output.get("status") == "success":
+                            selected_item_keys.extend(tool_output.get("selected_item_keys", []))
+                            final_response_text = tool_output.get("message", "Đang chuyển hướng đến trang thanh toán...")
+                            return final_response_text
+               
             if event.is_final_response():
                 if event.content and event.content.parts:
                     final_response_text = event.content.parts[0].text
                 elif event.actions and event.actions.escalate:
                     final_response_text = f"Agent escalated: {event.error_message or 'No specific message.'}"
                 break
+            
 
     return final_response_text
 
@@ -227,6 +238,7 @@ async def handle_query():
                        "response": response_text,
                        "group_ids": [],
                        "filter_params": [],
+                       "selected_item_keys": [],
                        "filter_applied": True,
                        "filter_code": filter_code
                    })
@@ -239,22 +251,24 @@ async def handle_query():
                    print(f">>> Query passed filter. Detected language: {detected_lang}")
                    # Tiếp tục xử lý với agent (sử dụng query đã preprocessing)
                    response = await call_agent_async(user_id, session_id, access_token, preprocessed_query)
-                   
+                   print(f"  Final response text này: {response}")
                    # Lấy dữ liệu từ shared variables
                    temp1 = current_group_ids.copy()
                    temp2 = filter_params.copy()
-                   temp3 = user_language.copy()
+                   temp3 = selected_item_keys.copy()
                    current_group_ids.clear()
                    filter_params.clear()
-                   user_language.clear()
-                   print("group_ids:", temp1, "filter_params:", temp2,"user_language:",temp3)
+                   selected_item_keys.clear()
+                   
+                   print("group_ids:", temp1, "filter_params:", temp2)
                    
                    return jsonify({
                        "response": response,
                        "group_ids": temp1,
                        "filter_params": temp2,
+                       "selected_item_keys": temp3,
                        "filter_applied": False,
-                       "user_language": temp3[0]
+                       "detected_language": detected_lang
                    })
            
            # Trường hợp không xác định được kết quả filter
@@ -263,6 +277,7 @@ async def handle_query():
                "response": "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
                "group_ids": [],
                "filter_params": [],
+               "selected_item_keys": [],
                "filter_applied": True,
                "filter_code": -1
            })
@@ -284,6 +299,7 @@ async def handle_query():
                "response": response,
                "group_ids": temp1,
                "filter_params": temp2,
+               "selected_item_keys": [],
                "filter_applied": False,
                "filter_error": str(filter_error)
            })

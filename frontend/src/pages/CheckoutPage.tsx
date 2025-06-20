@@ -6,6 +6,7 @@ import { checkout, getPaymentUrl, checkPaymentStatus } from '../services/cartSer
 import { getProvinces, getDistricts, getWards } from '../services/addressService';
 import { CartItem, CartItemIdentity, CheckoutPayload, Province, District, Ward } from '../types/cart';
 import ENV from '../config/env';
+import { shouldShowColor } from '../utils/colorUtils';
 
 // Thêm types cho address
 interface UserAddress {
@@ -36,10 +37,28 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, selectedItems } = useCartStore();
-  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(
-    location.state?.selectedItems || []
-  );
-  
+  const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(() => {
+    // Ưu tiên selectedItems từ CartPage (flow hiện tại)
+    if (location.state?.selectedItems) {
+      return location.state.selectedItems;
+    }
+    
+    // Kiểm tra selectedItemKeys từ "Mua ngay" hoặc chatbot
+    if (location.state?.selectedItemKeys && (location.state?.fromBuyNow || location.state?.fromChatbot)) {
+      const selectedKeys = location.state.selectedItemKeys as string[];
+      const itemsToCheckout = items.filter((item) => 
+        selectedKeys.includes(`${item.productId}-${item.color}`)
+      );
+      if (itemsToCheckout.length > 0) {
+        return itemsToCheckout;
+      }
+    }
+    
+
+    
+    return [];
+  });
+  console.log(checkoutItems);
   // Thêm state cho address management
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [addressMode, setAddressMode] = useState<'select' | 'new'>('select');
@@ -64,6 +83,7 @@ const CheckoutPage = () => {
   const [paymentStatus, setPaymentStatus] = useState<'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [hasRedirectedToPayment, setHasRedirectedToPayment] = useState(false);
 
   // Fetch user profile với addresses
   useEffect(() => {
@@ -71,7 +91,7 @@ const CheckoutPage = () => {
       if (!user) return;
       
       try {
-        const response = await fetch(`${ENV.API_URL}/api/users/me`, {
+        const response = await fetch(`${ENV.API_URL}/users/me`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem("accessToken")}`, // Adjust based on your auth implementation
             'Content-Type': 'application/json',
@@ -154,16 +174,41 @@ const CheckoutPage = () => {
     }
   }, [form.district]);
 
-  // Dự phòng selectedItems từ cartStore
+
+
+  // Reset payment redirect state when returning to checkout
   useEffect(() => {
-    if (checkoutItems.length === 0 && selectedItems.length > 0) {
-      console.log('Falling back to cartStore selectedItems');
-      setCheckoutItems(items.filter((item) => selectedItems.includes(item.productId)));
+    setHasRedirectedToPayment(false);
+  }, []);
+
+  // Dự phòng selectedItems từ cartStore hoặc selectedItemKeys từ "mua ngay"/chatbot
+  useEffect(() => {
+    if (checkoutItems.length === 0) {
+      // Kiểm tra selectedItemKeys từ "mua ngay" hoặc chatbot trước
+      if (location.state?.selectedItemKeys && (location.state?.fromBuyNow || location.state?.fromChatbot)) {
+        const selectedKeys = location.state.selectedItemKeys as string[];
+        const source = location.state?.fromBuyNow ? 'buy now' : 'chatbot';
+        console.log(`Loading items from ${source} selectedItemKeys:`, selectedKeys);
+        const itemsFromSource = items.filter((item) => 
+          selectedKeys.includes(`${item.productId}-${item.color}`)
+        );
+        if (itemsFromSource.length > 0) {
+          setCheckoutItems(itemsFromSource);
+          return;
+        }
+      }
+      
+      // Fallback về selectedItems từ cartStore
+      if (selectedItems.length > 0) {
+        console.log('Falling back to cartStore selectedItems');
+        setCheckoutItems(items.filter((item) => selectedItems.includes(`${item.productId}-${item.color}`)));
+      }
     }
+    
     if (!user && checkoutItems.length === 0) {
       navigate('/login');
     }
-  }, [checkoutItems, selectedItems, items, user, navigate]);
+  }, [checkoutItems, selectedItems, items, user, navigate, location.state]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -370,8 +415,29 @@ const CheckoutPage = () => {
   };
 
   const handlePaymentRedirect = () => {
-    if (paymentUrl) {
-      window.open(paymentUrl, '_blank');
+    if (paymentUrl && !hasRedirectedToPayment) {
+      // Đánh dấu đã redirect để tránh bấm nhiều lần
+      setHasRedirectedToPayment(true);
+      
+                    // Hiển thị xác nhận trước khi mở trang thanh toán
+      const confirmed = window.confirm(
+        '🔄 Tiếp tục thanh toán\n\n' +
+        'Bạn sẽ được chuyển đến trang thanh toán VNPay.\n' +
+        '⚠️ Lưu ý: Đây có thể là URL thanh toán đã được tạo trước đó.\n' +
+        '✅ Vui lòng không đóng tab này và chỉ thanh toán một lần.'
+      );
+      
+      if (confirmed) {
+        window.open(paymentUrl, '_blank');
+        
+        // Reset lại trạng thái sau 30 giây để cho phép thử lại nếu cần
+        setTimeout(() => {
+          setHasRedirectedToPayment(false);
+        }, 30000);
+      } else {
+        // Nếu người dùng cancel, reset lại trạng thái
+        setHasRedirectedToPayment(false);
+      }
     }
   };
 
@@ -421,20 +487,40 @@ const CheckoutPage = () => {
           )}
           
           {paymentUrl && (
-            <button
-              onClick={handlePaymentRedirect}
-              className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium mb-4"
-            >
-              Tiến hành thanh toán
-            </button>
+            <div className="mb-4">
+              <button
+                onClick={handlePaymentRedirect}
+                disabled={hasRedirectedToPayment}
+                className={`w-full px-6 py-3 rounded-lg transition-colors font-medium ${
+                  hasRedirectedToPayment
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {hasRedirectedToPayment ? 'Đã mở trang thanh toán' : 'Tiến hành thanh toán'}
+              </button>
+              {hasRedirectedToPayment && (
+                <p className="text-sm text-orange-600 mt-2 text-center">
+                  ⚠️ Vui lòng hoàn tất thanh toán trong tab đã mở. Không tạo thêm giao dịch mới.
+                </p>
+              )}
+            </div>
           )}
           
-          <button
-            onClick={() => navigate('/')}
-            className="w-full bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-medium"
-          >
-            Quay lại trang chủ
-          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => navigate('/cart')}
+              className="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition-colors font-medium"
+            >
+              🚫 Hủy thanh toán
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+            >
+              🏠 Trang chủ
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -474,7 +560,7 @@ const CheckoutPage = () => {
                   <div key={`${item.productId}-${item.color}`} className="flex items-center p-4 bg-gray-50 rounded-xl">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900">{item.productName}</h3>
-                      {item.color !== "Không xác định" && (
+                      {shouldShowColor(item.color) && (
                         <p className="text-sm text-gray-600">Màu: {item.color}</p>
                       )}
                       <div className="flex items-center justify-between mt-2">

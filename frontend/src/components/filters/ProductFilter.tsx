@@ -4,6 +4,7 @@ import SortMenu from './SortMenu';
 import ActiveFilters from './ActiveFilters';
 import FilterSkeleton from './FilterSkeleton';
 import { filterData } from '../../types/datafilter';
+import { isAudioSubtype, getAudioFilterData } from '../../utils/audioFilterHelper';
 
 interface ProductFilterProps {
   type: string;
@@ -84,7 +85,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     }
     
     // Don't load from localStorage to prevent filter persistence across categories
-    return [0, 50000000];
+    return [0, 200000000];
   });
 
   // Add separate state for applied price range
@@ -92,7 +93,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     if (initialFilters.priceRange && Array.isArray(initialFilters.priceRange)) {
       return initialFilters.priceRange as number[];
     }
-    return [0, 50000000];
+    return [0, 200000000];
   });
 
   const [searchQuery, setSearchQuery] = useState<string>(() => {
@@ -120,7 +121,24 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const prevTypeRef = useRef<string>(type);
 
-  const currentFilterData = filterData[type] || {};
+  // Determine which filter to use based on type
+  const getFilterDataForType = (type: string): any => {
+    console.log('🎧 ProductFilter - Getting filter data for type:', type);
+    
+    // If type is an audio subtype, use the specific audio filter
+    if (isAudioSubtype(type)) {
+      const audioFilter = getAudioFilterData(type);
+      console.log('🎵 Using audio-specific filter for:', type, 'Filter sections:', Object.keys(audioFilter));
+      return audioFilter;
+    }
+    
+    // Otherwise use the type directly from filterData
+    const regularFilter = filterData[type] || {};
+    console.log('📱 Using regular filter for:', type, 'Filter sections:', Object.keys(regularFilter));
+    return regularFilter;
+  };
+
+  const currentFilterData = getFilterDataForType(type);
 
   // Effect to handle when initialFilters change (e.g., from URL navigation)
   useEffect(() => {
@@ -138,7 +156,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       const newState = {
         brand: initialFilters.brand || [],
         tags: initialFilters.tags || [],
-        priceRange: initialFilters.priceRange || [0, 50000000],
+        priceRange: initialFilters.priceRange || [0, 200000000],
         searchQuery: initialFilters.searchQuery || ''
       };
       
@@ -186,7 +204,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       console.log('Auto-applying initialFilters...');
       onApplyFilters({
         ...processedFilters,
-        priceRange: initialFilters.priceRange || [0, 50000000],
+        priceRange: initialFilters.priceRange || [0, 200000000],
         searchQuery: initialFilters.searchQuery || '',
       });
     }
@@ -212,15 +230,18 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
 
   // Calculate number of active filters based on applied filters
   const getSelectedFiltersCount = () => {
-    return Object.values(appliedFilters).reduce((acc, curr) => acc + curr.length, 0);
+    const filtersCount = Object.values(appliedFilters).reduce((acc, curr) => acc + curr.length, 0);
+    // Add 1 if applied price range is not default
+    const hasPriceRange = appliedPriceRange[0] !== 0 || appliedPriceRange[1] !== 200000000;
+    return filtersCount + (hasPriceRange ? 1 : 0);
   };
 
   // Reset all filters
   const handleResetFilters = () => {
     setSelectedFilters({});
     setAppliedFilters({}); // Clear applied filters
-    setPriceRange([0, 50000000]);
-    setAppliedPriceRange([0, 50000000]); // Clear applied price range
+    setPriceRange([0, 200000000]);
+    setAppliedPriceRange([0, 200000000]); // Clear applied price range
     setSearchQuery('');
     setAppliedSearchQuery(''); // Clear applied search query
     setHasInitialFiltersApplied(false);
@@ -262,15 +283,15 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       // Check if this is a price filter or a filter with multiSelect=false
       let filter: any = null;
       
-      if (section) {
+      if (section && currentFilterData[section]) {
         // If section is provided, look for filter in specific section
-        const filterSection = currentFilterData[section];
+        const filterSection = currentFilterData[section] as any[];
         filter = filterSection?.find((f: any) => f.key === key);
       } else {
         // Fallback to original logic if section not provided
-        const filterSection = Object.values(currentFilterData).find(section => 
-          section.some((filter: any) => filter.key === key)
-        );
+        const filterSection = Object.values(currentFilterData).find((section: any) => 
+          Array.isArray(section) && section.some((filter: any) => filter.key === key)
+        ) as any[];
         filter = filterSection?.find((f: any) => f.key === key);
       }
       
@@ -280,7 +301,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       if (key === 'price') {
         if (currentValues.includes(value)) {
           // Deselecting - reset to full range
-          setPriceRange([0, 50000000]);
+          setPriceRange([0, 200000000]);
           return {
             ...prev,
             [key]: []
@@ -289,7 +310,7 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
           // Selecting a price range - parse and update priceRange
           const [minStr, maxStr] = value.split('-');
           const min = minStr ? parseInt(minStr, 10) : 0;
-          const max = maxStr ? parseInt(maxStr, 10) : 50000000;
+          const max = maxStr ? parseInt(maxStr, 10) : 200000000;
           setPriceRange([min, max]);
           
           return {
@@ -368,8 +389,8 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
     
     // Handle price range reset if it's a price filter
     if (key === 'price') {
-      setPriceRange([0, 50000000]);
-      setAppliedPriceRange([0, 50000000]);
+      setPriceRange([0, 200000000]);
+      setAppliedPriceRange([0, 200000000]);
     }
     
     // Reset sort when removing filter
@@ -440,15 +461,15 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       if (Object.keys(initialFilters).length === 0) {
         setSelectedFilters({});
         setAppliedFilters({}); // Reset applied filters
-        setPriceRange([0, 50000000]);
-        setAppliedPriceRange([0, 50000000]); // Reset applied price range
+        setPriceRange([0, 200000000]);
+        setAppliedPriceRange([0, 200000000]); // Reset applied price range
         setSearchQuery('');
         setAppliedSearchQuery(''); // Reset applied search query
         setHasInitialFiltersApplied(false);
         
         // Also trigger onApplyFilters to clear filters on backend
         onApplyFilters({
-          priceRange: [0, 50000000],
+          priceRange: [0, 200000000],
           searchQuery: '',
         });
       }
@@ -534,6 +555,37 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
                 onClick={handleRemoveSearchQuery}
                 className="ml-1 text-green-600 hover:text-green-800"
                 aria-label="Remove search"
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Show applied price range as active filter if it's not default range */}
+      {(appliedPriceRange[0] !== 0 || appliedPriceRange[1] !== 200000000) && (
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm">
+              {appliedPriceRange[0] === appliedPriceRange[1]
+                ? `Giá: ${appliedPriceRange[0].toLocaleString('vi-VN')}đ`
+                : `Giá: ${appliedPriceRange[0].toLocaleString('vi-VN')}đ - ${appliedPriceRange[1].toLocaleString('vi-VN')}đ`}
+              <button
+                onClick={() => {
+                  setPriceRange([0, 200000000]);
+                  setAppliedPriceRange([0, 200000000]);
+                  
+                  // Reset sort when removing price range
+                  if (onSortReset) {
+                    onSortReset();
+                  }
+                  
+                  // Trigger auto-apply
+                  setShouldAutoApply(true);
+                }}
+                className="ml-1 text-blue-600 hover:text-blue-800"
+                aria-label="Remove price range"
               >
                 ×
               </button>

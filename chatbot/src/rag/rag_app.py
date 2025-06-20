@@ -54,7 +54,7 @@ def merge_product_configs(product_data, device_type):
     ]
 
     headphone_fields = [
-        "Thời lượng pin tai nghe", "Cổng sạc", "Tương thích", "Jack cắm", "Độ dài dây", "Tiện ích",
+        "Thời lượng pin tai nghe", "Cổng sạc","Công nghệ âm thanh", "Tương thích","Ứng dụng kết nối", "Jack cắm", "Độ dài dây", "Tiện ích",
         "Kết nối cùng lúc", "Công nghệ kết nối", "Điều khiển", "Phím điều khiển", "Kích thước",
         "Khối lượng", "Thương hiệu của", "Sản xuất tại"
     ]
@@ -140,7 +140,9 @@ def merge_product_configs(product_data, device_type):
         "headphone": {
             "batteryLife": "Thời lượng pin tai nghe",
             "chargingPort": "Cổng sạc",
+            "audioTechnology": "Công nghệ âm thanh",
             "compatibility": "Tương thích",
+            "connectionApp": "Ứng dụng kết nối",
             "audioJack": "Jack cắm",
             "cableLength": "Độ dài dây",
             "features": "Tiện ích",
@@ -151,7 +153,8 @@ def merge_product_configs(product_data, device_type):
             "size": "Kích thước",
             "weight": "Khối lượng",
             "brandOrigin": "Thương hiệu của",
-            "manufactured": "Sản xuất tại"
+            "manufactured": "Sản xuất tại",
+            "brand_info": "Hãng",
         },
         "wired_earphone": {
             "compatibility": "Tương thích",

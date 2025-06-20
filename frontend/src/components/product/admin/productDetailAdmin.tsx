@@ -87,7 +87,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
         // Fetch inventory data để lấy version
         fetchInventoryVersion(data.productId, data.colors[0]);
       } else {
-        setSelectedColor('Không xác định');
+        setSelectedColor('default');
         setEditQuantity(data.quantities[0] || 0);
         setEditOriginalPrice(data.original_prices[0] || 0);
         setEditCurrentPrice(data.current_prices[0] || 0);
@@ -114,7 +114,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
   // Function để fetch inventory version
   const fetchInventoryVersion = useCallback(async (productId: string, color: string | null) => {
     try {
-      const normalizedColor = color === 'Không xác định' ? null : color;
+      const normalizedColor = (!color || color === 'default') ? null : color;
       const params = new URLSearchParams({ productId });
       if (normalizedColor) {
         params.append('color', normalizedColor);
@@ -399,7 +399,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
         // Fetch inventory version
         fetchInventoryVersion(initialProduct.productId, initialProduct.colors[0]);
       } else {
-        setSelectedColor('Không xác định');
+        setSelectedColor('default');
         setEditQuantity(initialProduct.quantities[0] || 0);
         setEditOriginalPrice(initialProduct.original_prices[0] || 0);
         setEditCurrentPrice(initialProduct.current_prices[0] || 0);
@@ -467,7 +467,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     }
     
     // Fetch lại version cho color mới
-    fetchInventoryVersion(product.productId, color === 'Không xác định' ? null : color);
+    fetchInventoryVersion(product.productId, (!color || color === 'default') ? null : color);
   };
 
   const handleVariantChange = (variantIndex: number) => {
@@ -545,7 +545,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       const updateParams = {
         productId: product.productId,
         productName: product.productName,
-        color: selectedColor === 'Không xác định' ? null : selectedColor,
+        color: (!selectedColor || selectedColor === 'default') ? null : selectedColor,
         quantity: editQuantity,
         originalPrice: editOriginalPrice,
         currentPrice: editCurrentPrice,
@@ -582,7 +582,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       }
 
       // Fetch lại version mới sau khi update thành công
-      fetchInventoryVersion(product.productId, selectedColor === 'Không xác định' ? null : selectedColor);
+      fetchInventoryVersion(product.productId, (!selectedColor || selectedColor === 'default') ? null : selectedColor);
 
       showNotification('Cập nhật tồn kho thành công!', 'success');
     } catch (error: any) {
@@ -592,7 +592,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       if (error.message && error.message.includes('được cập nhật bởi người khác')) {
         showNotification('Dữ liệu đã được cập nhật bởi người khác. Đang tải lại...', 'warning');
         // Fetch lại data mới
-        fetchInventoryVersion(product.productId, selectedColor === 'Không xác định' ? null : selectedColor);
+        fetchInventoryVersion(product.productId, (!selectedColor || selectedColor === 'default') ? null : selectedColor);
       } else {
         showNotification(error.message || 'Lỗi khi cập nhật tồn kho', 'error');
       }
@@ -1356,7 +1356,7 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
       productName: product.productName,
       price: product.price,
       quantity: 1,
-      color: product.color === 'default' || !product.color ? 'Không xác định' : product.color,
+      color: product.color || 'default',
       available: true,
     };
 

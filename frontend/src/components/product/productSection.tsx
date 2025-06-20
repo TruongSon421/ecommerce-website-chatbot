@@ -5,21 +5,29 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from "react-router-dom";
 import useProductApi from '../hooks/useProductApi';
 
-interface imagesUrl {
-  url : string;
-  title?: string;
-};
-
 interface Product {
-  id: string;
-  name: string;
-  price: number;
-  current_prices: string[];
-  old_prices: string;
-  images: imagesUrl[];
-  imageSrc: string;
-  discount: number;
-  isNew: boolean;
+  productId: string;
+  variant: string;
+  orderNumber: number;
+  productName: string;
+  defaultOriginalPrice: string | null;
+  defaultCurrentPrice: string | null;
+  defaultColor?: string | null;
+}
+
+interface GroupDto {
+  groupId: number;
+  orderNumber: number;
+  image: string | null;
+  type: string;
+  groupName?: string;
+  brand?: string;
+}
+
+interface GroupProduct {
+  products: Product[];
+  groupDto: GroupDto;
+  elasticsearchScore?: number;
 }
 
 interface ProductSectionProps {
@@ -63,26 +71,10 @@ const ProductSection: React.FC<ProductSectionProps> = ({ title, type, size = 5 }
     setSearchParams(currentParams);
   };
 
-  // Convert groups to products for display - each group becomes one product card
-  const convertedProducts: Product[] = apiProducts.map(group => {
-    // Find the product with orderNumber = 1 in the group
-    const targetProduct = group.products.find(product => product.orderNumber === 1) || group.products[0];
-    
-    return {
-      id: targetProduct?.productId || '0',
-      name: targetProduct ? targetProduct.productName : 'Product Group',
-      price: targetProduct ? parseFloat(targetProduct.defaultCurrentPrice || '0') : 0,
-      current_prices: targetProduct ? [targetProduct.defaultCurrentPrice || '0'] : ['0'],
-      old_prices: targetProduct ? (targetProduct.defaultOriginalPrice || '0') : '0',
-      images: group.groupDto.image ? [{ url: group.groupDto.image, title: targetProduct?.productName || '' }] : [],
-      imageSrc: group.groupDto.image || '/images/categories/phone.png',
-      discount: 0,
-      isNew: false
-    };
-  });
-
-  const remaining:number = convertedProducts.length - visibleCount;
-  const visibleProducts = convertedProducts.slice(0, visibleCount);
+  // Cast apiProducts to the correct type
+  const groupProducts: GroupProduct[] = apiProducts as GroupProduct[];
+  const remaining: number = groupProducts.length - visibleCount;
+  const visibleProducts = groupProducts.slice(0, visibleCount);
 
   if (loading) {
     return <div className="text-center py-8">Đang tải sản phẩm...</div>;
@@ -102,8 +94,11 @@ const ProductSection: React.FC<ProductSectionProps> = ({ title, type, size = 5 }
       </div>
       
       <div className="products-grid">
-        {convertedProducts.map((product) => (
-          <ProductCard key={product.id} product={product} type={type} />
+        {groupProducts.map((groupproduct) => (
+          <ProductCard 
+            key={groupproduct.groupDto.groupId} 
+            groupproduct={groupproduct}
+          />
         ))}
       </div>
       
@@ -111,11 +106,14 @@ const ProductSection: React.FC<ProductSectionProps> = ({ title, type, size = 5 }
   ): (
     <section className="mb-12 pl-0 pr-4">
       <div className="grid ml-52 mr-48 grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4">
-        {visibleProducts.map((product) => (
-          <ProductCard key={product.name} product={product} type={type} />
+        {visibleProducts.map((groupproduct) => (
+          <ProductCard 
+            key={groupproduct.groupDto.groupId} 
+            groupproduct={groupproduct}
+          />
         ))}
       </div>
-      {visibleCount < convertedProducts.length && (
+      {visibleCount < groupProducts.length && (
         <div className='flex justify-center '>
           <button className="text-white bg-slate-500 p-5 m-5 hover:bg-slate-300 py-2 px-4 rounded" onClick={handleViewMore}>
           Xem thêm 

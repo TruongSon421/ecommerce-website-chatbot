@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from './hooks/useAuth';
-import { addItemToCart } from '../services/cartService'; // Adjust path as needed
-import { useNotification } from './common/Notification'; // Adjust path as needed
+import { addItemToCart } from '../services/cartService'; 
+import { useNotification } from './common/Notification'; 
 import ENV from '../config/env';
+import { CartItem } from '../types/cart';
+import { useNavigate } from 'react-router-dom';
 
 interface Product {
   productId: string;
@@ -41,15 +43,11 @@ interface QueryResponse {
   filter_params: Record<string, any>;
   group_ids: number[];
   response: string;
-}
-
-interface CartItem {
-  productId: string;
-  productName: string;
-  price: number;
-  quantity: number;
-  color: string;
-  available: boolean;
+  selected_item_keys?: string[];
+  filter_applied?: boolean;
+  detected_language?: string;
+  filter_code?: number;
+  filter_error?: string;
 }
 
 const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => {
@@ -94,9 +92,7 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
       productName: selectedProduct.productName,
       price: selectedProduct.defaultCurrentPrice,
       quantity: 1,
-      color: selectedProduct.defaultColor === 'default' || !selectedProduct.defaultColor 
-        ? 'Không xác định' 
-        : selectedProduct.defaultColor,
+      color: selectedProduct.defaultColor || 'default',
       available: true,
     };
 
@@ -219,6 +215,8 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 
 const ChatbotWidget: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
   
   const generateSessionId = (): string => {
     return 'session-' + Math.random().toString(36).substring(2, 11);
@@ -302,8 +300,17 @@ const ChatbotWidget: React.FC = () => {
     // Extract type from filter_params or default to 'phone'
     const type = filterParams.type?.toLowerCase() || 'phone';
     
-    // Create base URL for the category page
-    const baseUrl = `/${type}`;
+    // Create base URL for the category page with proper routing
+    let baseUrl = '';
+    
+    if (['wireless_earphone', 'headphone', 'wired_earphone'].includes(type)) {
+      baseUrl = `/audio/${type}`;
+    } else if (type === 'backup_charger') {
+      baseUrl = `/phukien/${type}`;
+    } else {
+      baseUrl = `/${type}`;
+    }
+    
     const params = new URLSearchParams();
     
     console.log('Processing filterParams:', filterParams);
@@ -406,23 +413,73 @@ const ChatbotWidget: React.FC = () => {
     setIsBotTyping(true);
     setApiError(null);
     
-    try {
+          try {
+        const response = await axios.post<QueryResponse>(`${ENV.API_URL}/chatbot/query`, {
+          user_id: user?.id || (localStorage.getItem('guestId')),
+          session_id: chatSession.session_id,
+          query: input,
+          access_token: localStorage.getItem('accessToken') 
+        });
+        
+        console.log('API Response:', response.data);
+        
+        const { group_ids, response: botResponse, filter_params, selected_item_keys } = response.data;
 
-      const response = await axios.post<QueryResponse>(`${ENV.API_URL}/chatbot/query`, {
-        user_id: user?.id || (localStorage.getItem('guestCartId')),
-        session_id: chatSession.session_id,
-        query: input,
-        access_token: localStorage.getItem('accessToken') 
-      });
-      
-      console.log('API Response:', response.data);
-      
-      const { group_ids, response: botResponse, filter_params } = response.data;
+      // Handle checkout redirect - kiểm tra selected_item_keys để xác định redirect
+      if (selected_item_keys && selected_item_keys.length > 0) {
+        console.log('Handling checkout redirect:', { selected_item_keys });
+        
+        // Add confirmation message
+        const checkoutMessage: Message = {
+          id: Date.now(),
+          text: botResponse,
+          sender: 'bot'
+        };
+        
+        setChatSession((prev) => ({
+          ...prev,
+          messages: [...prev.messages, checkoutMessage],
+          last_active: Date.now(),
+        }));
+        
+        // Check if already on checkout page
+        const currentPath = window.location.pathname;
+        
+        // Redirect với selected_item_keys truyền qua navigation state
+        setTimeout(() => {
+          if (currentPath === '/checkout') {
+            // If already on checkout, navigate with query params to force refresh
+            const searchParams = new URLSearchParams();
+            searchParams.set('refresh', Date.now().toString());
+            navigate(`/checkout?${searchParams.toString()}`, { 
+              state: { 
+                selectedItemKeys: selected_item_keys,
+                fromChatbot: true,
+                timestamp: Date.now()
+              },
+              replace: true
+            });
+          } else {
+            // Normal navigation if not on checkout page
+            navigate('/checkout', { 
+              state: { 
+                selectedItemKeys: selected_item_keys,
+                fromChatbot: true,
+                timestamp: Date.now()
+              } 
+            });
+          }
+        }, 1500);
+        
+        setIsBotTyping(false);
+        setInput('');
+        return;
+      }
 
       const botMessage: Message = {
         id: Date.now(),
         text: botResponse,
-        sender: 'bot',
+        sender: 'bot'
       };
 
       let messagesToAdd: Message[] = [botMessage];
@@ -716,12 +773,12 @@ const ChatbotWidget: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex">
-                      <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                      <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">{msg.text}</div>
-                    </div>
-                  )}
+                                      ) : (
+                      <div className="flex">
+                        <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
+                        <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%] whitespace-pre-line">{msg.text}</div>
+                      </div>
+                    )}
                 </div>
               ))}
 
@@ -910,12 +967,12 @@ const ChatbotWidget: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex">
-                        <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                        <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%]">{msg.text}</div>
-                      </div>
-                    )}
+                                          ) : (
+                        <div className="flex">
+                          <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
+                          <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%] whitespace-pre-line">{msg.text}</div>
+                        </div>
+                      )}
                   </div>
                 ))}
 

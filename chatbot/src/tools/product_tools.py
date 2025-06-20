@@ -21,7 +21,6 @@ llm = GoogleGenAI(
     api_key=os.getenv('GOOGLE_API_KEY')
 )
 def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
-
     """
     Công cụ tư vấn sản phẩm điện tử thông minh dựa trên nhu cầu của người dùng.
     
@@ -49,33 +48,22 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         # Process device type
         if device == "phone":
             reqs = llm.structured_predict(PhoneRequirements, PHONE_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "phone_"
             device_type = "phone"
         elif device == "laptop":
             reqs = llm.structured_predict(LaptopRequirements, LAPTOP_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "laptop_"
             device_type = "laptop"
-
         elif device == "wired_earphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "earHeadphone_"
             device_type = "wired_earphone"
-
         elif device == "wireless_earphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "earHeadphone_"
             device_type = "wireless_earphone"
-
         elif device == "headphone":
             reqs = llm.structured_predict(EarHeadphoneRequirements, EARHEADPHONE_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "earHeadphone_"
             device_type = "headphone"
-
         elif device == "backup_charger":
             reqs = llm.structured_predict(BackupChargerRequirements, BACKUPCHARGER_CONSULTATION_TEMPLATE, query=query)
-            tag_prefix = "backupCharger_"
             device_type = "backup_charger"
-
         else:
             cursor.close()
             conn.close()
@@ -96,12 +84,14 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         if reqs.brand_preference and reqs.brand_preference.strip():
             filter_params["brand"] = reqs.brand_preference
 
-        # Xử lý các tags
+        # *** FIX: GIỮ NGUYÊN TÊN TAG THEO MODEL REQUIREMENTS ***
+        # Thu thập tất cả các tags được đánh dấu True trong model requirements
         active_tags = []
-        for field, value in reqs.dict().items():
-            if field.startswith(tag_prefix) and value:
-                tag_name = field.replace(tag_prefix, "")
-                active_tags.append(f"{device}_{tag_name}")
+        for field_name, value in reqs.dict().items():
+            # Bỏ qua các field không phải tag (min_budget, max_budget, brand_preference, specific_requirements)
+            if field_name not in ['min_budget', 'max_budget', 'brand_preference', 'specific_requirements'] and value:
+                # Giữ nguyên tên field từ model requirements
+                active_tags.append(field_name)
         
         if active_tags:
             filter_params["tags"] = ",".join(active_tags)
@@ -152,7 +142,7 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
         # Kiểm tra nếu chỉ có thông tin giá mà không có yêu cầu khác
         only_price = (min_budget or max_budget) and not any(
             field for field in reqs.__dict__.keys() 
-            if field.startswith(tag_prefix) and getattr(reqs, field)
+            if field not in ['min_budget', 'max_budget', 'brand_preference', 'specific_requirements'] and getattr(reqs, field)
         )
         
         if only_price:
@@ -198,6 +188,8 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
                 brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
                 return f"Không tìm thấy {device}{brand_msg} phù hợp với khoảng giá bạn yêu cầu."
             
+            # **FIX: THÊM GROUP_IDS VÀO CURRENT_GROUP_IDS**
+            current_group_ids.extend(combined_df['group_id'].tolist())
             
             # Build response
             brand_msg = f" của thương hiệu {brand_display}" if brand_display else ""
@@ -211,14 +203,16 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             return response
 
         # Nếu có yêu cầu khác ngoài giá, xử lý như bình thường
-        # Active requirements
-        req_fields = [field for field in reqs.__dict__.keys() if field.startswith(tag_prefix) and getattr(reqs, field)]
+        # Active requirements - chỉ lấy các field là tag (bỏ qua budget, brand, specific)
+        req_fields = [field for field in reqs.__dict__.keys() 
+                     if field not in ['min_budget', 'max_budget', 'brand_preference', 'specific_requirements'] 
+                     and getattr(reqs, field)]
 
         # Query tags với brand filter
         tables_to_merge = []
         
         for req_key in req_fields:
-            tag_name = req_key
+            tag_name = req_key  # Giữ nguyên tên từ model requirements
             if brand_filtered_df is not None:
                 # Nếu có brand filter, chỉ lấy tags của các sản phẩm trong brand đó
                 brand_group_ids = brand_filtered_df['group_id'].tolist()
@@ -255,6 +249,7 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
                 # Nếu chỉ có brand preference mà không có tag nào, sử dụng brand_filtered_df
                 combined_df = brand_filtered_df.copy()
                 # **FIX: THÊM CURRENT_GROUP_IDS CHO TRƯỜNG HỢP CHỈ CÓ BRAND**
+                current_group_ids.extend(combined_df['group_id'].tolist())
             else:
                 cursor.close()
                 conn.close()
@@ -304,6 +299,7 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
             combined_df = combined_df.sort_values('relevance_score', ascending=False)
             
             print(f"Reranked {len(combined_df)} products by specific requirements relevance")
+            
         # Xử lý giá cả
         if min_budget or max_budget:
             if not combined_df.empty:
@@ -429,3 +425,45 @@ def product_complain_tool(query: str) -> str:
 
 
 
+def product_information_tool_for_cart(query: str) -> str:
+    current_group_ids.clear()
+        
+    # Split and clean product names
+    product_names = [name.strip() for name in query.split(',') if name.strip()]
+    if not product_names:
+        return "Vui lòng cung cấp tên sản phẩm cách nhau bằng dấu phẩy."
+
+    output = []
+    score_threshold_percent = 0.10  # 10% threshold
+
+    for product_name in product_names:
+        # Search for each product
+        results = search_name(product_name)
+        if not results:
+            output.append(f"Không tìm thấy thông tin cho sản phẩm: {product_name}")
+            continue
+
+        # Sort results by score (descending)
+        results.sort(key=lambda x: x.get('score', 0), reverse=True)
+        top_score = results[0].get('score', 0)
+        min_score = top_score * (1 - score_threshold_percent)
+
+        # Filter results within 10% of top score
+        qualified_results = [r for r in results if r.get('score', 0) >= min_score]
+        if not qualified_results:
+            output.append(f"Không có kết quả đủ tốt cho sản phẩm: {product_name}")
+            continue
+
+        # Add product information to output
+        output.append(f"\n=== Kết quả tham khảo cho '{product_name}' ===")
+        for i, r in enumerate(qualified_results, 1):
+            output.append(f"\nSản phẩm {i}:")
+            output.append(r.get('document', 'Thông tin không khả dụng'))
+            output.append(f"Độ phù hợp: {r.get('score', 0):.2f} (Top score: {top_score:.2f})")
+            output.append(f"group_id: {r.get('group_id')}")
+            if group_id := r.get('group_id'):
+                current_group_ids.append(group_id)
+    print(current_group_ids)
+    if len(output) == 0:
+        return "Không tìm thấy thông tin phù hợp cho bất kỳ sản phẩm nào."
+    return "\n".join(output)

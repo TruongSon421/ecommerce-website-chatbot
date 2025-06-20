@@ -6,6 +6,7 @@ import { ReviewResponse } from '../../types/review';
 import OrderReviewSection from '../review/OrderReviewSection';
 import QuickReviewBadge from '../review/QuickReviewBadge';
 import ReviewSummaryCard from '../review/ReviewSummaryCard';
+import { shouldShowColor } from '../../utils/colorUtils';
 
 const PurchaseHistory: React.FC = () => {
   const [purchaseHistory, setPurchaseHistory] = useState<PaginatedPurchaseHistory | null>(null);
@@ -216,8 +217,8 @@ const PurchaseHistory: React.FC = () => {
                   <div className="flex-1">
                     <h5 className="font-medium">{item.productName}</h5>
                     <div className="text-sm text-gray-600">
-                      <span>Màu: {item.color}</span>
-                      <span className="ml-4">Số lượng: {item.quantity}</span>
+                      {shouldShowColor(item.color) && <span>Màu: {item.color}</span>}
+                      <span className={shouldShowColor(item.color) ? "ml-4" : ""}>Số lượng: {item.quantity}</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -374,7 +375,7 @@ const PurchaseHistory: React.FC = () => {
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg mb-1">{purchasedItem.item.productName}</h3>
                         <div className="text-sm text-gray-600 space-y-1">
-                          <div>Màu sắc: <span className="font-medium">{purchasedItem.item.color}</span></div>
+                          {shouldShowColor(purchasedItem.item.color) && <div>Màu sắc: <span className="font-medium">{purchasedItem.item.color}</span></div>}
                           <div>Số lượng: <span className="font-medium">{purchasedItem.item.quantity}</span></div>
                           <div>Đơn giá: <span className="font-medium">{formatCurrency(purchasedItem.item.price)}</span></div>
                           <div>Tổng tiền: <span className="font-medium text-green-600">{formatCurrency(purchasedItem.totalPrice)}</span></div>

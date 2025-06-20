@@ -1,7 +1,7 @@
 import axios from 'axios';
 import ENV from './env';
 const instance = axios.create({
-  baseURL: 'http://localhost:8070/api',
+  baseURL: 'https://api.truongson.shop/api',
   headers: {
     'Content-Type': 'application/json',
   },

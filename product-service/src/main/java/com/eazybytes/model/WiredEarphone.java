@@ -11,6 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @SuperBuilder
 public class WiredEarphone extends BaseProduct{
+    private List<String> audioTechonology;
     private List<String> compatibility;
     private String audioJack;
     private String cableLength;

@@ -28,10 +28,10 @@ public class VnpayController {
 
 
     // Environment variables for dynamic configuration
-    @Value("${NGROK_BASE_URL:https://f96b-101-99-36-202.ngrok-free.app}")
+    @Value("${NGROK_BASE_URL:https://api.truongson.shop}")
     private String ngrokBaseUrl;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL:https://dev.truongson.shop}")
     private String frontendUrl;
 
     public VnpayController(VNPayService vnpayService, PaymentService paymentService, VnpayConfig vnpayConfig) {

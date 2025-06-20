@@ -8,6 +8,13 @@ class PhoneRequirements(BaseModel):
     phone_highSpecs: bool
     phone_livestream: bool
     phone_slimLight: bool
+    phone_charge_fastCharge20: bool
+    phone_charge_superFastCharge60: bool
+    phone_charge_wirelessCharge: bool
+    phone_specialFeature_5g: bool
+    phone_specialFeature_aiEdit: bool
+    phone_specialFeature_waterDustProof: bool
+
     min_budget: Optional[int]
     max_budget: Optional[int]
     brand_preference: Optional[str]
@@ -22,6 +29,16 @@ class LaptopRequirements(BaseModel):
     laptop_office: bool
     laptop_premium: bool
     laptop_slimLight: bool 
+    laptop_screen_13inch: bool
+    laptop_screen_14inch: bool
+    laptop_screen_15inch: bool
+    laptop_screen_16inch: bool
+    laptop_specialFeature_touchScreen: bool
+    laptop_specialFeature_360: bool
+    laptop_specialFeature_antiGlare: bool
+    laptop_specialFeature_oled: bool
+
+
     min_budget: Optional[int]
     max_budget: Optional[int]
     brand_preference: Optional[str]

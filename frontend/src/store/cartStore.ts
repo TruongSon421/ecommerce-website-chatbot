@@ -83,4 +83,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
       .filter((item) => state.selectedItems.includes(`${item.productId}-${item.color}`))
       .reduce((total, item) => total + item.price * item.quantity, 0);
   },
+
+
 })); 

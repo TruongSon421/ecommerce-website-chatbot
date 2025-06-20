@@ -2,7 +2,7 @@
 
 ## 1. Địa chỉ
 
-**Trụ sở chính:** 123 Đường Công Nghệ, Phường 7, Quận 5, TP. Hồ Chí Minh, Việt Nam  
+**Trụ sở chính:** 123 Đường Công Nghệ, Phường 7, Quận 5, TP. Hồ Chí Minh, Việt Nam  (Có bãi đỗ xe)
 **Kho hàng:** 45 Đường Sáng Tạo, Khu Công Nghệ Cao, TP. Thủ Đức, TP. Hồ Chí Minh
 
 ## 2. Giờ hoạt động
@@ -47,7 +47,7 @@
 - Oppo, Vivo, Realme
 - Honor, Nokia, Masstel, Mobell, Itel
 
-### Laptop & Máy tính
+### Laptop 
 - MacBook (Air, Pro)
 - Dell (XPS, Inspiron, Latitude)
 - HP (Pavilion, EliteBook, Envy)

@@ -4,6 +4,7 @@ import { useAuth } from '../components/hooks/useAuth';
 import { useCartStore } from '../store/cartStore';
 import { updateCartItem, removeItemFromCart, clearCart, getGuestId } from '../services/cartService';
 import { CartItem } from '../types/cart';
+import { shouldShowColor } from '../utils/colorUtils';
 
 const CartPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -114,7 +115,7 @@ const CartPage: React.FC = () => {
                 />
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{item.productName}</h3>
-                  {item.color!=="Không xác định" && <p className="text-gray-500">Màu: {item.color}</p>}
+                  {shouldShowColor(item.color) && <p className="text-gray-500">Màu: {item.color}</p>}
                   <p className="text-gray-500">
                     Giá: {(item.price * item.quantity).toLocaleString('vi-VN')} ₫
                   </p>

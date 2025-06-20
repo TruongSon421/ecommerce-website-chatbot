@@ -4,20 +4,22 @@ from agents.chatchit import chatchit_agent
 from agents.shop import shop_agent
 from agents.products import product_agent
 from agents.cart import cart_agent
+from agents.order import order_agent
 from prompts import GLOBAL_INSTRUCTION
 
 coordinator = LlmAgent(
     name="HelpDeskCoordinator",
-    model="gemini-2.0-flash",  # Adjust model if needed, e.g., "gemini-1.5-flash-latest"
+    model="gemini-2.0-flash",  # Điều chỉnh model nếu cần, ví dụ: "gemini-1.5-flash-latest"
     global_instruction=GLOBAL_INSTRUCTION,
     instruction="""
-    Route user requests to the appropriate agent based on their intent:
-    - **ChatChit agent**: Handle casual greetings, general conversation, unrelated topics, or sensitive inquiries that do not involve shop, product, or cart operations.
-    - **Shop agent**: Provide general information about the shop, such as store addresses, policies, hours, customer services or payment methods, but not specific product details or cart operations.
-    - **Product agent**: Assist with product-related requests, including providing product information, product comparison, and helping customers find suitable products to purchase based on their needs and budget.
-    - **Cart agent**: Manage all cart-related operations, including retrieving the user's cart, adding products to the cart, updating cart items, removing items from the cart, or handling checkout processes.
-    Ensure accurate routing by identifying the user's intent. For example, requests like "add a product to my cart" should go to the Cart agent, while "recommend a good gaming laptop" should go to the Product agent.
+    Định tuyến yêu cầu của người dùng đến agent phù hợp dựa trên ý định của họ:
+    - **Agent ChatChit**: Xử lý lời chào thân thiện, trò chuyện chung, chủ đề không liên quan, hoặc các câu hỏi nhạy cảm không liên quan đến cửa hàng, sản phẩm hoặc giỏ hàng.
+    - **Agent Shop**: Cung cấp thông tin chung về cửa hàng, như địa chỉ cửa hàng, chính sách, giờ mở cửa, dịch vụ khách hàng hoặc phương thức thanh toán, nhưng không bao gồm thông tin chi tiết sản phẩm hoặc thao tác giỏ hàng.
+    - **Agent Product**: Hỗ trợ các yêu cầu liên quan đến sản phẩm, bao gồm cung cấp thông tin sản phẩm, so sánh sản phẩm, và giúp khách hàng tìm sản phẩm phù hợp để mua dựa trên nhu cầu và ngân sách của họ.
+    - **Agent Cart**: Quản lý tất cả các thao tác liên quan đến giỏ hàng, bao gồm lấy giỏ hàng của người dùng, thêm sản phẩm vào giỏ hàng, cập nhật mục trong giỏ hàng, xóa mục khỏi giỏ hàng.
+    - **Agent Order**: Quản lý quy trình đặt hàng, thanh toán sản phẩm. Có thể thêm sản phẩm vào giỏ hàng nếu chưa có.
+    Đảm bảo định tuyến chính xác bằng cách xác định ý định của người dùng. Ví dụ, các yêu cầu như "thêm sản phẩm vào giỏ hàng" nên chuyển đến Agent Cart, trong khi "gợi ý laptop gaming tốt" nên chuyển đến Agent Product.
     """,
-    description="Main help desk router for directing user requests to the appropriate agent.",
-    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent]
+    description="Bộ định tuyến chính của help desk để chuyển hướng yêu cầu người dùng đến agent phù hợp.",
+    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent, order_agent]
 )

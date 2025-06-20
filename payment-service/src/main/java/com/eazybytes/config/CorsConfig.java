@@ -15,13 +15,13 @@ import java.util.List;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
-    @Value("${NGROK_BASE_URL:https://f96b-101-99-36-202.ngrok-free.app}")
+    @Value("${NGROK_BASE_URL:https://api.truongson.shop}")
     private String ngrokBaseUrl;
 
-    @Value("${FRONTEND_URL:http://localhost:5173}")
+    @Value("${FRONTEND_URL:https://dev.truongson.shop}")
     private String frontendUrl;
 
-    @Value("${cors.additional-origins:http://localhost:8070,http://localhost:3000}")
+    @Value("${cors.additional-origins:http://localhost:8070,http://localhost:3000,https://dev.truongson.shop,https://api.truongson.shop}")
     private String additionalOrigins;
 
     @Override
@@ -71,7 +71,9 @@ public class CorsConfig implements WebMvcConfigurer {
             frontendUrl,
             "http://localhost:5173",
             "http://localhost:8070",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://dev.truongson.shop",
+            "https://api.truongson.shop"
         );
 
         configuration.setAllowedOrigins(allowedOrigins);
