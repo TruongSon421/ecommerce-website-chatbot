@@ -4,6 +4,7 @@ from google.adk.tools import FunctionTool, google_search, agent_tool
 from tools.product_tools import product_consultation_tool, product_information_tool
 from prompts import PRODUCT_INSTRUCTION, GLOBAL_INSTRUCTION
 from agents.callbacks import *
+from callback.before_llm_callback_lang import before_llm_callback_lang
 
 web_search_tool = LlmAgent(
     model="gemini-2.0-flash",
@@ -34,5 +35,6 @@ product_agent = LlmAgent(
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang,
     after_model_callback=format_product_comparison_table
 )

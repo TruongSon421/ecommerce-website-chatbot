@@ -20,7 +20,7 @@ interface Address {
   street: string;
   addressType: string;
   receiverName: string;
-  receiverPhone: string;
+  receiverPhone: number;
   isDefault: boolean;
 }
 

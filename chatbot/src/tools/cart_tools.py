@@ -1,5 +1,4 @@
 import pandas as pd
-from elasticsearch import Elasticsearch
 from google.adk.tools import ToolContext
 import json
 import logging
@@ -9,109 +8,8 @@ from models.cart import CheckoutRequest, PaymentMethod, CartIdentity
 from share_data import current_group_ids, filter_params
 import mysql.connector
 logger = logging.getLogger(__name__)
+from rag.retrieve import search_product_name
 
-es_host: str = "http://elasticsearch:9200"
-es = Elasticsearch([es_host])
-
-def search_product_name(
-    product_name: str,
-    size: int = 1,
-    
-) -> dict:
-    """
-    Tìm kiếm thông tin sản phẩm với tên sản phẩm ở Elasticsearch.
-
-    Args:
-        product_name: tên của sản phẩm.
-
-    Returns:
-        dict: Kết quả thông tin tìm kiếm từ Elasticsearch.
-    """
-    # Khởi tạo client Elasticsearch
-    
-
-    # Xây dựng body truy vấn
-    body = {
-        "query": {
-            "bool": {
-                "must": [
-                    {
-                        "multi_match": {
-                            "query": product_name,
-                            "fields": ["name^2"],  # Tìm trong document và ưu tiên name
-                            "fuzziness": "AUTO"  # Cho phép tìm kiếm gần đúng
-                        }
-                    }
-                ]
-            }
-        },
-        "size": size,
-    }
-    try:
-        # Thực hiện tìm kiếm
-        response = es.search(index="products", body=body)
-        if "error" not in response:
-            hits = response["hits"]["hits"]
-            if hits:
-                # Chọn trường cần thiết từ kết quả
-                results = {
-                       "name": hits[0]['_source']['name'],
-                       "group_id": hits[0]['_source']['group_id'],
-                       "document": hits[0]['_source']['document']
-                    }
-                return results
-            else:
-                return "Không tìm thấy kết quả nào phù hợp."
-        else:
-            return {f"Error: {response['error']}"}
-    except Exception as e:
-        return {"error": str(e)}
-
-# Tool mới để tìm kiếm sản phẩm từ Elasticsearch
-def search_products_elasticsearch(tool_context, query: str, limit: int = 6) -> dict:
-    """
-    Tìm kiếm sản phẩm từ Elasticsearch dựa trên query của người dùng
-    Args:
-        query: Từ khóa tìm kiếm (tên sản phẩm)
-        limit: Số lượng kết quả tối đa
-    Returns:
-        Dict chứa danh sách sản phẩm tìm được
-    """
-    current_group_ids.clear()
-    try:
-        # URL của Elasticsearch endpoint
-        
-        # Query để tìm kiếm sản phẩm
-        search_body = {
-            "query": {
-                "multi_match": {
-                    "query": query,
-                    "fields": ["name^2", "type"],
-                    "fuzziness": "AUTO"
-                }
-            },
-            "size": limit,
-            "_source": ["name", "type", "group_id"]
-        }
-        
-        response = es.search(index="products", body=search_body)
-        if "error" not in response:
-            hits = response["hits"]["hits"]
-            products = []
-            for hit in hits:
-                source = hit['_source']
-                products.append({
-                    "name": source.get('name'),
-                    "type": source.get('type'),
-                    "group_id": source.get('group_id'),
-                    "score": hit['_score']
-                })
-                current_group_ids.append(source.get('group_id'))
-            return {"status": "success", "products": products}
-        else:
-            return {"status": "error", "message": "Elasticsearch search failed"}
-    except Exception as e:
-        return {"status": "error", "message": f"Search error: {str(e)}"}
 
 
 # Tool để lấy thông tin chi tiết sản phẩm (variants và colors)

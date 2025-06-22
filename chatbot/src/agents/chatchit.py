@@ -2,6 +2,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, agent_tool
 from prompts import CHATCHIT_INSTRUCTION, GLOBAL_INSTRUCTION
 from agents.callbacks import log_before_agent_entry
+from callback.before_llm_callback_lang import before_llm_callback_lang
 
 # Web Search Tool cho thông tin kỹ thuật chung
 web_search_tool = LlmAgent(
@@ -100,5 +101,6 @@ chatchit_agent = LlmAgent(
     tools=[
         agent_tool.AgentTool(agent=web_search_tool)
     ],
-    before_agent_callback=log_before_agent_entry
+    before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang
 )

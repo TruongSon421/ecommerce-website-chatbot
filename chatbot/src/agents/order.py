@@ -8,6 +8,7 @@ from tools.product_tools import product_information_tool_for_cart
 from tools.order_tools import prepare_checkout_data, create_direct_order_summary, validate_order_data, select_items_from_cart, select_items_from_cart_by_ids, enforce_cart_requirement, redirect_to_checkout
 from models.cart import CheckoutRequest
 from agents.callbacks import *
+from callback.before_llm_callback_lang import before_llm_callback_lang
 from prompts import GLOBAL_INSTRUCTION
 GEMINI_2_FLASH = "gemini-2.0-flash"
 
@@ -152,6 +153,7 @@ SmartAddItemToOrder = LlmAgent(
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang,
     output_key="smart_add_item_result"
 )
 
@@ -330,6 +332,7 @@ order_agent = LlmAgent(
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang,
     output_key="order_from_cart_result"
 )
 

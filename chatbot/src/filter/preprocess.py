@@ -122,13 +122,12 @@ class Filter:
             word_normalized = word_lower.replace('_', ' ')
             
             # Kiểm tra 3 trường hợp:
-            # 1. Từ gốc là một từ riêng biệt trong query (ví dụ: "nứng_lồn" là một từ trong "nứng_lồn abc")
+            # 1. Từ gốc là một từ riêng biệt trong query 
             if word_lower in words_in_query:
                 found_words.append(word)
                 continue
                 
             # 2. Từ chuẩn hóa là một cụm từ chính xác trong query chuẩn hóa
-            # (ví dụ: "nứng lồn" là một cụm từ trong "nứng lồn abc")
             if f" {word_normalized} " in f" {query_normalized} ":
                 found_words.append(word)
                 continue
@@ -235,12 +234,15 @@ class Filter:
         has_supported_lang = False
         userLang = 'vie'  # Default language
         
-        # Nếu có từ khóa tiếng Việt và fasttext không detect được 'vie' với confidence cao
+        # Chỉ sử dụng vietnamese_keywords khi CẢ 'vie' VÀ 'eng' đều có confidence thấp
         if has_viet_keywords:
-            vie_detected = any(lang_code == 'vie' and prob > 0.3 for lang_code, prob in lang_results)
-            if not vie_detected:
+            vie_prob = next((prob for lang_code, prob in lang_results if lang_code == 'vie'), 0.0)
+            eng_prob = next((prob for lang_code, prob in lang_results if lang_code == 'eng'), 0.0)
+            
+            # Chỉ override khi cả 2 ngôn ngữ đều có confidence thấp
+            if vie_prob <= 0.3 and eng_prob <= 0.3:
                 print(f"Vietnamese keywords detected: {viet_keywords} (count: {viet_count})")
-                print("Overriding fasttext detection, using Vietnamese")
+                print(f"Both vie ({vie_prob:.4f}) and eng ({eng_prob:.4f}) confidence low, overriding with Vietnamese")
                 return 3, 'vie'
         
         # Logic cũ với threshold thấp hơn cho supported languages
@@ -254,11 +256,16 @@ class Filter:
                     print(f"Language detected: {lang_code} with confidence {prob:.4f}")
                     break
         
-        # Nếu có từ khóa tiếng Việt nhưng không detect được ngôn ngữ supported
+        # Nếu có từ khóa tiếng Việt nhưng không detect được ngôn ngữ supported, kiểm tra confidence
         if not has_supported_lang and has_viet_keywords:
-            print(f"No supported language detected but Vietnamese keywords found: {viet_keywords}")
-            print("Defaulting to Vietnamese based on keyword detection")
-            return 3, 'vie'
+            vie_prob = next((prob for lang_code, prob in lang_results if lang_code == 'vie'), 0.0)
+            eng_prob = next((prob for lang_code, prob in lang_results if lang_code == 'eng'), 0.0)
+            
+            # Chỉ override khi cả 2 ngôn ngữ đều có confidence thấp
+            if vie_prob <= 0.3 and eng_prob <= 0.3:
+                print(f"No supported language detected but Vietnamese keywords found: {viet_keywords}")
+                print(f"Both vie ({vie_prob:.4f}) and eng ({eng_prob:.4f}) confidence low, defaulting to Vietnamese")
+                return 3, 'vie'
         
         if not has_supported_lang:
             print("No supported language detected and no Vietnamese keywords found")

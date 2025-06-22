@@ -6,12 +6,16 @@ from tools.cart_tools import *
 from tools.product_tools import product_information_tool_for_cart
 from models.cart import CheckoutRequest
 from agents.callbacks import *
+from callback.before_llm_callback_lang import before_llm_callback_lang
+from google.adk.models.lite_llm import LiteLlm
 from prompts import GLOBAL_INSTRUCTION
 GEMINI_2_FLASH = "gemini-2.0-flash"
-
+from dotenv import load_dotenv
+import os
+load_dotenv("../.env")
 
 AddItemToCart = LlmAgent(
-    model=GEMINI_2_FLASH,
+    model=LiteLlm(model="openai/gpt-4o-mini"),
     name="AddItemToCart",
     description="Agent thêm sản phẩm vào giỏ hàng",
     global_instruction=GLOBAL_INSTRUCTION,
@@ -25,12 +29,12 @@ AddItemToCart = LlmAgent(
     - 3 ** Đang tư vấn ở Product Agent thì tự động chuyển sang AddItemToCart Agent để thêm sản phẩm vào giỏ hàng nếu người dùng muốn thêm sản phẩm vào giỏ hàng. Nhưng phải sử dụng find_product_id_by_group_and_color để tìm productId từ group_id, color (nếu có), variant (nếu có) trong MySQL database**
     ** Tools có sẵn:**
     - `product_information_tool`: Tìm thông tin sản phẩm dựa trên tên sản phẩm. Trong thông tin đó cho ta biết sản phẩm đó có màu nào, phiên bản nào và group_id.
-    - `find_product_id_by_group_and_color`: Tìm productId từ group_id, color (nếu có), variant (nếu có) trong MySQL database
+    - `find_product_id_by_group_and_color`: Tìm productId từ group_id, color (nếu có), variant (nếu có) trong MySQL database. Không được hỏi về group_id.
     - `add_item_to_cart`: Thêm sản phẩm (cần productId, color (nếu có))
     ** Bắt buộc:**
-    - Bắt buộc sử dụng tool product_information_tool_for_cart để tìm thông tin sản phẩm dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện. Để đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. Phải đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. 
+    - Bắt buộc luôn phải sử dụng tool product_information_tool_for_cart để tìm thông tin sản phẩm dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện. Để đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. Phải đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng. 
     ** Luồng xử lý:**
-    1. Tìm thông tin sản phẩm dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện.
+    1. Tìm thông tin sản phẩm sử dụng tool product_information_tool_for_cart trước khi hỏi lại các thông tin còn thiếu dựa trên tên sản phẩm và group_id đúng thông tin cho find_product_id_by_group_and_color mới thực hiện.
     2. Đưa ra các options cho người dùng chọn nếu người dùng chưa rõ thông tin để xác định và giỏ hàng.
     3. Người dùng chọn sản phẩm vào giỏ hàng.
     4. Thêm sản phẩm vào giỏ hàng.
@@ -39,7 +43,7 @@ AddItemToCart = LlmAgent(
     tools=[product_information_tool_for_cart, find_product_id_by_group_and_color, add_item_to_cart],
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
-    before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang,
     output_key="add_item_to_cart_result"
 )
 
@@ -86,5 +90,6 @@ cart_agent = LlmAgent(
     sub_agents=[AddItemToCart],
     after_tool_callback=log_after_tool_execution,
     before_tool_callback=product_before_tool_modifier,
-    before_agent_callback=log_before_agent_entry
+    before_agent_callback=log_before_agent_entry,
+    before_model_callback=before_llm_callback_lang,
 )

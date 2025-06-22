@@ -816,117 +816,149 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
 
   return (
     <>
-      <div className="bg-[#333] text-white p-8 ml-24 mr-16">
-        {isProductLoading ? (
-          <div className="w-full h-screen flex items-center justify-center">
-            <p className="text-gray-500">Đang tải sản phẩm...</p>
-          </div>
-        ) : productError ? (
-          <div className="w-full h-screen flex flex-col items-center justify-center text-red-600">
-            <p>{productError}</p>
-            <button
-              onClick={retryFetchProduct}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Thử lại
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col md:flex-row">
-            <ProductImageGallery thumbnails={imageSrc} />
-            <div className="md:ml-8 w-full max-w-md">
-              <ProductHeader title={product.productName} isNew={product.isNew} />
-              <ProductPrice currentPrice={currentPrice} originalPrice={originalPrice} />
-              {isLoading ? (
-                <p className="text-gray-400">Đang tải phiên bản...</p>
-              ) : error ? (
-                <div className="text-red-600">
-                  <p>{error}</p>
-                  <button
-                    onClick={retryFetchVariants}
-                    className="mt-2 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Thử lại
-                  </button>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          {isProductLoading ? (
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                <p className="text-gray-400">Đang tải sản phẩm...</p>
+              </div>
+            </div>
+          ) : productError ? (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+              <div className="bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full">
+                <div className="text-red-400 text-6xl mb-4">⚠️</div>
+                <h2 className="text-xl font-bold text-white mb-4">Lỗi tải dữ liệu</h2>
+                <p className="text-gray-300 mb-6">{productError}</p>
+                <button
+                  onClick={retryFetchProduct}
+                  className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Thử lại
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Product Images - Left Column */}
+              <div className="lg:col-span-1">
+                <ProductImageGallery thumbnails={imageSrc} />
+              </div>
+              
+              {/* Product Details - Middle & Right Columns */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <ProductHeader title={product.productName} isNew={product.isNew} />
+                  <ProductPrice currentPrice={currentPrice} originalPrice={originalPrice} />
+                  
+                  {isLoading ? (
+                    <div className="flex items-center space-x-2 mt-4">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      <p className="text-gray-400">Đang tải phiên bản...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="bg-red-900/20 border border-red-600 rounded-lg p-4 mt-6">
+                      <p className="text-red-300 mb-3">{error}</p>
+                      <button
+                        onClick={retryFetchVariants}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : (
+                    <ProductOptions
+                      variants={groupData?.variants || []}
+                      selectedVariantIndex={selectedVariantIndex}
+                      onVariantChange={handleVariantChange}
+                      colorOptions={product.colors}
+                      selectedColor={selectedColor}
+                      onColorChange={handleColorChange}
+                      editQuantity={editQuantity}
+                      setEditQuantity={setEditQuantity}
+                      editOriginalPrice={editOriginalPrice}
+                      setEditOriginalPrice={setEditOriginalPrice}
+                      editCurrentPrice={editCurrentPrice}
+                      setEditCurrentPrice={setEditCurrentPrice}
+                      onSaveChanges={handleSaveChanges}
+                      isSaving={isSaving}
+                    />
+                  )}
                 </div>
-              ) : (
-                <ProductOptions
-                  variants={groupData?.variants || []}
-                  selectedVariantIndex={selectedVariantIndex}
-                  onVariantChange={handleVariantChange}
-                  colorOptions={product.colors}
-                  selectedColor={selectedColor}
-                  onColorChange={handleColorChange}
-                  editQuantity={editQuantity}
-                  setEditQuantity={setEditQuantity}
-                  editOriginalPrice={editOriginalPrice}
-                  setEditOriginalPrice={setEditOriginalPrice}
-                  editCurrentPrice={editCurrentPrice}
-                  setEditCurrentPrice={setEditCurrentPrice}
-                  onSaveChanges={handleSaveChanges}
-                  isSaving={isSaving}
-                />
-              )}
-              <Promotions promotions={product.promotions} />
-              <ProductReviewsSection 
-                productReviews={product.productReviews || []} 
-              />
-              
-              {/* Tag Management Section */}
-              <TagManagementSection
-                groupData={groupData}
-                groupTags={groupTags}
-                availableTags={availableTags}
-                isLoadingTags={isLoadingTags}
-                isManagingTags={isManagingTags}
-                setIsManagingTags={setIsManagingTags}
-                onAddTag={addTagToGroup}
-                onRemoveTag={removeTagFromGroup}
-              />
-              
-              <AdminProductEditor
-                isEditing={isEditingProduct}
-                editData={editProductData}
-                setEditData={setEditProductData}
-                onStartEdit={handleStartEditProduct}
-                onSave={handleSaveProductData}
-                onCancel={handleCancelEditProduct}
-                isSaving={isSavingProduct}
-                product={product}
-              />
-              <AdminDeleteSection
-                groupData={groupData}
-                onDelete={() => setShowDeleteConfirm(true)}
-                isDeleting={isDeletingProduct}
-              />
-              {showDeleteConfirm && (
-                <DeleteConfirmModal
-                  groupName={groupData?.groupName || ''}
+
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <Promotions promotions={product.promotions} />
+                </div>
+
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <ProductReviewsSection 
+                    productReviews={product.productReviews || []} 
+                  />
+                </div>
+                
+                {/* Admin Management Sections */}
+                <TagManagementSection
                   groupData={groupData}
-                  onConfirm={handleDeleteProductLine}
-                  onCancel={() => setShowDeleteConfirm(false)}
+                  groupTags={groupTags}
+                  availableTags={availableTags}
+                  isLoadingTags={isLoadingTags}
+                  isManagingTags={isManagingTags}
+                  setIsManagingTags={setIsManagingTags}
+                  onAddTag={addTagToGroup}
+                  onRemoveTag={removeTagFromGroup}
+                />
+                
+                <AdminProductEditor
+                  isEditing={isEditingProduct}
+                  editData={editProductData}
+                  setEditData={setEditProductData}
+                  onStartEdit={handleStartEditProduct}
+                  onSave={handleSaveProductData}
+                  onCancel={handleCancelEditProduct}
+                  isSaving={isSavingProduct}
+                  product={product}
+                />
+                
+                <AdminDeleteSection
+                  groupData={groupData}
+                  onDelete={() => setShowDeleteConfirm(true)}
                   isDeleting={isDeletingProduct}
                 />
-              )}
-              <ActionButtons
-                product={{
-                  productId: product.productId,
-                  productName: product.productName,
-                  price: currentPrice,
-                  color: selectedColor,
-                  productType: product.type,
-                  quantity: quantity,
-                }}
-                showNotification={showNotification}
-              />
+                
+                {showDeleteConfirm && (
+                  <DeleteConfirmModal
+                    groupName={groupData?.groupName || ''}
+                    groupData={groupData}
+                    onConfirm={handleDeleteProductLine}
+                    onCancel={() => setShowDeleteConfirm(false)}
+                    isDeleting={isDeletingProduct}
+                  />
+                )}
+                
+                <div className="bg-gray-800 rounded-lg p-6">
+                  <ActionButtons
+                    product={{
+                      productId: product.productId,
+                      productName: product.productName,
+                      price: currentPrice,
+                      color: selectedColor,
+                      productType: product.type,
+                      quantity: quantity,
+                    }}
+                    showNotification={showNotification}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       {!isProductLoading && !productError && (
-        <div className="bg-white">
-          <ProductSpecifications specifications={product.specifications} />
-          {/* <ProductReview /> */}
+        <div className="bg-gray-800">
+          <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <ProductSpecifications specifications={product.specifications} />
+          </div>
         </div>
       )}
     </>
@@ -1122,18 +1154,20 @@ const TagManagementSection: React.FC<TagManagementSectionProps> = ({
   const unassignedTags = availableTags.filter(tag => !assignedTagIds.includes(tag.tagId));
 
   return (
-    <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+    <div className="bg-gray-800 rounded-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-white">Quản lý Tags</h3>
+        <h3 className="text-lg font-medium text-white flex items-center">
+          🏷️ Quản lý Tags
+        </h3>
         <button
           onClick={() => setIsManagingTags(!isManagingTags)}
-          className={`px-3 py-1 rounded text-sm font-medium ${
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             isManagingTags 
               ? 'bg-gray-600 text-white hover:bg-gray-700' 
               : 'bg-blue-600 text-white hover:bg-blue-700'
           }`}
         >
-          {isManagingTags ? 'Ẩn quản lý' : 'Quản lý tags'}
+          {isManagingTags ? '📄 Ẩn quản lý' : '⚙️ Quản lý tags'}
         </button>
       </div>
 
@@ -1265,50 +1299,69 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({ thumbnails })
 
   if (!thumbnails || thumbnails.length === 0) {
     return (
-      <div className="w-full md:w-1/2 sticky top-0 h-screen flex items-center justify-center">
-        <img
-          src="/images/categories/phone.png"
-          alt="Default product image"
-          className="w-full h-[500px] object-contain"
-        />
+      <div className="bg-gray-800 rounded-lg p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-full h-96 bg-gray-700 rounded-lg flex items-center justify-center mb-4">
+            <img
+              src="/images/categories/phone.png"
+              alt="Default product image"
+              className="w-64 h-64 object-contain opacity-50"
+            />
+          </div>
+          <p className="text-gray-400">Không có hình ảnh</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full md:w-1/2 sticky top-0 h-screen">
-      <div className="relative overflow-hidden">
-        <button
-          className="absolute top-1/2 -translate-y-1/2 bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center z-10 left-4"
-          onClick={handlePrev}
-        >
-          <i className="fas fa-chevron-left"></i>
-        </button>
+    <div className="bg-gray-800 rounded-lg p-6 sticky top-8">
+      <div className="relative overflow-hidden rounded-lg bg-gray-700">
+        {thumbnails.length > 1 && (
+          <>
+            <button
+              className="absolute top-1/2 -translate-y-1/2 bg-gray-900/80 hover:bg-gray-900 text-white w-10 h-10 rounded-full flex items-center justify-center z-10 left-4 transition-colors"
+              onClick={handlePrev}
+              aria-label="Previous image"
+            >
+              ←
+            </button>
+            <button
+              className="absolute top-1/2 -translate-y-1/2 bg-gray-900/80 hover:bg-gray-900 text-white w-10 h-10 rounded-full flex items-center justify-center z-10 right-4 transition-colors"
+              onClick={handleNext}
+              aria-label="Next image"
+            >
+              →
+            </button>
+          </>
+        )}
         <img
           src={thumbnails[selectedIndex].url}
           alt={thumbnails[selectedIndex].title}
-          className="w-full h-[500px] object-contain transition-opacity duration-300"
+          className="w-full h-96 object-contain transition-opacity duration-300"
         />
-        <button
-          className="absolute top-1/2 -translate-y-1/2 bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center z-10 right-4"
-          onClick={handleNext}
-        >
-          <i className="fas fa-chevron-right"></i>
-        </button>
+        <div className="absolute bottom-4 right-4 bg-gray-900/80 text-white px-3 py-1 rounded-full text-sm">
+          {selectedIndex + 1} / {thumbnails.length}
+        </div>
       </div>
-      <div className="flex space-x-2 mt-4 justify-center overflow-x-auto">
-        {thumbnails.map((thumb, index) => (
-          <img
-            key={index}
-            src={thumb.url}
-            alt={thumb.title}
-            className={`w-16 h-16 object-cover rounded cursor-pointer transition-transform hover:scale-105 ${
-              selectedIndex === index ? 'border-2 border-blue-600 scale-110' : ''
-            }`}
-            onClick={() => setSelectedIndex(index)}
-          />
-        ))}
-      </div>
+      
+      {thumbnails.length > 1 && (
+        <div className="flex space-x-2 mt-4 justify-center overflow-x-auto max-w-full">
+          {thumbnails.map((thumb, index) => (
+            <img
+              key={index}
+              src={thumb.url}
+              alt={thumb.title}
+              className={`w-16 h-16 object-cover rounded-lg cursor-pointer transition-all duration-200 hover:scale-105 border-2 ${
+                selectedIndex === index 
+                  ? 'border-blue-500 shadow-lg shadow-blue-500/50' 
+                  : 'border-transparent hover:border-gray-500'
+              }`}
+              onClick={() => setSelectedIndex(index)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -1318,17 +1371,34 @@ interface PromotionsProps {
 }
 
 const Promotions: React.FC<PromotionsProps> = ({ promotions }) => {
-  if (!promotions || promotions.length === 0) return null;
+  if (!promotions || promotions.length === 0) {
+    return (
+      <div>
+        <h2 className="text-lg font-medium text-white mb-3">🎁 Khuyến mãi</h2>
+        <p className="text-gray-400">Hiện tại không có khuyến mãi nào</p>
+      </div>
+    );
+  }
 
   const [title, ...items] = promotions;
   return (
-    <div className="bg-gray-800 text-white p-4 rounded-lg mt-8 mb-6">
-      <h2 className="text-lg font-medium mb-3">{title}</h2>
-      <ul className="list-disc list-inside space-y-2">
+    <div>
+      <h2 className="text-lg font-medium text-white mb-4 flex items-center">
+        🎁 {title || 'Khuyến mãi'}
+      </h2>
+      <div className="space-y-3">
         {items.map((promo, index) => (
-          <li key={index} dangerouslySetInnerHTML={{ __html: promo }} />
+          <div 
+            key={index} 
+            className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-lg p-4"
+          >
+            <div 
+              className="text-gray-100" 
+              dangerouslySetInnerHTML={{ __html: promo }} 
+            />
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 };
@@ -1370,17 +1440,26 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
   };
 
   return (
-    <div className="flex flex-col space-y-4 mt-6">
-      <div className="flex space-x-4">
+    <div>
+      <h3 className="text-lg font-medium text-white mb-4 flex items-center">
+        🛍️ Thao tác admin
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
           onClick={handleAddToCart}
-          className="flex items-center border-2 border-red-600 text-red-600 px-4 py-2 rounded-md hover:bg-red-50"
+          className="flex items-center justify-center border-2 border-blue-600 text-blue-400 px-6 py-3 rounded-lg hover:bg-blue-600 hover:text-white transition-colors font-medium"
         >
-          <span className="mr-2">🛒</span> Thêm vào giỏ hàng
+          <span className="mr-2">🛒</span> Test thêm vào giỏ
         </button>
-        <button className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
-          Mua ngay
+        <button className="flex items-center justify-center bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+          <span className="mr-2">⚡</span> Test mua ngay
         </button>
+      </div>
+      <div className="mt-4 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
+        <p className="text-yellow-200 text-sm flex items-center">
+          <span className="mr-2">ℹ️</span>
+          Các nút này dành cho admin test chức năng mua hàng
+        </p>
       </div>
     </div>
   );
@@ -1392,18 +1471,25 @@ interface ProductReviewsSectionProps {
 }
 
 const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({ productReviews }) => {
-  // Always show the section since this is admin version
   return (
-    <div className="bg-gray-800 text-white p-4 rounded-lg mt-8 mb-6">
-      <h2 className="text-lg font-medium mb-3">Đánh giá sản phẩm</h2>
+    <div>
+      <h2 className="text-lg font-medium text-white mb-4 flex items-center">
+        ⭐ Đánh giá sản phẩm
+      </h2>
       {!productReviews || productReviews.length === 0 ? (
-        <p className="text-gray-400">Chưa có đánh giá nào</p>
+        <div className="text-center py-8">
+          <div className="text-6xl text-gray-600 mb-4">📝</div>
+          <p className="text-gray-400">Chưa có đánh giá nào</p>
+        </div>
       ) : (
         <div className="space-y-4">
           {productReviews.map((review, index) => (
-            <div key={index} className="border-l-4 border-blue-500 pl-4">
-              <h3 className="font-semibold text-blue-400 mb-2">{review.title}</h3>
-              <p className="text-gray-300 whitespace-pre-wrap">{review.content}</p>
+            <div key={index} className="bg-gray-700 rounded-lg p-4 border-l-4 border-blue-500">
+              <h3 className="font-semibold text-blue-400 mb-3 flex items-center">
+                <span className="text-yellow-400 mr-2">⭐</span>
+                {review.title}
+              </h3>
+              <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{review.content}</p>
             </div>
           ))}
         </div>
@@ -1518,12 +1604,16 @@ const AdminProductEditor: React.FC<AdminProductEditorProps> = ({
 
   if (!isEditing) {
     return (
-      <div className="mt-6">
+      <div className="bg-gray-800 rounded-lg p-6">
+        <h3 className="text-lg font-medium text-white mb-4 flex items-center">
+          ✏️ Chỉnh sửa sản phẩm
+        </h3>
         <button
           onClick={onStartEdit}
-          className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium"
+          className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors flex items-center justify-center"
         >
-          Chỉnh sửa thông tin sản phẩm
+          <span className="mr-2">🔧</span>
+          Bắt đầu chỉnh sửa thông tin sản phẩm
         </button>
       </div>
     );
@@ -1803,34 +1893,53 @@ const AdminDeleteSection: React.FC<AdminDeleteSectionProps> = ({ groupData, onDe
   if (!groupData) return null;
 
   return (
-    <div className="mt-6 p-4 bg-red-900/20 border border-red-600 rounded-lg">
-      <h3 className="text-lg font-medium text-red-400 mb-3">Vùng nguy hiểm</h3>
-      <div className="space-y-3">
-        <div className="text-gray-300">
-          <p className="font-medium">Thông tin dòng sản phẩm:</p>
-          <ul className="mt-2 text-sm space-y-1">
-            <li>• <span className="font-medium">Group ID:</span> {groupData.groupId}</li>
-            <li>• <span className="font-medium">Tên dòng:</span> {groupData.groupName}</li>
-            <li>• <span className="font-medium">Số phiên bản:</span> {groupData.variants.length}</li>
-            <li>• <span className="font-medium">Các phiên bản:</span> {groupData.variants.map(v => v.variant).join(', ')}</li>
-          </ul>
+    <div className="bg-red-900/20 border border-red-600 rounded-lg p-6">
+      <h3 className="text-lg font-medium text-red-400 mb-4 flex items-center">
+        🚨 Vùng nguy hiểm
+      </h3>
+      <div className="space-y-4">
+        <div className="bg-gray-800 p-4 rounded-lg">
+          <p className="font-medium text-white mb-3">📋 Thông tin dòng sản phẩm:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="text-gray-300">
+              <span className="font-medium text-blue-400">Group ID:</span> {groupData.groupId}
+            </div>
+            <div className="text-gray-300">
+              <span className="font-medium text-blue-400">Tên dòng:</span> {groupData.groupName}
+            </div>
+            <div className="text-gray-300">
+              <span className="font-medium text-blue-400">Số phiên bản:</span> {groupData.variants.length}
+            </div>
+            <div className="text-gray-300">
+              <span className="font-medium text-blue-400">Phiên bản:</span> {groupData.variants.map(v => v.variant).join(', ')}
+            </div>
+          </div>
         </div>
-        <div className="text-yellow-300 text-sm bg-yellow-900/20 p-3 rounded">
-          <p className="font-medium mb-1">⚠️ Cảnh báo:</p>
-          <p>Hành động này sẽ xóa TOÀN BỘ dòng sản phẩm bao gồm:</p>
-          <ul className="mt-1 ml-4 space-y-1">
-            <li>• Tất cả {groupData.variants.length} phiên bản sản phẩm</li>
-            <li>• Toàn bộ thông tin tồn kho</li>
-            <li>• Dữ liệu từ hệ thống tìm kiếm</li>
-            <li>• Thông tin nhóm sản phẩm</li>
+        
+        <div className="bg-yellow-900/30 border border-yellow-600 p-4 rounded-lg">
+          <div className="flex items-center mb-3">
+            <span className="text-2xl mr-2">⚠️</span>
+            <p className="font-medium text-yellow-300">Cảnh báo nghiêm trọng</p>
+          </div>
+          <p className="text-yellow-200 mb-3">Hành động này sẽ xóa TOÀN BỘ dòng sản phẩm bao gồm:</p>
+          <ul className="text-yellow-200 space-y-1 text-sm">
+            <li className="flex items-center"><span className="text-red-400 mr-2">●</span> Tất cả {groupData.variants.length} phiên bản sản phẩm</li>
+            <li className="flex items-center"><span className="text-red-400 mr-2">●</span> Toàn bộ thông tin tồn kho</li>
+            <li className="flex items-center"><span className="text-red-400 mr-2">●</span> Dữ liệu từ hệ thống tìm kiếm</li>
+            <li className="flex items-center"><span className="text-red-400 mr-2">●</span> Thông tin nhóm sản phẩm</li>
           </ul>
-          <p className="mt-2 font-semibold text-red-400">Không thể hoàn tác!</p>
+          <div className="mt-3 p-3 bg-red-900/40 rounded-lg">
+            <p className="font-bold text-red-300 text-center">
+              🔒 KHÔNG THỂ HOÀN TÁC
+            </p>
+          </div>
         </div>
       </div>
+      
       <button
         onClick={onDelete}
         disabled={isDeleting}
-        className={`mt-4 w-full px-4 py-3 rounded-md text-white font-medium ${
+        className={`mt-6 w-full px-6 py-4 rounded-lg text-white font-medium transition-colors ${
           isDeleting ? 'bg-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'
         }`}
       >
@@ -1843,7 +1952,10 @@ const AdminDeleteSection: React.FC<AdminDeleteSectionProps> = ({ groupData, onDe
             Đang xóa dòng sản phẩm...
           </span>
         ) : (
-          `Xóa toàn bộ dòng sản phẩm "${groupData.groupName}"`
+          <span className="flex items-center justify-center">
+            <span className="mr-2">🗑️</span>
+            Xóa toàn bộ dòng sản phẩm "{groupData.groupName}"
+          </span>
         )}
       </button>
     </div>

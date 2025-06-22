@@ -781,7 +781,6 @@ const CheckoutPage = () => {
                     <option value="CREDIT_CARD">Thẻ tín dụng</option>
                     <option value="DEBIT_CARD">Thẻ ghi nợ</option>
                     <option value="TRANSFER_BANKING">Chuyển khoản ngân hàng</option>
-                    <option value="QR_CODE">QR Code</option>
                   </select>
                 </div>
                 

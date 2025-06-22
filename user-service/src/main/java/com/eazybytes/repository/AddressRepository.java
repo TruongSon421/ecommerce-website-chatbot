@@ -14,29 +14,22 @@ import java.util.Optional;
 @Repository
 public interface AddressRepository extends JpaRepository<Address, Long> {
     
-    // Find addresses by user ID, ordered by default status (default first)
-    @Query("SELECT a FROM Address a WHERE a.user.id = :userId ORDER BY a.isDefault DESC")
-    List<Address> findByUserIdOrderByIsDefaultDesc(@Param("userId") Long userId);
+    // Existing methods
+    List<Address> findByUserIdOrderByIsDefaultDesc(Long userId);
+    Optional<Address> findByIdAndUserId(Long id, Long userId);
+    void deleteByUserId(Long userId);
     
-    // Find specific address by ID and user ID
-    @Query("SELECT a FROM Address a WHERE a.id = :addressId AND a.user.id = :userId")
-    Optional<Address> findByIdAndUserId(@Param("addressId") Long addressId, @Param("userId") Long userId);
+    // ✅ NEW: Find addresses by user ordered by creation date (most recent first)
+    List<Address> findByUserIdOrderByCreatedAtDesc(Long userId);
     
-    // Find default address for user
-    @Query("SELECT a FROM Address a WHERE a.user.id = :userId AND a.isDefault = true")
-    Optional<Address> findByUserIdAndIsDefaultTrue(@Param("userId") Long userId);
-    
-    // Clear default status for all addresses of a user
+    // ✅ NEW: Clear default address for user
     @Modifying
     @Query("UPDATE Address a SET a.isDefault = false WHERE a.user.id = :userId")
     void clearDefaultAddressForUser(@Param("userId") Long userId);
     
-    // Delete all addresses for a user
-    @Modifying
-    @Query("DELETE FROM Address a WHERE a.user.id = :userId")
-    void deleteByUserId(@Param("userId") Long userId);
+    // ✅ NEW: Check if user has any addresses
+    boolean existsByUserId(Long userId);
     
-    // Count addresses for a user
-    @Query("SELECT COUNT(a) FROM Address a WHERE a.user.id = :userId")
-    Long countByUserId(@Param("userId") Long userId);
+    // ✅ NEW: Count addresses for user
+    long countByUserId(Long userId);
 }
