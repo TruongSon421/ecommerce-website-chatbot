@@ -1,4 +1,4 @@
-// UserRepository.java (simplified)
+// UserRepository.java (with additional optimized queries)
 package com.eazybytes.repository;
 
 import com.eazybytes.model.User;
@@ -25,24 +25,50 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // Simple counting methods
     Long countByIsActive(Boolean isActive);
     
-    // Only add this if your User entity has createdAt field and it's properly mapped
+    // ✅ FIX: Query để get basic user info (không load relationships)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findBasicUserById(@Param("id") Long id);
+    
+    // ✅ FIX: Query để get user với roles (khi authentication)
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+    
+    // ✅ FIX: Query để get user với roles cho username (cần cho CustomUserDetailsService)
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.username = :username")
+    Optional<User> findByUsernameWithRoles(@Param("username") String username);
+    
+    // Time-based counting
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :dateTime")
     Long countByCreatedAtAfter(@Param("dateTime") LocalDateTime dateTime);
     
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses")
+    // ✅ FIX: Query với JOIN FETCH để load addresses cùng lúc (tránh N+1)
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses LEFT JOIN FETCH u.roles")
     List<User> findAllWithAddresses();
     
-    // Query với JOIN FETCH và phân trang
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses")
+    // ✅ FIX: Query với JOIN FETCH và phân trang
+    @Query(value = "SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses LEFT JOIN FETCH u.roles",
+           countQuery = "SELECT COUNT(DISTINCT u) FROM User u")
     Page<User> findAllWithAddresses(Pageable pageable);
     
-    // Query với search và JOIN FETCH
-    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses " +
+    // ✅ FIX: Query với search và JOIN FETCH (cải thiện performance)
+    @Query("SELECT DISTINCT u FROM User u " +
+           "LEFT JOIN FETCH u.addresses " +
+           "LEFT JOIN FETCH u.roles " +
            "WHERE (:search = '' OR " +
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(u.firstName, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "LOWER(COALESCE(u.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "CAST(u.phoneNumber AS string) LIKE CONCAT('%', :search, '%'))")
     List<User> findAllWithAddressesBySearch(@Param("search") String search);
+    
+    // ✅ FIX: Batch loading users với addresses
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.addresses WHERE u.id IN :ids")
+    List<User> findAllByIdWithAddresses(@Param("ids") List<Long> ids);
+    
+    // ✅ FIX: Query để count users by role (nếu cần)
+    @Query("SELECT COUNT(DISTINCT u) FROM User u JOIN u.roles r WHERE r.name = :roleName")
+    Long countByRoleName(@Param("roleName") String roleName);
+
+
 }

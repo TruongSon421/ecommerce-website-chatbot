@@ -1,9 +1,10 @@
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.base_tool import BaseTool
-from google.adk.models import LlmResponse
+from google.adk.models import LlmResponse, LlmRequest
 from typing import Dict, Any, Optional
 from google.adk.tools.tool_context import ToolContext
 from google.genai.types import Content, Part
+from google.genai import types
 import json
 import re
 import copy

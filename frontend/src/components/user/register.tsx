@@ -18,7 +18,7 @@ const Register: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isLoading) return; // Prevent double submission
+    if (isLoading) return;
     
     try {
       setIsLoading(true);
@@ -37,7 +37,7 @@ const Register: React.FC = () => {
         return;
       }
   
-      // Kiểm tra độ dài mật khẩu (ví dụ: tối thiểu 8 ký tự)
+      // Kiểm tra độ dài mật khẩu
       if (
         credentials.password.length < 8 || 
         !/[A-Z]/.test(credentials.password) || 
@@ -49,19 +49,37 @@ const Register: React.FC = () => {
       
       await register(credentials);
       
-      // Thêm delay nhỏ để đảm bảo Redux state được update
       setTimeout(() => {
         navigate('/');
       }, 100);
     } catch (err: any) {
-      // Cải thiện error handling để hiển thị lỗi cụ thể hơn
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
+      console.log('Error type:', typeof err);
+      console.log('Error value:', err);
+      
+      let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại.';
+      
+      // Redux .unwrap() error có thể là string trực tiếp hoặc có thuộc tính message
+      if (typeof err === 'string') {
+        errorMessage = err;
       } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('Đăng ký thất bại. Vui lòng thử lại.');
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
       }
+      
+      // Loại bỏ "Error: " prefix nếu có
+      errorMessage = errorMessage.replace(/^Error:\s*/, '');
+      
+      // Dịch một số lỗi phổ biến sang tiếng Việt
+      if (errorMessage.includes('Username is already taken')) {
+        errorMessage = 'Tên đăng nhập đã được sử dụng';
+      } else if (errorMessage.includes('Email is already in use')) {
+        errorMessage = 'Email đã được sử dụng';
+      } else if (errorMessage.includes('Passwords do not match')) {
+        errorMessage = 'Mật khẩu xác nhận không khớp';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -94,12 +112,12 @@ const Register: React.FC = () => {
               />
             </div>
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
               </label>
               <input
                 id="email"
-                type="text"
+                type="email"
                 value={credentials.email}
                 onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

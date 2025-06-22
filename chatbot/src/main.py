@@ -4,7 +4,8 @@ from flask import Flask, request, jsonify, Blueprint
 from flask_cors import CORS  # Add CORS import
 from google.adk.sessions import DatabaseSessionService
 from google.adk.tools import ToolContext
-
+from google.adk.events import Event, EventActions
+import time
 from google.adk.runners import Runner
 from agents.coordinator import coordinator
 from db.mysql import init_mysql, create_flask_app
@@ -55,7 +56,7 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
-
+from prompts import update_global_instruction
 # Khởi tạo DatabaseSessionService với PostgreSQL
 db_url = os.getenv("POSTGRES_DB_URL")
 if not db_url:
@@ -81,9 +82,12 @@ def get_default_language_response(filter_code: int) -> str:
     responses = FILTER_RESPONSES.get(filter_code, {})
     return responses.get("vie", "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại.")
 
-async def call_agent_async(user_id: str, session_id: str, access_token: str, query: str):
-    """Gọi agent với user_id, session_id, và query từ request."""
-    print(f"\n>>> User Query: user_id={user_id}, session_id={session_id}, query={query}")
+
+    
+
+async def call_agent_async(user_id: str, session_id: str, access_token: str, query: str, detected_lang: str = "vie"):
+    """Gọi agent với user_id, session_id, query và detected_lang từ request."""
+    print(f"\n>>> User Query: user_id={user_id}, session_id={session_id}, query={query}, language={detected_lang}")
 
     # Kiểm tra hoặc tạo session
     session = session_service.get_session(
@@ -99,9 +103,31 @@ async def call_agent_async(user_id: str, session_id: str, access_token: str, que
             session_id=session_id,
             state={
                 "access_token": access_token,
-                "user_id": user_id
+                "user_id": user_id,
+                "detected_language": detected_lang,
             },
         )
+    else:
+        # Cập nhật detected_language vào session state sử dụng EventActions.state_delta
+        
+        
+        current_time = time.time()
+        state_changes = {
+            "detected_language": detected_lang
+        }
+        
+        actions_with_update = EventActions(state_delta=state_changes)
+        
+        system_event = Event(
+            invocation_id=f"lang_update_{int(current_time)}",
+            author="system",
+            actions=actions_with_update,
+            timestamp=current_time
+        )
+        
+        session_service.append_event(session, system_event)
+        print(f"Updated detected_language to: {detected_lang}")
+        
     print(f"Session state: {session.state}")
     
     # Tạo runner
@@ -249,9 +275,13 @@ async def handle_query():
                
                if filter_code == 3:
                    print(f">>> Query passed filter. Detected language: {detected_lang}")
+                   
+                   # CẬP NHẬT GLOBAL_INSTRUCTION trước khi gọi agent
+                   update_global_instruction(detected_lang)
+                   
                    # Tiếp tục xử lý với agent (sử dụng query đã preprocessing)
-                   response = await call_agent_async(user_id, session_id, access_token, preprocessed_query)
-                   print(f"  Final response text này: {response}")
+                   response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, detected_lang)
+                   print(f"Final response text: {response}")
                    # Lấy dữ liệu từ shared variables
                    temp1 = current_group_ids.copy()
                    temp2 = filter_params.copy()
@@ -288,7 +318,7 @@ async def handle_query():
            
            # Nếu filter bị lỗi, vẫn cho phép query đi qua (fallback)
            print(">>> Filter failed, proceeding with agent call")
-           response = await call_agent_async(user_id, session_id, access_token, preprocessed_query)
+           response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, "vie")
            
            temp1 = current_group_ids.copy()
            temp2 = filter_params.copy()
@@ -622,7 +652,7 @@ async def main_loop():
             if isinstance(filter_result, tuple) and filter_result[0] == 3:
                 print("Query passed filter, calling agent...")
                 with app.app_context():
-                    await call_agent_async(user_id, session_id, "", query)
+                    await call_agent_async(user_id, session_id, "", query, filter_result[1] if len(filter_result) > 1 else "vie")
             else:
                 print(f"Query blocked by filter with code: {filter_result}")
         except Exception as e:

@@ -6,8 +6,7 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Pattern;
 
 @Data
 @AllArgsConstructor
@@ -24,9 +23,9 @@ public class SignupRequest {
     private String firstName;
     private String lastName;
     
-    @Min(value = 1000000000L, message = "Phone number must have at least 10 digits")
-    @Max(value = 99999999999999L, message = "Phone number cannot exceed 14 digits")
-    private Long phoneNumber;
+    // ✅ FIX: Changed from Long to String with Pattern validation
+    @Pattern(regexp = "^[0-9]{10,14}$", message = "Phone number must be 10-14 digits")
+    private String phoneNumber;
     
     @NotBlank(message = "Password is required")
     @Size(min = 6, message = "Password must be at least 6 characters")

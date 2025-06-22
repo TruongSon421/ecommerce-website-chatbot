@@ -74,12 +74,7 @@ const Footer: React.FC = () => {
           <p>© 2025 TechZone - Cửa hàng Điện thoại, Laptop, Phụ kiện chính hãng. Tất cả quyền được bảo lưu.</p>
           <div className="footer-info">
             <span>Giá sản phẩm được cập nhật liên tục trên website</span>
-            <div className="payment-methods">
-              <img src="/images/payment/visa.png" alt="Visa" />
-              <img src="/images/payment/mastercard.png" alt="Mastercard" />
-              <img src="/images/payment/jcb.png" alt="JCB" />
-              <img src="/images/payment/momo.png" alt="MoMo" />
-            </div>
+            
           </div>
         </div>
       </div>

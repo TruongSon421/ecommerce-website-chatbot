@@ -18,7 +18,7 @@ public class UserDTO {
     private String email;
     private String firstName;
     private String lastName;
-    private Long phoneNumber;
+    private String phoneNumber;
     private Boolean isActive;
     private String role; // Added for admin view (ADMIN, USER, etc.)
     private List<AddressDTO> addresses;

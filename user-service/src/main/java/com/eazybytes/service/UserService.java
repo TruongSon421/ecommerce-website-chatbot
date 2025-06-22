@@ -1,4 +1,4 @@
-// UserService.java (final fixed version)
+// UserService.java (optimized version with original DTO)
 package com.eazybytes.service;
 
 import com.eazybytes.dto.*;
@@ -21,16 +21,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.HashSet;
-
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@Slf4j
 public class UserService {
 
     @Autowired
@@ -45,7 +46,72 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // ==================== EXISTING METHODS ====================
+    // ==================== OPTIMIZED UPDATE METHOD ====================
+    
+    /**
+     * ✅ FIX: Optimized updateUser method - chỉ load basic info, không load relationships
+     */
+    @Transactional(timeout = 30, rollbackFor = Exception.class)
+    public UserDTO updateUser(Long userId, UserDTO userDTO) {
+        try {
+            log.debug("Updating user with ID: {}", userId);
+            
+            // ✅ FIX: Sử dụng basic query thay vì findById để tránh load relationships
+            User user = userRepository.findBasicUserById(userId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
+
+            boolean hasChanges = false;
+            
+            // Update chỉ các field được cho phép cho regular users
+            if (userDTO.getFirstName() != null && 
+                !userDTO.getFirstName().equals(user.getFirstName())) {
+                user.setFirstName(userDTO.getFirstName().trim());
+                hasChanges = true;
+            }
+            
+            if (userDTO.getLastName() != null && 
+                !userDTO.getLastName().equals(user.getLastName())) {
+                user.setLastName(userDTO.getLastName().trim());
+                hasChanges = true;
+            }
+            
+            if (userDTO.getPhoneNumber() != null && 
+                !userDTO.getPhoneNumber().equals(user.getPhoneNumber())) {
+                user.setPhoneNumber(userDTO.getPhoneNumber());
+                hasChanges = true;
+            }
+
+            // ✅ FIX: Chỉ save khi có thay đổi thực sự
+            if (hasChanges) {
+                user.setUpdatedAt(LocalDateTime.now());
+                
+                // ✅ FIX: Sử dụng saveAndFlush để ensure immediate commit
+                user = userRepository.saveAndFlush(user);
+                
+                log.debug("User updated successfully: {}", userId);
+            } else {
+                log.debug("No changes detected for user: {}", userId);
+            }
+
+            // ✅ FIX: Return DTO without loading relationships
+            return convertToBasicUserDTO(user);
+            
+        } catch (Exception e) {
+            log.error("Error updating user with id: {} - Error: {}", userId, e.getMessage(), e);
+            
+            // ✅ DEBUG: Check if it's transaction or entity related
+            if (e.getMessage().contains("transaction")) {
+                log.error("Transaction related error detected");
+            }
+            if (e.getMessage().contains("could not commit")) {
+                log.error("Commit failure detected");
+            }
+            
+            throw new RuntimeException("Failed to update user: " + e.getMessage(), e);
+        }
+    }
+
+    // ==================== EXISTING METHODS (KEEP AS IS) ====================
     
     public UserDTO createUser(CreateUserDTO createUserDTO) {
         // Check if username or email already exists
@@ -64,7 +130,7 @@ public class UserService {
                 .phoneNumber(createUserDTO.getPhoneNumber())
                 .password(passwordEncoder.encode(createUserDTO.getPassword()))
                 .isActive(true)
-                .roles(new HashSet<>()) // Initialize roles set
+                .roles(new HashSet<>())
                 .build();
         
         if (createUserDTO.getRoleNames() != null && !createUserDTO.getRoleNames().isEmpty()) {
@@ -79,7 +145,6 @@ public class UserService {
                 }
             }
         } else {
-            // Default to USER role if no roles specified
             Role userRole = roleRepository.findByName(ERole.ROLE_USER)
                     .orElseThrow(() -> new BusinessException("Default role not found"));
             user.getRoles().add(userRole);
@@ -89,57 +154,44 @@ public class UserService {
         return convertToUserDTO(savedUser);
     }
 
+    /**
+     * ✅ FIX: Method để get user với addresses (khi thực sự cần)
+     */
+    @Transactional(readOnly = true, timeout = 30)
     public UserDTO getUserWithAddresses(Long userId) {
-        User user = userRepository.findById(userId)
+        // Sử dụng basic query để load user, sau đó load addresses riêng
+        User user = userRepository.findBasicUserById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
         return convertToUserDTO(user);
     }
 
-    public UserDTO updateUser(Long userId, UserDTO userDTO) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
-
-        // Regular users can only update limited fields
-        if (userDTO.getFirstName() != null) {
-            user.setFirstName(userDTO.getFirstName());
-        }
-        if (userDTO.getLastName() != null) {
-            user.setLastName(userDTO.getLastName());
-        }
-        if (userDTO.getPhoneNumber() != null) {
-            user.setPhoneNumber(userDTO.getPhoneNumber());
-        }
-
-        User updatedUser = userRepository.save(user);
-        return convertToUserDTO(updatedUser);
-    }
-
     public AddressDTO addAddress(Long userId, AddressDTO addressDTO) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findBasicUserById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
-        // If this is set as default, clear other default addresses
-        if (addressDTO.getIsDefault() != null && addressDTO.getIsDefault()) {
+        // ✅ FIX: Check if this is the first address
+        List<Address> existingAddresses = addressRepository.findByUserIdOrderByIsDefaultDesc(userId);
+        boolean isFirstAddress = existingAddresses.isEmpty();
+        
+        // ✅ FIX: If this is the first address, force it to be default
+        boolean shouldBeDefault = isFirstAddress || (addressDTO.getIsDefault() != null && addressDTO.getIsDefault());
+        
+        // ✅ FIX: If setting as default and there are existing addresses, clear current default
+        if (shouldBeDefault && !isFirstAddress) {
             addressRepository.clearDefaultAddressForUser(userId);
         }
 
-        Address address = new Address();
-        address.setUser(user);
-        address.setProvince(addressDTO.getProvince());
-        address.setDistrict(addressDTO.getDistrict());
-        address.setWard(addressDTO.getWard());
-        address.setStreet(addressDTO.getStreet());
-        
-        // Handle AddressType conversion
-        if (addressDTO.getAddressType() != null) {
-            address.setAddressType((addressDTO.getAddressType()));
-        } else {
-            address.setAddressType(AddressType.NHA_RIENG); // Default
-        }
-        
-        address.setReceiverName(addressDTO.getReceiverName());
-        address.setReceiverPhone(addressDTO.getReceiverPhone());
-        address.setIsDefault(addressDTO.getIsDefault() != null ? addressDTO.getIsDefault() : false);
+        Address address = Address.builder()
+                .user(user)
+                .province(addressDTO.getProvince())
+                .district(addressDTO.getDistrict())
+                .ward(addressDTO.getWard())
+                .street(addressDTO.getStreet())
+                .addressType(addressDTO.getAddressType() != null ? addressDTO.getAddressType() : AddressType.NHA_RIENG)
+                .receiverName(addressDTO.getReceiverName())
+                .receiverPhone(addressDTO.getReceiverPhone())
+                .isDefault(shouldBeDefault) // ✅ FIX: Always set boolean value
+                .build();
 
         Address savedAddress = addressRepository.save(address);
         return convertToAddressDTO(savedAddress);
@@ -149,24 +201,23 @@ public class UserService {
         Address address = addressRepository.findByIdAndUserId(addressId, userId)
                 .orElseThrow(() -> new AddressNotFoundException("Address not found"));
 
-        // If this is set as default, clear other default addresses
-        if (addressDTO.getIsDefault() != null && addressDTO.getIsDefault() && !address.getIsDefault()) {
+        // ✅ FIX: Handle default logic properly
+        boolean shouldBeDefault = addressDTO.getIsDefault() != null && addressDTO.getIsDefault();
+        
+        // ✅ FIX: If setting as default and it's not currently default, clear other defaults
+        if (shouldBeDefault && !address.getIsDefault()) {
             addressRepository.clearDefaultAddressForUser(userId);
         }
 
+        // ✅ FIX: Update all fields
         address.setProvince(addressDTO.getProvince());
         address.setDistrict(addressDTO.getDistrict());
         address.setWard(addressDTO.getWard());
         address.setStreet(addressDTO.getStreet());
-        
-        // Handle AddressType conversion
-        if (addressDTO.getAddressType() != null) {
-            address.setAddressType((addressDTO.getAddressType()));
-        }
-        
+        address.setAddressType(addressDTO.getAddressType() != null ? addressDTO.getAddressType() : address.getAddressType());
         address.setReceiverName(addressDTO.getReceiverName());
         address.setReceiverPhone(addressDTO.getReceiverPhone());
-        address.setIsDefault(addressDTO.getIsDefault() != null ? addressDTO.getIsDefault() : address.getIsDefault());
+        address.setIsDefault(shouldBeDefault);
 
         Address updatedAddress = addressRepository.save(address);
         return convertToAddressDTO(updatedAddress);
@@ -179,35 +230,29 @@ public class UserService {
         boolean wasDefault = address.getIsDefault();
         addressRepository.delete(address);
 
-        // If deleted address was default, set another address as default
+        // ✅ FIX: If deleted address was default, set the most recent remaining address as default
         if (wasDefault) {
-            List<Address> remainingAddresses = addressRepository.findByUserIdOrderByIsDefaultDesc(userId);
+            List<Address> remainingAddresses = addressRepository.findByUserIdOrderByCreatedAtDesc(userId);
             if (!remainingAddresses.isEmpty()) {
-                Address newDefault = remainingAddresses.get(0);
+                Address newDefault = remainingAddresses.get(0); // Get most recent address
                 newDefault.setIsDefault(true);
                 addressRepository.save(newDefault);
             }
         }
     }
 
-    // ==================== ADMIN METHODS (NO SPECIFICATION) ====================
+    // ==================== ADMIN METHODS ====================
 
+    /**
+     * ✅ FIX: Optimized getAllUsers với proper JOIN FETCH
+     */
     public Page<UserDTO> getAllUsers(String search, String status, Pageable pageable) {
-        // Sử dụng query với JOIN FETCH
-        List<User> allUsers = userRepository.findAllWithAddresses();
+        List<User> allUsers;
         
-        // Apply search filter
         if (search != null && !search.trim().isEmpty()) {
-            String searchLower = search.toLowerCase();
-            allUsers = allUsers.stream()
-                .filter(user -> 
-                    (user.getUsername() != null && user.getUsername().toLowerCase().contains(searchLower)) ||
-                    (user.getEmail() != null && user.getEmail().toLowerCase().contains(searchLower)) ||
-                    (user.getFirstName() != null && user.getFirstName().toLowerCase().contains(searchLower)) ||
-                    (user.getLastName() != null && user.getLastName().toLowerCase().contains(searchLower)) ||
-                    (user.getPhoneNumber() != null && user.getPhoneNumber().toString().contains(search))
-                )
-                .collect(Collectors.toList());
+            allUsers = userRepository.findAllWithAddressesBySearch(search.trim());
+        } else {
+            allUsers = userRepository.findAllWithAddresses();
         }
         
         // Apply status filter
@@ -220,7 +265,7 @@ public class UserService {
         
         // Convert to DTOs
         List<UserDTO> userDTOs = allUsers.stream()
-            .map(this::convertToUserDTOWithAddresses) // Sử dụng method có load addresses
+            .map(this::convertToUserDTOWithAddresses)
             .collect(Collectors.toList());
         
         // Apply pagination manually
@@ -256,10 +301,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
-        // Delete all addresses first
         addressRepository.deleteByUserId(userId);
-        
-        // Delete user
         userRepository.delete(user);
     }
 
@@ -287,7 +329,6 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
-        // Generate new random password
         String newPassword = generateRandomPassword();
         user.setPassword(passwordEncoder.encode(newPassword));
         
@@ -298,55 +339,17 @@ public class UserService {
 
     public UserStatisticsDTO getUserStatistics() {
         Long totalUsers = userRepository.count();
+        Long activeUsers = userRepository.countByIsActive(true);
+        Long inactiveUsers = userRepository.countByIsActive(false);
         
-        // Use simple counting methods
-        Long activeUsers = 0L;
-        Long inactiveUsers = 0L;
+        LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+        LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
         
-        try {
-            activeUsers = userRepository.countByIsActive(true);
-            inactiveUsers = userRepository.countByIsActive(false);
-        } catch (Exception e) {
-            // Fallback to manual counting
-            List<User> allUsers = userRepository.findAll();
-            activeUsers = allUsers.stream()
-                .filter(user -> user.getIsActive() != null && user.getIsActive())
-                .count();
-            inactiveUsers = totalUsers - activeUsers;
-        }
+        Long newUsersThisMonth = userRepository.countByCreatedAtAfter(startOfMonth);
+        Long newUsersToday = userRepository.countByCreatedAtAfter(startOfDay);
         
-        // For time-based stats, use manual calculation to avoid query issues
-        Long newUsersThisMonth = 0L;
-        Long newUsersToday = 0L;
-        
-        try {
-            // Only try this if you have createdAt field properly mapped
-            LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-            LocalDateTime startOfDay = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-            
-            // Check if User entity has createdAt field
-            List<User> allUsers = userRepository.findAll();
-            newUsersThisMonth = allUsers.stream()
-                .filter(user -> user.getCreatedAt() != null && user.getCreatedAt().isAfter(startOfMonth))
-                .count();
-                
-            newUsersToday = allUsers.stream()
-                .filter(user -> user.getCreatedAt() != null && user.getCreatedAt().isAfter(startOfDay))
-                .count();
-        } catch (Exception e) {
-            // If createdAt field doesn't exist or has issues, set to 0
-            newUsersThisMonth = 0L;
-            newUsersToday = 0L;
-        }
-        
-        // Calculate average addresses per user
-        Double averageAddressesPerUser = 0.0;
-        try {
-            Long totalAddresses = addressRepository.count();
-            averageAddressesPerUser = totalUsers > 0 ? (double) totalAddresses / totalUsers : 0.0;
-        } catch (Exception e) {
-            averageAddressesPerUser = 0.0;
-        }
+        Double averageAddressesPerUser = totalUsers > 0 ? 
+            (double) addressRepository.count() / totalUsers : 0.0;
 
         return new UserStatisticsDTO(
             totalUsers,
@@ -377,10 +380,7 @@ public class UserService {
                 return "Successfully deactivated " + users.size() + " users";
 
             case DELETE:
-                // Delete addresses first
                 users.forEach(user -> addressRepository.deleteByUserId(user.getId()));
-                
-                // Delete users
                 userRepository.deleteAll(users);
                 return "Successfully deleted " + users.size() + " users";
 
@@ -399,6 +399,31 @@ public class UserService {
 
     // ==================== HELPER METHODS ====================
 
+    /**
+     * ✅ FIX: Basic DTO conversion - không load relationships
+     */
+    private UserDTO convertToBasicUserDTO(User user) {
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setUsername(user.getUsername());
+        userDTO.setEmail(user.getEmail());
+        userDTO.setFirstName(user.getFirstName());
+        userDTO.setLastName(user.getLastName());
+        userDTO.setPhoneNumber(user.getPhoneNumber());
+        userDTO.setIsActive(user.getIsActive());
+        
+        // Set role to default if not loaded
+        userDTO.setRole("ROLE_USER");
+        
+        // Don't load addresses để tránh N+1
+        userDTO.setAddresses(List.of());
+        
+        return userDTO;
+    }
+
+    /**
+     * ✅ FIX: Full DTO conversion - load relationships khi cần
+     */
     private UserDTO convertToUserDTO(User user) {
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
@@ -409,33 +434,21 @@ public class UserService {
         userDTO.setPhoneNumber(user.getPhoneNumber());
         userDTO.setIsActive(user.getIsActive());
         
-        // Map roles from Set<Role> to String - get primary role or first role
-        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            // Find admin role first, otherwise use first role
-            Role primaryRole = user.getRoles().stream()
-                .filter(role -> role.getName() == ERole.ROLE_ADMIN)
-                .findFirst()
-                .orElse(user.getRoles().iterator().next());
-            userDTO.setRole(primaryRole.getName().toString());
-        } else {
-            userDTO.setRole("ROLE_USER"); // Default role
-        }
+        // Map roles - sử dụng helper method
+        userDTO.setRole(user.getPrimaryRoleAsString());
         
-        // Load addresses (use existing addresses from entity if available)
-        if (user.getAddresses() != null && !user.getAddresses().isEmpty()) {
-            userDTO.setAddresses(user.getAddresses().stream()
-                .sorted((a1, a2) -> Boolean.compare(a2.getIsDefault(), a1.getIsDefault()))
-                .map(this::convertToAddressDTO)
-                .collect(Collectors.toList()));
-        } else {
-            // Fallback to repository query
-            List<Address> addresses = addressRepository.findByUserIdOrderByIsDefaultDesc(user.getId());
-            userDTO.setAddresses(addresses.stream().map(this::convertToAddressDTO).collect(Collectors.toList()));
-        }
+        // Load addresses từ database nếu chưa có
+        List<Address> addresses = addressRepository.findByUserIdOrderByIsDefaultDesc(user.getId());
+        userDTO.setAddresses(addresses.stream()
+            .map(this::convertToAddressDTO)
+            .collect(Collectors.toList()));
         
         return userDTO;
     }
 
+    /**
+     * ✅ FIX: Conversion với addresses đã được load từ JOIN FETCH
+     */
     private UserDTO convertToUserDTOWithAddresses(User user) {
         UserDTO dto = new UserDTO();
         dto.setId(user.getId());
@@ -446,12 +459,18 @@ public class UserService {
         dto.setPhoneNumber(user.getPhoneNumber());
         dto.setIsActive(user.getIsActive());
         
-        // Convert addresses
+        // Set role sử dụng helper method
+        dto.setRole(user.getPrimaryRoleAsString());
+        
+        // Convert addresses nếu đã được load
         if (user.getAddresses() != null) {
             List<AddressDTO> addressDTOs = user.getAddresses().stream()
+                .sorted((a1, a2) -> Boolean.compare(a2.getIsDefault(), a1.getIsDefault()))
                 .map(this::convertToAddressDTO)
                 .collect(Collectors.toList());
             dto.setAddresses(addressDTOs);
+        } else {
+            dto.setAddresses(List.of());
         }
         
         return dto;
@@ -465,7 +484,6 @@ public class UserService {
         addressDTO.setWard(address.getWard());
         addressDTO.setStreet(address.getStreet());
         
-        // Convert AddressType enum to String safely
         if (address.getAddressType() != null) {
             addressDTO.setAddressType((address.getAddressType()));
         } else {
@@ -473,8 +491,19 @@ public class UserService {
         }
         
         addressDTO.setReceiverName(address.getReceiverName());
-        addressDTO.setReceiverPhone(address.getReceiverPhone());
+        
+        // ✅ FIX: Handle phone conversion based on entity type
+        if (address.getReceiverPhone() != null) {
+            // If entity uses String
+            addressDTO.setReceiverPhone(address.getReceiverPhone());
+            
+            // If entity uses Long, convert:
+            // addressDTO.setReceiverPhone(address.getReceiverPhone().toString());
+        }
+        
         addressDTO.setIsDefault(address.getIsDefault());
+        addressDTO.setCreatedAt(address.getCreatedAt());
+        addressDTO.setUpdatedAt(address.getUpdatedAt());
         return addressDTO;
     }
 
@@ -482,20 +511,17 @@ public class UserService {
         return "TempPass" + UUID.randomUUID().toString().substring(0, 8);
     }
 
-    // Helper method to check if user has specific role
     private boolean hasRole(User user, ERole role) {
         return user.getRoles().stream()
                 .anyMatch(r -> r.getName() == role);
     }
 
-    // Helper method to add role to user
     private void addRoleToUser(User user, ERole roleName) {
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new BusinessException("Role not found: " + roleName));
         user.getRoles().add(role);
     }
 
-    // Helper method to remove role from user
     private void removeRoleFromUser(User user, ERole roleName) {
         user.getRoles().removeIf(role -> role.getName() == roleName);
     }

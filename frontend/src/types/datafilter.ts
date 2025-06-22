@@ -241,28 +241,13 @@ export const wiredEarphoneFilterData: FilterData = {
       }))
     }
   ],
-  connectivity: [
-    {
-      key: 'tags',
-      label: 'Kết nối',
-      multiSelect: false,
-      options: [
-        { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
-        { label: 'USB-C', value: 'usb_c' },
-        { label: 'Lightning', value: 'lightning' }
-      ]
-    }
-  ],
   earphoneBenefits: [
     {
       key: 'tags',
       label: 'Tiện ích',
       multiSelect: true,
       options: [
-        { label: 'Chống nước', value: 'earHeadphone_benefit_waterProof' },
         { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
-        { label: 'Điều khiển âm lượng', value: 'wiredEarphone_benefit_volumeControl' },
-        { label: 'Chống rối dây', value: 'wiredEarphone_benefit_tangleFree' }
       ]
     }
   ]
@@ -349,7 +334,6 @@ export const wirelessEarphoneFilterData: FilterData = {
         { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
         { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
         { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' },
-        { label: 'Tự động tạm dừng', value: 'wirelessEarphone_benefit_autoPause' }
       ]
     }
   ]
@@ -390,57 +374,14 @@ export const headphoneFilterData: FilterData = {
       }))
     }
   ],
-  connectivity: [
-    {
-      key: 'tags',
-      label: 'Kết nối',
-      multiSelect: false,
-      options: [
-        { label: 'Bluetooth 5.0+', value: 'bluetooth_5' },
-        { label: 'Jack 3.5mm', value: 'jack_3_5mm' },
-        { label: 'USB-C', value: 'usb_c' },
-        { label: 'Có dây + Bluetooth', value: 'hybrid_connection' }
-      ]
-    }
-  ],
-  headphoneType: [
-    {
-      key: 'tags',
-      label: 'Loại headphone',
-      multiSelect: false,
-      options: [
-        { label: 'Over-ear', value: 'headphone_type_overEar' },
-        { label: 'On-ear', value: 'headphone_type_onEar' },
-        { label: 'Gaming', value: 'headphone_type_gaming' },
-        { label: 'Studio/Monitor', value: 'headphone_type_studio' }
-      ]
-    }
-  ],
-  headphoneBattery: [
-    {
-      key: 'tags',
-      label: 'Thời lượng pin',
-      multiSelect: false,
-      options: [
-        { label: 'Dưới 10 tiếng', value: 'headphone_battery_under10' },
-        { label: 'Từ 10 đến 20 tiếng', value: 'headphone_battery_10to20' },
-        { label: 'Từ 20 đến 30 tiếng', value: 'headphone_battery_20to30' },
-        { label: 'Trên 30 tiếng', value: 'headphone_battery_above30' }
-      ]
-    }
-  ],
-  headphoneBenefits: [
+  earphoneBenefits: [
     {
       key: 'tags',
       label: 'Tiện ích',
       multiSelect: true,
       options: [
-        { label: 'Chống ồn ANC', value: 'earHeadphone_benefit_anc' },
         { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
-        { label: 'Có thể gập lại', value: 'headphone_benefit_foldable' },
-        { label: 'Âm thanh 360', value: 'headphone_benefit_360sound' },
-        { label: 'Equalizer tùy chỉnh', value: 'headphone_benefit_customEQ' },
-        { label: 'Phím điều khiển', value: 'headphone_benefit_controls' }
+        { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' },
       ]
     }
   ]

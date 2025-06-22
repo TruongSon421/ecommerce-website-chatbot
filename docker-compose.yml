@@ -126,6 +126,18 @@ services:
       timeout: 5s
       retries: 5
 
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
   # logstash:
   #   image: docker.elastic.co/logstash/logstash:8.12.0
   #   container_name: logstash
@@ -522,6 +534,8 @@ volumes:
   rag_elasticsearch-data:
     external: true  
   postgres_data:
+  qdrant_storage:
+  
 networks:
   ecommerce_network:
     driver: bridge
