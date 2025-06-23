@@ -10,22 +10,6 @@ class Filter:
     # Class variables instead of instance variables
     lang_dict = {'vie':"tiếng Việt",'eng':"tiếng Anh"}
     
-    # Vietnamese keywords for better language detection
-    vietnamese_keywords = [
-        # Common Vietnamese words (with and without diacritics)
-        'toi', 'tôi', 'ban', 'bạn', 'tim', 'tìm', 'muon', 'muốn', 'mua', 
-        'can', 'cần', 'co', 'có', 'khong', 'không', 'tai nghe', 'tainghe',
-        'dien thoai', 'điện thoại', 'laptop', 'may tinh', 'máy tính',
-        'gia', 'giá', 'bao nhieu', 'bao nhiêu', 'nao', 'nào', 'nha', 'nhà',
-        'cua hang', 'cửa hàng', 'san pham', 'sản phẩm', 'hang', 'hàng',
-        'moi', 'mới', 'cu', 'cũ', 'tot', 'tốt', 'xau', 'xấu', 'dep', 'đẹp',
-        'nhanh', 'cham', 'chậm', 're', 'rẻ', 'dat', 'đắt', 'chat luong', 'chất lượng',
-        'mau', 'màu', 'den', 'đen', 'trang', 'trắng', 'đỏ', 'xanh',
-        'cam on', 'cảm ơn', 'xin loi', 'xin lỗi', 'duoc', 'được', 'roi', 'rồi',
-        'day', 'đây', 'do', 'đó', 'kia', 'nay', 'này', 'ay', 'ấy', 'chinh', 'sach', 'quy',
-        'dinh', 'xin chaof', 'xin chao'
-    ]
-    
     # Load sensitive words from external files
     @classmethod
     def _load_sensitive_words(cls):
@@ -76,7 +60,7 @@ class Filter:
     common_greetings = [
         # Tiếng Việt
         'hello', 'hi', 'lô', 'chào', 'xin chào', '2', 'alo', 'halo',
-        'xin chao', 'chao', 'chào bạn', 'xin chào bạn', 'chào anh',
+        'xin chao', 'xin chaof','chao', 'chào bạn', 'xin chào bạn', 'chào anh',
         'chào chị', 'chào em', 'xin chào anh', 'xin chào chị', 'xin chào em',
         'good morning', 'good afternoon', 'good evening', 'good night',
         'chào buổi sáng', 'chào buổi chiều', 'chào buổi tối', 'chúc ngủ ngon',
@@ -140,40 +124,6 @@ class Filter:
         return len(found_words) > 0, found_words
     
     @classmethod
-    def check_vietnamese_keywords(cls, query):
-        """Kiểm tra xem query có chứa từ khóa tiếng Việt không"""
-        query_lower = query.lower()
-        words_in_query = query_lower.split()
-        # Thêm dấu cách ở đầu và cuối để dễ kiểm tra cụm từ
-        query_with_spaces = f" {query_lower} "
-        
-        vietnamese_word_count = 0
-        found_keywords = []
-        
-        for keyword in cls.vietnamese_keywords:
-            keyword = keyword.strip().lower()
-            
-            # Kiểm tra từ khóa là một từ riêng biệt trong danh sách từ
-            if keyword in words_in_query:
-                vietnamese_word_count += 1
-                found_keywords.append(keyword)
-                continue
-                
-            # Kiểm tra từ khóa là một cụm từ chính xác trong query
-            if f" {keyword} " in query_with_spaces:
-                vietnamese_word_count += 1
-                found_keywords.append(keyword)
-                continue
-                
-            # Kiểm tra từ khóa là toàn bộ câu query
-            if keyword == query_lower:
-                vietnamese_word_count += 1
-                found_keywords.append(keyword)
-        
-        # Nếu có ít nhất 1 từ tiếng Việt thì có thể là tiếng Việt
-        return vietnamese_word_count > 0, found_keywords, vietnamese_word_count
-    
-    @classmethod
     def check_lang(cls, query):
         model = fasttext.load_model(cls.model_path)
         
@@ -218,15 +168,12 @@ class Filter:
         if cls.check_sensitive_words(query)[0]:
             return 0
         
-        # 3. LOGIC MỚI: Nếu query ngắn hơn 5 ký tự, pass với tiếng Việt
+        # 3. Nếu query ngắn hơn 5 ký tự, pass với tiếng Việt
         if len(query.strip()) < 5:
             print(f"Short query detected (length: {len(query.strip())}), defaulting to Vietnamese")
             return 3, 'vie'
         
-        # 4. Kiểm tra từ khóa tiếng Việt trước khi dùng fasttext
-        has_viet_keywords, viet_keywords, viet_count = cls.check_vietnamese_keywords(query)
-        
-        # 5. Kiểm tra ngôn ngữ cho query dài hơn 5 ký tự
+        # 4. Kiểm tra ngôn ngữ cho query dài hơn 5 ký tự
         lang_results = cls.check_lang(query)
         print(f"Fasttext results: {lang_results}")
         
@@ -234,18 +181,32 @@ class Filter:
         has_supported_lang = False
         userLang = 'vie'  # Default language
         
-        # Chỉ sử dụng vietnamese_keywords khi CẢ 'vie' VÀ 'eng' đều có confidence thấp
-        if has_viet_keywords:
-            vie_prob = next((prob for lang_code, prob in lang_results if lang_code == 'vie'), 0.0)
-            eng_prob = next((prob for lang_code, prob in lang_results if lang_code == 'eng'), 0.0)
-            
-            # Chỉ override khi cả 2 ngôn ngữ đều có confidence thấp
-            if vie_prob <= 0.3 and eng_prob <= 0.3:
-                print(f"Vietnamese keywords detected: {viet_keywords} (count: {viet_count})")
-                print(f"Both vie ({vie_prob:.4f}) and eng ({eng_prob:.4f}) confidence low, overriding with Vietnamese")
-                return 3, 'vie'
+        # Kiểm tra xem có ngôn ngữ supported nào trong results không
+        vie_prob = next((prob for lang_code, prob in lang_results if lang_code == 'vie'), 0.0)
+        eng_prob = next((prob for lang_code, prob in lang_results if lang_code == 'eng'), 0.0)
         
-        # Logic cũ với threshold thấp hơn cho supported languages
+        # Lấy confidence cao nhất từ tất cả predictions (bao gồm cả ngôn ngữ không support)
+        max_confidence = max([prob for _, prob in lang_results]) if lang_results else 0.0
+        
+        print(f"Vietnamese confidence: {vie_prob:.4f}")
+        print(f"English confidence: {eng_prob:.4f}")
+        print(f"Max confidence from all languages: {max_confidence:.4f}")
+        
+        # Nếu confidence cao nhất < 0.55 thì pass với tiếng Việt
+        if max_confidence < 0.55:
+            print(f"Max confidence ({max_confidence:.4f}) < 0.55, allowing query to pass with Vietnamese")
+            
+            # Nếu có vie hoặc eng trong results, chọn cái có confidence cao hơn
+            if vie_prob > 0 or eng_prob > 0:
+                userLang = 'vie' if vie_prob >= eng_prob else 'eng'
+                print(f"Choosing {userLang} based on higher confidence")
+                return 3, userLang
+            
+            # Nếu không có vie/eng, default về tiếng Việt
+            print("No Vietnamese/English detected, defaulting to Vietnamese")
+            return 3, 'vie'
+        
+        # Kiểm tra ngôn ngữ supported với threshold
         for lang_code, prob in lang_results:
             if lang_code in supported_langs:
                 # Giảm threshold cho việc detect ngôn ngữ supported
@@ -256,19 +217,8 @@ class Filter:
                     print(f"Language detected: {lang_code} with confidence {prob:.4f}")
                     break
         
-        # Nếu có từ khóa tiếng Việt nhưng không detect được ngôn ngữ supported, kiểm tra confidence
-        if not has_supported_lang and has_viet_keywords:
-            vie_prob = next((prob for lang_code, prob in lang_results if lang_code == 'vie'), 0.0)
-            eng_prob = next((prob for lang_code, prob in lang_results if lang_code == 'eng'), 0.0)
-            
-            # Chỉ override khi cả 2 ngôn ngữ đều có confidence thấp
-            if vie_prob <= 0.3 and eng_prob <= 0.3:
-                print(f"No supported language detected but Vietnamese keywords found: {viet_keywords}")
-                print(f"Both vie ({vie_prob:.4f}) and eng ({eng_prob:.4f}) confidence low, defaulting to Vietnamese")
-                return 3, 'vie'
-        
         if not has_supported_lang:
-            print("No supported language detected and no Vietnamese keywords found")
+            print("No supported language detected")
             return 1
                 
         return 3, userLang

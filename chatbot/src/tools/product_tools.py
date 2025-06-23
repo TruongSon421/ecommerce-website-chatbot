@@ -5,7 +5,8 @@ import requests
 import os
 import numpy as np
 import json 
-from rag.retrieve import combine_results,search_elasticsearch,search_name
+import re
+from rag.retrieve import search_elasticsearch,search_name
 from dotenv import load_dotenv
 from models.requirements import PhoneRequirements,LaptopRequirements,EarHeadphoneRequirements,BackupChargerRequirements
 from llama_index.llms.google_genai import GoogleGenAI
@@ -13,6 +14,7 @@ from prompts import *
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(), '..')))
 from db.mysql import mysql
+from db.mongodb import mongodb
 from google.adk.tools import ToolContext
 from share_data import current_group_ids,filter_params
 load_dotenv()
@@ -418,10 +420,6 @@ def product_information_tool(query: str) -> str:
         return "Không tìm thấy thông tin phù hợp cho bất kỳ sản phẩm nào."
     return "\n".join(output)
 
-def product_complain_tool(query: str) -> str:
-    print(query)
-
-    return "Vui lòng điền thông tin vào form, bạn sẽ được nhận được cuộc gọi tư vấn hỗ trợ trong vòng 48 giờ tiếp theo."
 
 
 
@@ -467,3 +465,325 @@ def product_information_tool_for_cart(query: str) -> str:
     if len(output) == 0:
         return "Không tìm thấy thông tin phù hợp cho bất kỳ sản phẩm nào."
     return "\n".join(output)
+
+def product_specs_search_tool(device_type: str, field_name: str, sort_by: str = "desc", top_k: int = 5) -> str:
+    """
+    Công cụ tìm kiếm sản phẩm theo trường cụ thể trong MongoDB.
+    
+    Args:
+        device_type (str): Loại thiết bị cần tìm (ví dụ: "laptop", "phone", "wireless_earphone", "wired_earphone", "headphone", "backup_charger")
+        field_name (str): Tên trường cần tìm kiếm (ví dụ: "batteryCapacity", "ram", "storage", "processor")
+        sort_by (str): Sắp xếp theo thứ tự "asc" (tăng dần) hoặc "desc" (giảm dần). Mặc định là "desc"
+        top_k (int): Số lượng sản phẩm muốn hiển thị
+    
+    Returns:
+        str: Kết quả tìm kiếm chi tiết về sản phẩm
+        
+    Examples:
+        >>> # Tìm laptop có pin cao nhất
+        >>> product_specs_search_tool("laptop", "batteryCapacity", "desc", 5)
+        
+        >>> # Tìm điện thoại có RAM lớn nhất  
+        >>> product_specs_search_tool("phone", "ram", "desc", 3)
+        
+        >>> # Tìm laptop theo processor
+        >>> product_specs_search_tool("laptop", "processor", "desc", 5)
+    """
+    try:
+        current_group_ids.clear()
+        
+        # Kết nối đến MongoDB
+        db = mongodb.connect()
+        if db is None:
+            return "Không thể kết nối đến cơ sở dữ liệu MongoDB."
+        
+        # Xác định collection dựa trên device_type
+        collection_name = f"baseProduct"  # Collection chính chứa dữ liệu sản phẩm
+        collection = mongodb.get_collection(collection_name)
+        
+        if collection is None:
+            return f"Không tìm thấy collection {collection_name}."
+        
+        # Xây dựng query filter dựa trên device_type
+        base_filter = {}
+        if device_type == "laptop":
+            base_filter["_class"] = "com.eazybytes.model.Laptop"
+        elif device_type == "phone":
+            base_filter["_class"] = "com.eazybytes.model.Phone"
+        elif device_type == "wireless_earphone":
+            base_filter["_class"] = "com.eazybytes.model.WirelessEarphone"
+        elif device_type == "wired_earphone":
+            base_filter["_class"] = "com.eazybytes.model.WiredEarphone"
+        elif device_type == "headphone":
+            base_filter["_class"] = "com.eazybytes.model.Headphone"
+        elif device_type == "backup_charger":
+            base_filter["_class"] = "com.eazybytes.model.BackupCharger"
+        elif device_type == "cable_charger_hub":
+            base_filter["_class"] = "com.eazybytes.model.CableChargerHub"
+        else:
+            # Tìm tất cả các loại sản phẩm
+            pass
+        
+        # Xây dựng pipeline trực tiếp theo field_name
+        sort_order = -1 if sort_by == "desc" else 1
+        
+        # Các trường numeric cần regex extraction (cập nhật theo data thực tế)
+        numeric_fields = ["batteryCapacity", "batteryLife", "ram", "storage", "screenSize", "rearCameraResolution", "frontCameraResolution", "chargingCaseBatteryLife"]
+        
+        if field_name in numeric_fields:
+            # Trường numeric - dùng regex extraction
+            search_pipeline = [
+                {"$match": base_filter},
+                {"$addFields": {
+                    "numericValue": {
+                        "$toDouble": {
+                            "$arrayElemAt": [
+                                {
+                                    "$regexFindAll": {
+                                        "input": f"${field_name}",
+                                        "regex": r"\d+(\.\d+)?"
+                                    }
+                                },
+                                0
+                            ]
+                        }
+                    }
+                }},
+                {"$match": {"numericValue": {"$gt": 0}}},
+                {"$sort": {"numericValue": sort_order}},
+                {"$limit": top_k}
+            ]
+        else:
+            # Trường text - chỉ sort theo string
+            search_pipeline = [
+                {"$match": base_filter},
+                {"$sort": {field_name: sort_order}},
+                {"$limit": top_k}
+            ]
+        
+        # Thực hiện tìm kiếm
+        results = list(collection.aggregate(search_pipeline))
+        
+        if not results:
+            return f"Không tìm thấy {device_type} nào có thông tin {field_name}."
+        
+        # Xử lý kết quả
+        output = []
+        device_text = device_type if device_type != "all" else "sản phẩm"
+        sort_text = "cao nhất" if sort_by == "desc" else "thấp nhất"
+        output.append(f"=== Top {len(results)} {device_text} theo {field_name} ({sort_text}) ===\n")
+        
+        for i, product in enumerate(results, 1):
+            group_id = str(product.get('_id', ''))
+            if group_id:
+                current_group_ids.append(group_id)
+            
+            name = product.get('productName', 'Tên không xác định')
+            brand = product.get('brand', 'Không xác định')
+            
+            product_info = f"{i}. {name} - {brand}"
+            
+            # Hiển thị trường được yêu cầu
+            field_value = product.get(field_name, 'Không xác định')
+            
+            # Hiển thị giá trị numeric nếu có
+            if field_name in numeric_fields and 'numericValue' in product:
+                numeric_value = product.get('numericValue', 0)
+                
+                if field_name == "batteryCapacity":
+                    product_info += f"\n   Pin: {field_value} (Giá trị: {numeric_value:.1f})"
+                elif field_name == "batteryLife":
+                    product_info += f"\n   Thời lượng pin: {field_value} (Giá trị: {numeric_value:.1f})"
+                elif field_name == "chargingCaseBatteryLife":
+                    product_info += f"\n   Pin hộp sạc: {field_value} (Giá trị: {numeric_value:.1f})"
+                elif field_name == "ram":
+                    product_info += f"\n   RAM: {field_value} (Giá trị: {numeric_value:.0f})"
+                elif field_name == "storage":
+                    product_info += f"\n   Storage: {field_value} (Giá trị: {numeric_value:.0f})"
+                elif field_name == "screenSize":
+                    product_info += f"\n   Màn hình: {field_value} (Giá trị: {numeric_value:.1f})"
+                elif field_name == "rearCameraResolution":
+                    product_info += f"\n   Camera sau: {field_value} (Giá trị: {numeric_value:.0f})"
+                elif field_name == "frontCameraResolution":
+                    product_info += f"\n   Camera trước: {field_value} (Giá trị: {numeric_value:.0f})"
+                else:
+                    product_info += f"\n   {field_name}: {field_value} (Giá trị: {numeric_value:.1f})"
+            else:
+                # Hiển thị text field
+                if field_name == "processor":
+                    product_info += f"\n   Processor: {field_value}"
+                elif field_name == "brand":
+                    product_info += f"\n   Thương hiệu: {field_value}"
+                elif field_name == "productName":
+                    product_info += f"\n   Tên sản phẩm: {field_value}"
+                else:
+                    product_info += f"\n   {field_name}: {field_value}"
+            
+            product_info += f"\n   Group ID: {group_id}"
+            output.append(product_info)
+            output.append("")  # Dòng trống
+        
+        return "\n".join(output)
+        
+    except Exception as e:
+        return f"Lỗi khi tìm kiếm sản phẩm: {str(e)}"
+    finally:
+        mongodb.disconnect()
+
+
+def values_based_search(device_type: str, field_names: List[str], values: Dict[str, str], top_k: int = 5) -> str:
+    """
+    Hàm tìm kiếm sản phẩm theo giá trị cụ thể của nhiều trường (kết hợp AND).
+    
+    Args:
+        device_type (str): Loại thiết bị ("laptop", "phone", "wireless_earphone", "wired_earphone", "headphone", "backup_charger", "all")
+        field_names (List[str]): Danh sách tên trường cần hiển thị trong kết quả
+        values (Dict[str, str]): Dictionary chứa điều kiện tìm kiếm theo giá trị cụ thể {field_name: value}
+        top_k (int): Số lượng sản phẩm muốn hiển thị
+    
+    Returns:
+        str: Kết quả tìm kiếm sản phẩm
+        
+    Examples:
+        >>> # Tìm laptop có RAM = "32 GB" và processor chứa "Intel i7"
+        >>> values_based_search("laptop", ["ram", "processor", "batteryCapacity"], {"ram": "32 GB", "processor": "Intel i7"}, 5)
+        
+        >>> # Tìm điện thoại có màn hình = "6.7 inch" và processor chứa "Apple"
+        >>> values_based_search("phone", ["screenSize", "processor", "ram"], {"screenSize": "6.7\"", "processor": "Apple"}, 3)
+        
+        >>> # Tìm tai nghe có pin = "8 giờ" và brand = "Sony"
+        >>> values_based_search("wireless_earphone", ["batteryCapacity", "brand"], {"batteryCapacity": "8 giờ", "brand": "Sony"}, 5)
+        
+        >>> # Tìm sạc dự phòng có dung lượng = "20000 mAh"
+        >>> values_based_search("backup_charger", ["batteryCapacity", "brand"], {"batteryCapacity": "20000 mAh"}, 3)
+    """
+    try:
+        current_group_ids.clear()
+        
+        # Kết nối đến MongoDB
+        db = mongodb.connect()
+        if db is None:
+            return "Không thể kết nối đến cơ sở dữ liệu MongoDB."
+        
+        collection = mongodb.get_collection("baseProduct")
+        if collection is None:
+            return "Không tìm thấy collection baseProduct."
+        
+        # Xây dựng base filter theo device_type (cập nhật mapping theo data thực tế)
+        base_filter = {}
+        if device_type == "laptop":
+            base_filter["_class"] = "com.eazybytes.model.Laptop"
+        elif device_type == "phone":
+            base_filter["_class"] = "com.eazybytes.model.Phone" 
+        elif device_type == "wireless_earphone":
+            base_filter["_class"] = "com.eazybytes.model.WirelessEarphone"
+        elif device_type == "wired_earphone":
+            base_filter["_class"] = "com.eazybytes.model.WiredEarphone"
+        elif device_type == "headphone":
+            base_filter["_class"] = "com.eazybytes.model.Headphone"
+        elif device_type == "backup_charger":
+            base_filter["_class"] = "com.eazybytes.model.BackupCharger"
+        elif device_type == "cable_charger_hub":
+            base_filter["_class"] = "com.eazybytes.model.CableChargerHub"
+        
+        # Xây dựng pipeline với điều kiện AND cho tất cả values
+        match_conditions = [base_filter]
+        
+        # Xây dựng điều kiện cho từng field trong values
+        for field_name, search_value in values.items():
+            # Tìm kiếm bằng regex cho tất cả các trường (cả text và số)
+            condition = {field_name: {"$regex": search_value, "$options": "i"}}
+            match_conditions.append(condition)
+        
+        # Xây dựng pipeline
+        pipeline = []
+        
+        # Kết hợp tất cả điều kiện với AND
+        if len(match_conditions) == 1:
+            pipeline.append({"$match": match_conditions[0]})
+        else:
+            pipeline.append({"$match": {"$and": match_conditions}})
+        
+        # Thêm sort và limit
+        pipeline.append({"$sort": {"productName": 1}})
+        pipeline.append({"$limit": top_k})
+        
+        # Thực hiện tìm kiếm
+        results = list(collection.aggregate(pipeline))
+        
+        if not results:
+            device_text = device_type if device_type != "all" else "sản phẩm"
+            # Tạo chuỗi hiển thị điều kiện tìm kiếm
+            search_conditions = []
+            for field_name, search_value in values.items():
+                search_conditions.append(f"{field_name} chứa '{search_value}'")
+            conditions_text = " VÀ ".join(search_conditions)
+            return f"Không tìm thấy {device_text} nào có {conditions_text}."
+        
+        # Xử lý kết quả
+        output = []
+        device_text = device_type if device_type != "all" else "sản phẩm"
+        
+        # Tạo chuỗi hiển thị điều kiện tìm kiếm
+        search_conditions = []
+        for field_name, search_value in values.items():
+            search_conditions.append(f"{field_name} chứa '{search_value}'")
+        conditions_text = " VÀ ".join(search_conditions)
+        
+        output.append(f"=== {len(results)} {device_text} có {conditions_text} ===\n")
+        
+        for i, product in enumerate(results, 1):
+            group_id = str(product.get('_id', ''))
+            if group_id:
+                current_group_ids.append(group_id)
+            
+            name = product.get('productName', 'Tên không xác định')
+            brand = product.get('brand', 'Không xác định')
+            
+            product_info = f"{i}. {name} - {brand}"
+            
+            # Hiển thị các trường được yêu cầu trong field_names
+            for field_name in field_names:
+                field_value = product.get(field_name, 'Không xác định')
+                
+                # Hiển thị trường với tên phù hợp (cập nhật theo data thực tế)
+                if field_name == "batteryCapacity":
+                    product_info += f"\n   Pin: {field_value}"
+                elif field_name == "batteryLife":
+                    product_info += f"\n   Thời lượng pin: {field_value}"
+                elif field_name == "chargingCaseBatteryLife":
+                    product_info += f"\n   Pin hộp sạc: {field_value}"
+                elif field_name == "ram":
+                    product_info += f"\n   RAM: {field_value}"
+                elif field_name == "storage":
+                    product_info += f"\n   Storage: {field_value}"
+                elif field_name == "screenSize":
+                    product_info += f"\n   Màn hình: {field_value}"
+                elif field_name == "processor":
+                    product_info += f"\n   Processor: {field_value}"
+                elif field_name == "brand":
+                    product_info += f"\n   Thương hiệu: {field_value}"
+                elif field_name == "productName":
+                    product_info += f"\n   Tên sản phẩm: {field_value}"
+                elif field_name == "rearCameraResolution":
+                    product_info += f"\n   Camera sau: {field_value}"
+                elif field_name == "frontCameraResolution":
+                    product_info += f"\n   Camera trước: {field_value}"
+                elif field_name == "displayTechnology":
+                    product_info += f"\n   Công nghệ màn hình: {field_value}"
+                elif field_name == "refreshRate":
+                    product_info += f"\n   Tần số quét: {field_value}"
+                else:
+                    product_info += f"\n   {field_name}: {field_value}"
+            
+            product_info += f"\n   Group ID: {group_id}"
+            output.append(product_info)
+            output.append("")  # Dòng trống
+            
+        return "\n".join(output)
+        
+    except Exception as e:
+        return f"Lỗi khi tìm kiếm theo values: {str(e)}"
+    finally:
+        mongodb.disconnect()
+
