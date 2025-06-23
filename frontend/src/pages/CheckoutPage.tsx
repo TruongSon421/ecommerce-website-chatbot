@@ -71,7 +71,7 @@ const CheckoutPage = () => {
     province: '' as string | number,
     district: '' as string | number,
     ward: '' as string | number,
-    paymentMethod: 'COD' as 'COD' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'TRANSFER_BANKING' | 'QR_CODE',
+    paymentMethod: 'TRANSFER_BANKING' as 'TRANSFER_BANKING' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'COD' ,
   });
   const [provinces, setProvinces] = useState<Province[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);

@@ -31,7 +31,7 @@ export const createGuestCart = async (): Promise<CartResponse> => {
 export const addItemToCart = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
-    const apiColor = (!color || color === 'default') ? null : color;
+    const apiColor = (!color || color === 'default') ? 'default' : color;
     console.log('Adding item to cart for user:', userId, 'Item:', { productId, quantity, color: apiColor });
 
     if (isAuthenticated) {
@@ -86,7 +86,7 @@ export const getCartItems = async (userId: string): Promise<CartItem[]> => {
 export const updateCartItem = async (userId: string, item: CartItem, isAuthenticated: boolean): Promise<void> => {
   try {
     const { productId, quantity, color } = item;
-    const apiColor = (!color || color === 'default') ? null : color;
+    const apiColor = (!color || color === 'default') ? 'default' : color;
     if (isAuthenticated) {
       const response = await axios.put(`/carts/items/${productId}`, {}, {
         headers: {
@@ -123,7 +123,7 @@ export const updateCartItem = async (userId: string, item: CartItem, isAuthentic
 
 export const removeItemFromCart = async (userId: string, productId: string, color: string, isAuthenticated: boolean): Promise<void> => {
   try {
-    const apiColor = (!color || color === 'default') ? null : color;
+    const apiColor = (!color || color === 'default') ? 'default' : color;
     console.log('Deleting item:', { productId, color: apiColor, isAuthenticated });
     if (isAuthenticated) {
       const response = await axios.delete(`/carts/items/${productId}`, {
