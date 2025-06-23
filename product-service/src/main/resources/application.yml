@@ -1,0 +1,52 @@
+server:
+  port: 8083
+
+spring:
+  data:
+    mongodb:
+      database: products
+      authentication-database: admin
+      username: admin
+      password: password
+      host: mongodb
+      port: 27017
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+  application:
+    name: product-service
+  config:
+    import: "optional:configserver:http://config-service:8888"
+  
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-service:8761/eureka/
+
+logging:
+  level:
+    com.eazybytes: DEBUG
+    org.springframework.security: DEBUG  # Additional security logging
+
+
+
+inventory-service:
+  url: http://inventory-service:8100
+
+order-service:
+  url: http://order-service:8084
+
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

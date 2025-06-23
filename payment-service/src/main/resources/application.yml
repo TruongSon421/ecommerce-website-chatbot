@@ -1,0 +1,99 @@
+# Server Configuration
+server:
+  port: 8085
+
+# Application Name (for Eureka and identification)
+spring:
+  application:
+    name: payment-service
+  config:
+    import: "optional:configserver:http://config-service:8888"
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 5000
+            readTimeout: 5000
+
+  # MySQL Configuration (Primary Data Source)
+  datasource:
+      url: jdbc:mysql://mysql:3306/ecommerce_payment?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=GMT%2B7
+      username: tiendoan
+      password: tiendoan
+      driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  
+
+  # Kafka Configuration (Producer for event-driven communication)
+  kafka:
+    bootstrap-servers: kafka:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: payment-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.eazybytes.event.model.ProcessPaymentRequest
+        spring.json.type.mapping: 
+          process-payment-request:com.eazybytes.event.model.ProcessPaymentRequest,
+          payment-succeeded:com.eazybytes.event.model.PaymentSucceededEvent,
+          payment-failed:com.eazybytes.event.model.PaymentFailedEvent
+
+kafka:
+  topics:
+    payment:
+      process: process-payment-request
+      succeeded: payment-succeeded
+      failed: payment-failed
+
+vnpay:
+  tmnCode: ZIRF5U94
+  hashSecret: C1A2GX4L9U5Z73NDYJT1QU6PQ61TP1HO
+  url: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+  ipnUrl: ${NGROK_BASE_URL:https://api.truongson.shop}/api/v1/payment/vnpay/ipn
+  returnUrl: https://dev.truongson.shop/api/v1/payment/vnpay/return
+  frontendReturnUrlBase: https://dev.truongson.shop
+  version: 2.1.0
+  command: pay
+  orderType: other
+# Eureka Configuration (Service Discovery)
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-service:8761/eureka/
+  instance:
+    preferIpAddress: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eazybytes: INFO
+    com.eazybytes.service.VNPayServiceImpl: INFO
+    org.springframework.kafka: INFO
+
+

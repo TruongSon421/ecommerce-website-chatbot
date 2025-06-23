@@ -1,0 +1,123 @@
+# src/main/resources/application.yml
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 3600000
+  refresh-expiration: 86400000
+
+server:
+  port: 8090
+
+spring:
+  application:
+    name: user-service
+  config:
+    import: "optional:configserver:http://config-service:8888"
+  
+  # Database Configuration
+  datasource:
+    jdbc: mysql://mysql:3306/ecommerce_users?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true    
+    username: tiendoan
+    password: tiendoan
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    
+    # HikariCP Configuration
+    hikari:
+      pool-name: HikariCP-UserService
+      maximum-pool-size: 15
+      minimum-idle: 3
+      idle-timeout: 300000          # 5 minutes
+      max-lifetime: 1200000         # 20 minutes
+      connection-timeout: 30000     # 30 seconds
+      validation-timeout: 10000     # 10 seconds
+      leak-detection-threshold: 120000 # 2 minutes
+      connection-test-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: true
+      test-on-return: false
+      auto-commit: false
+
+  # JPA/Hibernate Configuration (MERGED - no duplicate)
+  jpa:
+    hibernate:
+      ddl-auto: update  # or validate for production
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false  # set to true for debugging
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        use_sql_comments: false
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        connection:
+          provider_disables_autocommit: true
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+        event:
+          merge:
+            entity_copy_observer: allow
+      # JPA timeout settings (Updated to Jakarta)
+      jakarta.persistence.query.timeout: 50000  # 50 seconds
+      jakarta.persistence.lock.timeout: 20000   # 20 seconds
+
+  # Transaction Configuration
+  transaction:
+    default-timeout: 60  # 60 seconds
+    rollback-on-commit-failure: true
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://discovery-service:8761/eureka/
+  instance:
+    preferIpAddress: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eazybytes: DEBUG  # Your package name
+    org.springframework.transaction: WARN
+    org.hibernate.SQL: WARN  # Change to DEBUG for SQL debugging
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    com.zaxxer.hikari: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Custom Application Properties
+app:
+  cors:
+    allowed-origins: 
+      - http://localhost:3000
+      - http://localhost:5173
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
