@@ -143,9 +143,9 @@ public class GroupService {
 
             // 2. Lấy scores từ Elasticsearch nếu có search query
             Map<Integer, Float> groupScores = (searchQuery != null && !searchQuery.isEmpty())
-                    ? elasticsearchService.getGroupScoresFromElasticsearch(
+                    ? elasticsearchService.getGroupScoresWithWeights(
                     searchQuery,
-                    allGroups.stream().map(Group::getGroupId).collect(Collectors.toList()))
+                    allGroups.stream().map(Group::getGroupId).collect(Collectors.toList()),1,1)
                     : Collections.emptyMap();
 
             // 3. Lấy tất cả products và nhóm theo groupId
