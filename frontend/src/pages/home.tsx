@@ -83,7 +83,7 @@ const categories = [
   },
   {
     id: 2,
-    name: 'Laptop',
+    name: 'Máy tính',
     imageSrc: '/images/categories/laptop.png',
     link: '/laptop'
   },

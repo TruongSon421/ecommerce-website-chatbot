@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from './hooks/useAuth';
 import { addItemToCart } from '../services/cartService'; 
@@ -216,8 +216,12 @@ const ProductList: React.FC<{ grouplist: GroupProduct[] }> = ({ grouplist }) => 
 const ChatbotWidget: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-
   
+  // Add refs for auto scroll and auto focus
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   const generateSessionId = (): string => {
     return 'session-' + Math.random().toString(36).substring(2, 11);
   };
@@ -282,6 +286,47 @@ const ChatbotWidget: React.FC = () => {
     const timeout = setTimeout(() => setShowHelpButton(false), 10000);
     return () => clearTimeout(timeout);
   }, [showHelpButton]);
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    
+    // Small delay to ensure DOM is updated
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timeoutId);
+  }, [chatSession.messages]);
+
+  // Auto focus on input when chat opens or bot stops typing
+  useEffect(() => {
+    if (isOpen && !isBotTyping && inputRef.current) {
+      // Small delay to ensure UI is ready
+      const timeoutId = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOpen, isBotTyping]);
+
+  // Auto scroll when chat opens
+  useEffect(() => {
+    if (isOpen && messagesEndRef.current) {
+      const timeoutId = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOpen]);
+
+  // Focus input when component mounts and chat is open
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   const fetchProducts = async (groupIds: number[]): Promise<GroupProduct[]> => {
     try {
@@ -582,6 +627,13 @@ const ChatbotWidget: React.FC = () => {
     }
 
     setInput('');
+    
+    // Auto focus input after sending message for immediate next input
+    setTimeout(() => {
+      if (inputRef.current && !isBotTyping) {
+        inputRef.current.focus();
+      }
+    }, 100);
   };
 
   const handleReset = () => {
@@ -598,6 +650,13 @@ const ChatbotWidget: React.FC = () => {
     });
     setApiError(null);
     setIsBotTyping(false);
+    
+    // Focus input after reset
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 300);
   };
 
   const toggleExpand = () => {
@@ -612,7 +671,15 @@ const ChatbotWidget: React.FC = () => {
           <div className="flex items-center space-x-2">
             {showHelpButton && (
               <button
-                onClick={() => setIsOpen(true)}
+                onClick={() => {
+                  setIsOpen(true);
+                  // Focus input when opening chat via help button
+                  setTimeout(() => {
+                    if (inputRef.current) {
+                      inputRef.current.focus();
+                    }
+                  }, 400);
+                }}
                 className="flex items-center px-4 py-2 bg-[#232323] text-white rounded-full text-sm font-medium hover:bg-[#787676] transition animate-shake"
               >
                 <span>Tôi có thể giúp gì cho bạn?</span>
@@ -628,7 +695,15 @@ const ChatbotWidget: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => setIsOpen(true)}
+              onClick={() => {
+                setIsOpen(true);
+                // Focus input when opening chat
+                setTimeout(() => {
+                  if (inputRef.current) {
+                    inputRef.current.focus();
+                  }
+                }, 400);
+              }}
               className="rounded-full hover:scale-105 transition-transform"
             >
               <img src="/images/chatbot.gif" alt="Chatbot Icon" className="w-16 h-16" />
@@ -722,7 +797,7 @@ const ChatbotWidget: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 p-3 overflow-y-auto">
+            <div ref={chatContainerRef} className="flex-1 p-3 overflow-y-auto">
               {chatSession.messages.map((msg) => (
                 <div
                   key={msg.id}
@@ -800,11 +875,15 @@ const ChatbotWidget: React.FC = () => {
                   {apiError}
                 </div>
               )}
+              
+              {/* Invisible div to scroll to */}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="p-3 border-t border-gray-200">
               <div className="relative flex items-center">
                 <input
+                  ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -968,11 +1047,11 @@ const ChatbotWidget: React.FC = () => {
                         </div>
                       </div>
                                           ) : (
-                        <div className="flex">
-                          <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
-                          <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%] whitespace-pre-line">{msg.text}</div>
-                        </div>
-                      )}
+                      <div className="flex">
+                        <img src="/images/chatbot.gif" alt="Bot Icon" className="w-8 h-8 mr-2 mt-1" />
+                        <div className="p-2 rounded-lg bg-gray-200 text-black max-w-[80%] whitespace-pre-line">{msg.text}</div>
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -994,11 +1073,15 @@ const ChatbotWidget: React.FC = () => {
                     {apiError}
                   </div>
                 )}
+                
+                {/* Invisible div to scroll to */}
+                <div ref={messagesEndRef} />
               </div>
 
               <div className="p-3 border-t border-gray-200">
                 <div className="relative flex items-center">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
