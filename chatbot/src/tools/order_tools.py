@@ -258,12 +258,14 @@ def prepare_checkout_data(
         # Tạo selectedItems với format phù hợp cho CheckoutPage
         selected_items = []
         for i, product in enumerate(selected_products_list):
+            # Ưu tiên lấy quantity từ product, nếu không có thì dùng quantities_list
+            quantity = product.get("quantity", quantities_list[i] if i < len(quantities_list) else 1)
             selected_items.append({
                 "productId": product.get("productId"),
                 "color": product.get("color", "Không xác định"),
                 "productName": product.get("productName"),
                 "price": product.get("price", 0),
-                "quantity": quantities_list[i]
+                "quantity": quantity
             })
         
         # Tính tổng tiền
@@ -482,26 +484,45 @@ async def redirect_to_checkout(
         if total_amount == 0:
             total_amount = sum(item.get("price", 0) * item.get("quantity", 1) for item in selected_items_list)
         
-        # Tạo thông tin chi tiết sản phẩm cho message
+        # Get language from state
+        
+        detected_language = tool_context.state.get("detected_language", "vie")
+        
+        # Tạo thông tin chi tiết sản phẩm cho message theo ngôn ngữ
         product_details = []
         for item in selected_items_list:
-            name = item.get("productName", "Sản phẩm")
+            name = item.get("productName", "Sản phẩm" if detected_language == "vie" else "Product")
             color = item.get("color", "")
             quantity = item.get("quantity", 1)
             price = item.get("price", 0)
             subtotal = price * quantity
             
-            color_text = f" ({color})" if color and color != "Không xác định" else ""
-            product_details.append(f"• {name}{color_text} - SL: {quantity} - {subtotal:,}₫")
+            if detected_language == "vie":
+                color_text = f" ({color})" if color and color != "Không xác định" else ""
+                product_details.append(f"• {name}{color_text} - SL: {quantity} - {subtotal:,}₫")
+            else:
+                color_text = f" ({color})" if color and color != "Not specified" else ""
+                product_details.append(f"• {name}{color_text} - Qty: {quantity} - ${subtotal:,}")
         
         products_text = "\n".join(product_details)
-        detailed_message = f"""🛒 THANH TOÁN ĐƠN HÀNG:
+        
+        # Tạo message theo ngôn ngữ
+        if detected_language == "vie":
+            detailed_message = f"""🛒 THANH TOÁN ĐƠN HÀNG:
 
 {products_text}
 
 TỔNG TIỀN: {total_amount:,}₫
 
 Đang chuyển hướng đến trang thanh toán..."""
+        else:
+            detailed_message = f"""🛒 CHECKOUT ORDER:
+
+{products_text}
+
+TOTAL: ${total_amount:,}
+
+Redirecting to checkout page..."""
 
         tool_context.actions.skip_summarization = True # Bỏ summary của tool
         return {

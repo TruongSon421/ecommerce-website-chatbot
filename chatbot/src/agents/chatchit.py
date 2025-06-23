@@ -1,7 +1,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, agent_tool
 from prompts import CHATCHIT_INSTRUCTION, GLOBAL_INSTRUCTION
-from agents.callbacks import log_before_agent_entry
+from callback.log_callback import log_before_agent_entry
 from callback.before_llm_callback_lang import before_llm_callback_lang
 
 # Web Search Tool cho thông tin kỹ thuật chung

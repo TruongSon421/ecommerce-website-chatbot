@@ -56,7 +56,7 @@ CORS(app, resources={
         "allow_headers": ["Content-Type", "Authorization"]
     }
 })
-from prompts import update_global_instruction
+
 # Khởi tạo DatabaseSessionService với PostgreSQL
 db_url = os.getenv("POSTGRES_DB_URL")
 if not db_url:
@@ -222,122 +222,122 @@ def preprocess_query(query):
    
 @chatbot_bp.route('/query', methods=['POST'])
 async def handle_query():
-   """Xử lý request POST chứa user_id, session_id, và query với preprocessing và filter."""
-   try:
-       data = request.get_json()
-       user_id = data.get('user_id')
-       session_id = data.get('session_id')
-       query = data.get('query')
-       access_token = data.get('access_token')
-       
-       if not all([user_id, session_id, query]):
-           return jsonify({"error": "Missing user_id, session_id, or query"}), 400
-       
-       print(f"\n>>> Processing query: {query}")
-       
-       # BƯỚC 1: Tiền xử lý query
-       try:
-           preprocessed_query = preprocess_query(query)
-           print(f">>> Preprocessed query: '{preprocessed_query}' (original: '{query}')")           
-           
-       except Exception as preprocess_error:
-           print(f">>> Preprocessing error: {str(preprocess_error)}")
-           # Nếu preprocessing lỗi, dùng query gốc
-           preprocessed_query = query.strip()
-       
-       # BƯỚC 3: Thực hiện filter query đã được tiền xử lý
-       try:
-           filter_result = Filter.filter_query(preprocessed_query)
-           print(f">>> Filter result: {filter_result}")
-           
-           # Xử lý kết quả filter
-           if isinstance(filter_result, int):
-               # Trường hợp filter trả về code lỗi (0, 1, 2)
-               filter_code = filter_result
-               detected_lang = "vie"  # Default language
-               
-               if filter_code in FILTER_RESPONSES:
-                   response_text = get_default_language_response(filter_code)
-                   print(f">>> Filtered query blocked with code {filter_code}")
-                   
-                   return jsonify({
-                       "response": response_text,
-                       "group_ids": [],
-                       "filter_params": [],
-                       "selected_item_keys": [],
-                       "filter_applied": True,
-                       "filter_code": filter_code
-                   })
-           
-           elif isinstance(filter_result, tuple) and len(filter_result) == 2:
-               # Trường hợp filter trả về (3, userLang) - query hợp lệ
-               filter_code, detected_lang = filter_result
-               
-               if filter_code == 3:
-                   print(f">>> Query passed filter. Detected language: {detected_lang}")
-                   
-                   # CẬP NHẬT GLOBAL_INSTRUCTION trước khi gọi agent
-                   update_global_instruction(detected_lang)
-                   
-                   # Tiếp tục xử lý với agent (sử dụng query đã preprocessing)
-                   response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, detected_lang)
-                   print(f"Final response text: {response}")
-                   # Lấy dữ liệu từ shared variables
-                   temp1 = current_group_ids.copy()
-                   temp2 = filter_params.copy()
-                   temp3 = selected_item_keys.copy()
-                   current_group_ids.clear()
-                   filter_params.clear()
-                   selected_item_keys.clear()
-                   
-                   print("group_ids:", temp1, "filter_params:", temp2)
-                   
-                   return jsonify({
-                       "response": response,
-                       "group_ids": temp1,
-                       "filter_params": temp2,
-                       "selected_item_keys": temp3,
-                       "filter_applied": False,
-                       "detected_language": detected_lang
-                   })
-           
-           # Trường hợp không xác định được kết quả filter
-           print(">>> Unknown filter result, using default error response")
-           return jsonify({
-               "response": "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
-               "group_ids": [],
-               "filter_params": [],
-               "selected_item_keys": [],
-               "filter_applied": True,
-               "filter_code": -1
-           })
-           
-       except Exception as filter_error:
-           print(f">>> Filter error: {str(filter_error)}")
-           logging.error(f"Filter processing error: {str(filter_error)}")
-           
-           # Nếu filter bị lỗi, vẫn cho phép query đi qua (fallback)
-           print(">>> Filter failed, proceeding with agent call")
-           response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, "vie")
-           
-           temp1 = current_group_ids.copy()
-           temp2 = filter_params.copy()
-           current_group_ids.clear()
-           filter_params.clear()
-           
-           return jsonify({
-               "response": response,
-               "group_ids": temp1,
-               "filter_params": temp2,
-               "selected_item_keys": [],
-               "filter_applied": False,
-               "filter_error": str(filter_error)
-           })
-           
-   except Exception as e:
-       print(f">>> General error: {str(e)}")
-       logging.error(f"General processing error: {str(e)}")
-       return jsonify({"error": f"Server error: {str(e)}"}), 500
+    """Xử lý request POST chứa user_id, session_id, và query với preprocessing và filter."""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        session_id = data.get('session_id')
+        query = data.get('query')
+        access_token = data.get('access_token')
+        
+        if not all([user_id, session_id, query]):
+            return jsonify({"error": "Missing user_id, session_id, or query"}), 400
+        
+        print(f"\n>>> Processing query: {query}")
+        
+        # BƯỚC 1: Tiền xử lý query
+        try:
+            preprocessed_query = preprocess_query(query)
+            print(f">>> Preprocessed query: '{preprocessed_query}' (original: '{query}')")           
+            
+        except Exception as preprocess_error:
+            print(f">>> Preprocessing error: {str(preprocess_error)}")
+            # Nếu preprocessing lỗi, dùng query gốc
+            preprocessed_query = query.strip()
+        
+        # BƯỚC 3: Thực hiện filter query đã được tiền xử lý
+        try:
+            filter_result = Filter.filter_query(preprocessed_query)
+            print(f">>> Filter result: {filter_result}")
+            
+            # Xử lý kết quả filter
+            if isinstance(filter_result, int):
+                # Trường hợp filter trả về code lỗi (0, 1, 2)
+                filter_code = filter_result
+                detected_lang = "vie"  # Default language
+                
+                if filter_code in FILTER_RESPONSES:
+                    response_text = get_default_language_response(filter_code)
+                    print(f">>> Filtered query blocked with code {filter_code}")
+                    
+                    return jsonify({
+                        "response": response_text,
+                        "group_ids": [],
+                        "filter_params": [],
+                        "selected_item_keys": [],
+                        "filter_applied": True,
+                        "filter_code": filter_code
+                    })
+            
+            elif isinstance(filter_result, tuple) and len(filter_result) == 2:
+                # Trường hợp filter trả về (3, userLang) - query hợp lệ
+                filter_code, detected_lang = filter_result
+                
+                if filter_code == 3:
+                    print(f">>> Query passed filter. Detected language: {detected_lang}")
+                    
+                    # Tiếp tục xử lý với agent (sử dụng query đã preprocessing)
+                    response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, detected_lang)
+                    print(f"Final response text: {response}")
+                    
+                    # Lấy dữ liệu từ shared variables
+                    temp1 = current_group_ids.copy()
+                    temp2 = filter_params.copy()
+                    temp3 = selected_item_keys.copy()
+                    current_group_ids.clear()
+                    filter_params.clear()
+                    selected_item_keys.clear()
+                    
+                    print("group_ids:", temp1, "filter_params:", temp2)
+                    
+                    return jsonify({
+                        "response": response,
+                        "group_ids": temp1,
+                        "filter_params": temp2,
+                        "selected_item_keys": temp3,
+                        "filter_applied": False,
+                        "detected_language": detected_lang,
+                        "filter_reason": "max_confidence_low" if max([prob for _, prob in Filter.check_lang(preprocessed_query)]) < 0.55 else "language_detected"
+                    })
+            
+            # Trường hợp không xác định được kết quả filter
+            print(">>> Unknown filter result, using default error response")
+            return jsonify({
+                "response": "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. Vui lòng thử lại.",
+                "group_ids": [],
+                "filter_params": [],
+                "selected_item_keys": [],
+                "filter_applied": True,
+                "filter_code": -1
+            })
+            
+        except Exception as filter_error:
+            print(f">>> Filter error: {str(filter_error)}")
+            logging.error(f"Filter processing error: {str(filter_error)}")
+            
+            # Nếu filter bị lỗi, vẫn cho phép query đi qua (fallback)
+            print(">>> Filter failed, proceeding with agent call")
+            response = await call_agent_async(user_id, session_id, access_token, preprocessed_query, "vie")
+            
+            temp1 = current_group_ids.copy()
+            temp2 = filter_params.copy()
+            current_group_ids.clear()
+            filter_params.clear()
+            
+            return jsonify({
+                "response": response,
+                "group_ids": temp1,
+                "filter_params": temp2,
+                "selected_item_keys": [],
+                "filter_applied": False,
+                "filter_error": str(filter_error)
+            })
+            
+    except Exception as e:
+        print(f">>> General error: {str(e)}")
+        logging.error(f"General processing error: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 
 
@@ -403,7 +403,7 @@ def add_to_elasticsearch():
             "type": product_type
         }
         
-        response = es.index(index="products", body=es_doc)
+        response = es.index(index="products_new", body=es_doc)
         
         return jsonify({
             "message": "Document added to Elasticsearch successfully",
@@ -418,10 +418,10 @@ def add_to_elasticsearch():
 def delete_from_elasticsearch(doc_id):
     """Xóa document khỏi Elasticsearch theo ID"""
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
-        response = es.delete(index="products", id=doc_id)
+        response = es.delete(index="products_new", id=doc_id)
         
         return jsonify({
             "message": "Document deleted successfully",
@@ -444,7 +444,7 @@ def delete_by_group_id(group_id):
             }
         }
         
-        response = es.delete_by_query(index="products", body=search_query)
+        response = es.delete_by_query(index="products_new", body=search_query)
         
         if response["deleted"] == 0:
             return jsonify({"error": "No documents found with the given group_id"}), 404
@@ -466,7 +466,7 @@ def update_elasticsearch(doc_id):
         if not data:
             return jsonify({"error": "No JSON data provided"}), 400
         
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
         document, group_id, group_name, product_type = create_document(data)
@@ -478,7 +478,7 @@ def update_elasticsearch(doc_id):
             "type": product_type
         }
         
-        response = es.update(index="products", id=doc_id, body={"doc": es_doc})
+        response = es.update(index="products_new", id=doc_id, body={"doc": es_doc})
         
         return jsonify({
             "message": "Document updated successfully",
@@ -506,7 +506,7 @@ def update_by_group_id(group_id):
             }
         }
         
-        search_response = es.search(index="products", body=search_query)
+        search_response = es.search(index="products_new", body=search_query)
         
         if search_response["hits"]["total"]["value"] == 0:
             return jsonify({"error": "No documents found with the given group_id"}), 404
@@ -537,7 +537,7 @@ def update_by_group_id(group_id):
             }
         }
         
-        response = es.update_by_query(index="products", body=update_query)
+        response = es.update_by_query(index="products_new", body=update_query)
         
         return jsonify({
             "message": f"Updated {response['updated']} document(s) successfully",
@@ -553,10 +553,10 @@ def update_by_group_id(group_id):
 def get_document(doc_id):
     """Lấy document theo ID"""
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
-        response = es.get(index="products", id=doc_id)
+        response = es.get(index="products_new", id=doc_id)
         
         return jsonify({
             "id": doc_id,
@@ -592,7 +592,7 @@ def search_documents():
                 "from": from_param
             }
         
-        response = es.search(index="products", body=search_body)
+        response = es.search(index="products_new", body=search_body)
         
         results = []
         for hit in response["hits"]["hits"]:

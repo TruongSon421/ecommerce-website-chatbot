@@ -55,7 +55,7 @@ class E5EmbeddingModel:
 class HybridSearchEngine:
     def __init__(self, es_url: str = "http://localhost:9200", 
                  qdrant_url: str = "http://localhost:6333",
-                 collection_name: str = "my_embeddings"):
+                 collection_name: str = "products"):
         """
         Khởi tạo Hybrid Search Engine
         
@@ -91,7 +91,7 @@ class HybridSearchEngine:
                     "must": {
                         "multi_match": {
                             "query": query,
-                            "fields": ['document', 'review', 'processed_review', 'name^2']
+                            "fields": ['document']
                         }
                     }
                 }
@@ -107,7 +107,7 @@ class HybridSearchEngine:
             }
        
         try:
-            response = self.es_client.search(index="products", body=body)
+            response = self.es_client.search(index="products_new", body=body)
         except Exception as e:
             print("Elasticsearch error:", str(e))
             return []
@@ -223,16 +223,16 @@ class HybridSearchEngine:
         Returns:
             List[Dict]: Combined và ranked results theo group_id
         """
-        print(f"🔍 Hybrid search for: '{query}'")
+        print(f"Hybrid search for: '{query}'")
         if group_id_filter:
-            print(f"  🏷️  Filtering by group_ids: {group_id_filter}")
+            print(f"   Filtering by group_ids: {group_id_filter}")
         
         # 1. Search từ cả hai sources
         es_results = self.search_elasticsearch(query, group_id_filter, size * 2)
         qdrant_results = self.search_qdrant(query, group_id_filter, size * 2)
         
-        print(f"  📄 Elasticsearch: {len(es_results)} results")
-        print(f"  🎯 Qdrant: {len(qdrant_results)} results")
+        print(f"   Elasticsearch: {len(es_results)} results")
+        print(f"   Qdrant: {len(qdrant_results)} results")
         
         # 2. Normalize scores
         es_results = self.normalize_scores(es_results, "score")
@@ -318,49 +318,10 @@ class HybridSearchEngine:
         # 5. Sort theo combined score
         final_results.sort(key=lambda x: x["combined_score"], reverse=True)
         
-        print(f"  🎯 Combined: {len(final_results)} unique groups")
+        print(f"   Combined: {len(final_results)} unique groups")
         
         return final_results[:size]
     
-    def search_by_group_ids(self, group_ids: List[int], query: str = None, 
-                           es_weight: float = 0.6, qdrant_weight: float = 0.4) -> List[Dict]:
-        """
-        Search specific group_ids với optional query
-        
-        Args:
-            group_ids: List group_ids cần search
-            query: Optional query string
-            es_weight: Trọng số ES
-            qdrant_weight: Trọng số Qdrant
-            
-        Returns:
-            List[Dict]: Results cho các group_ids specified
-        """
-        if query:
-            return self.hybrid_search(
-                query=query,
-                es_weight=es_weight,
-                qdrant_weight=qdrant_weight,
-                size=len(group_ids),
-                group_id_filter=group_ids
-            )
-        else:
-            # Nếu không có query, lấy thông tin cơ bản từ ES
-            es_results = self.search_elasticsearch("*", group_ids, len(group_ids))
-            
-            results = []
-            for result in es_results:
-                results.append({
-                    "group_id": result["group_id"],
-                    "name": result["name"],
-                    "es_id": result["id"],
-                    "combined_score": 1.0,
-                    "es_score": result["score"],
-                    "qdrant_score": 0,
-                    "source": "elasticsearch_only"
-                })
-            
-            return results
     
     def explain_search(self, query: str, top_result: Dict) -> None:
         """
@@ -370,14 +331,14 @@ class HybridSearchEngine:
             query: Query đã search
             top_result: Result cần explain
         """
-        print(f"\n🔍 Explaining search result for query: '{query}'")
-        print(f"📊 Group ID: {top_result['group_id']}")
-        print(f"📱 Product: {top_result['name']}")
-        print(f"🎯 Combined Score: {top_result['combined_score']:.3f}")
-        print(f"  📄 ES Score: {top_result['es_score']:.3f} (normalized: {top_result['es_normalized']:.3f})")
-        print(f"  🎯 Qdrant Score: {top_result['qdrant_score']:.3f} (normalized: {top_result['qdrant_normalized']:.3f})")
-        print(f"  ⚖️  Weights: ES={top_result['es_weight']}, Qdrant={top_result['qdrant_weight']}")
-        print(f"  ✅ Sources: ES={top_result['has_es_match']}, Qdrant={top_result['has_qdrant_match']}")
+        print(f"\nExplaining search result for query: '{query}'")
+        print(f"Group ID: {top_result['group_id']}")
+        print(f"Product: {top_result['name']}")
+        print(f"Combined Score: {top_result['combined_score']:.3f}")
+        print(f"   ES Score: {top_result['es_score']:.3f} (normalized: {top_result['es_normalized']:.3f})")
+        print(f"   Qdrant Score: {top_result['qdrant_score']:.3f} (normalized: {top_result['qdrant_normalized']:.3f})")
+        print(f"   Weights: ES={top_result['es_weight']}, Qdrant={top_result['qdrant_weight']}")
+        print(f"   Sources: ES={top_result['has_es_match']}, Qdrant={top_result['has_qdrant_match']}")
 
 
 # ==================== USAGE EXAMPLES ====================
@@ -390,7 +351,7 @@ def main():
     search_engine = HybridSearchEngine(
         es_url="http://localhost:9200",
         qdrant_url="http://localhost:6333",
-        collection_name="my_embeddings"
+        collection_name="products"
     )
     
     # Test queries
@@ -401,7 +362,7 @@ def main():
         "smartphone cao cấp"
     ]
     
-    print("🚀 Testing Hybrid Search...")
+    print("Testing Hybrid Search...")
     
     for query in test_queries:
         print(f"\n" + "="*60)
@@ -414,7 +375,7 @@ def main():
             size=5
         )
         
-        print(f"🎯 Top 5 results:")
+        print(f"Top 5 results:")
         for i, result in enumerate(results, 1):
             print(f"  {i}. Group {result['group_id']}: {result['name'][:50]}...")
             print(f"     Combined: {result['combined_score']:.3f} | ES: {result['es_normalized']:.3f} | Qdrant: {result['qdrant_normalized']:.3f}")
@@ -424,7 +385,7 @@ def main():
             search_engine.explain_search(query, results[0])
 
 
-def quick_hybrid_search(query: str, es_weight: float = 0.55, qdrant_weight: float = 0.45, 
+def hybrid_search(query: str,group_id_filter:List[int], es_weight: float = 0.6, qdrant_weight: float = 0.4, 
                        size: int = 5) -> List[Dict]:
     """
     Quick function cho hybrid search
@@ -444,12 +405,30 @@ def quick_hybrid_search(query: str, es_weight: float = 0.55, qdrant_weight: floa
         query=query,
         es_weight=es_weight,
         qdrant_weight=qdrant_weight,
-        size=size
+        group_id_filter = group_id_filter,
+        size=size,
     )
 
-
+def test_hybrid_search():
+    """Test hybrid search riêng biệt"""
+    try:
+        print("Testing hybrid search...")
+        search_engine = HybridSearchEngine()
+        results = search_engine.hybrid_search(
+            query="cáp sạc",
+            group_id_filter=[797, 798, 799],
+            size=3
+        )
+        print(f"Test results: {results}")
+        return True
+    except Exception as e:
+        print(f"Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 if __name__ == "__main__":
-    main()
+    test_hybrid_search()
+    # main()
 
 
 # ==================== USAGE EXAMPLES ====================
@@ -460,9 +439,12 @@ if __name__ == "__main__":
 # Example 2: Adjust weights
 # results = quick_hybrid_search("laptop gaming", es_weight=0.7, qdrant_weight=0.3)
 
-# Example 3: Search specific group_ids
+# Example 3: Search specific group_ids với quick function
+# results = quick_hybrid_search("pin trâu", group_id_filter=[797, 798, 799], size=5)
+
+# Example 4: Search specific group_ids với search engine
 # search_engine = HybridSearchEngine()
 # results = search_engine.search_by_group_ids([797, 798, 799], "pin trâu")
 
-# Example 4: Filter by group_ids
+# Example 5: Filter by group_ids
 # results = search_engine.hybrid_search("smartphone", group_id_filter=[797, 800, 805])

@@ -3,7 +3,8 @@ FROM ecommerce-website-chatbot-chatbot:latest
 
 WORKDIR /app
 
-# RUN pip install litellm>=1.0.0
+# RUN pip install pymongo
+
 
 EXPOSE 5500
 

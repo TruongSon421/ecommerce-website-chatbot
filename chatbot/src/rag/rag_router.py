@@ -24,7 +24,7 @@ class GroupData(BaseModel):
     type: str = "phone"
 
 class AddDocumentRequest(BaseModel):
-    products_data: List[ProductData]
+    products_new_data: List[ProductData]
     group_data: GroupData
 
 class SearchResponse(BaseModel):
@@ -277,7 +277,7 @@ def merge_product_configs(product_data, device_type):
     return merged_config, price_info
 
 def create_document(data):
-    product_data = data.get('products_data', [])
+    product_data = data.get('products_new_data', [])
     group_data = data.get('group_data', {})
     device_type = group_data.get('type', 'phone')  
     
@@ -343,7 +343,7 @@ async def add_to_elasticsearch(request: AddDocumentRequest):
             "type": product_type
         }
         
-        response = es.index(index="products", body=es_doc)
+        response = es.index(index="products_new", body=es_doc)
         
         return DocumentResponse(
             message="Document added to Elasticsearch successfully",
@@ -358,10 +358,10 @@ async def add_to_elasticsearch(request: AddDocumentRequest):
 async def delete_from_elasticsearch(doc_id: str):
     """Xóa document khỏi Elasticsearch theo ID"""
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             raise HTTPException(status_code=404, detail="Document not found")
         
-        response = es.delete(index="products", id=doc_id)
+        response = es.delete(index="products_new", id=doc_id)
         
         return DeleteResponse(
             message="Document deleted successfully",
@@ -384,7 +384,7 @@ async def delete_by_group_id(group_id: str):
             }
         }
         
-        response = es.delete_by_query(index="products", body=search_query)
+        response = es.delete_by_query(index="products_new", body=search_query)
         
         if response["deleted"] == 0:
             raise HTTPException(status_code=404, detail="No documents found with the given group_id")
@@ -402,7 +402,7 @@ async def delete_by_group_id(group_id: str):
 async def update_elasticsearch(doc_id: str, request: AddDocumentRequest):
     """Cập nhật document theo ID"""
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             raise HTTPException(status_code=404, detail="Document not found")
         
         data = request.dict()
@@ -415,7 +415,7 @@ async def update_elasticsearch(doc_id: str, request: AddDocumentRequest):
             "type": product_type
         }
         
-        response = es.update(index="products", id=doc_id, body={"doc": es_doc})
+        response = es.update(index="products_new", id=doc_id, body={"doc": es_doc})
         
         return DocumentResponse(
             message="Document updated successfully",
@@ -438,7 +438,7 @@ async def update_by_group_id(group_id: str, request: AddDocumentRequest):
             }
         }
         
-        search_response = es.search(index="products", body=search_query)
+        search_response = es.search(index="products_new", body=search_query)
         
         if search_response["hits"]["total"]["value"] == 0:
             raise HTTPException(status_code=404, detail="No documents found with the given group_id")
@@ -470,7 +470,7 @@ async def update_by_group_id(group_id: str, request: AddDocumentRequest):
             }
         }
         
-        response = es.update_by_query(index="products", body=update_query)
+        response = es.update_by_query(index="products_new", body=update_query)
         
         return DocumentResponse(
             message=f"Updated {response['updated']} document(s) successfully",
@@ -485,10 +485,10 @@ async def update_by_group_id(group_id: str, request: AddDocumentRequest):
 async def get_document(doc_id: str):
     """Lấy document theo ID"""
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             raise HTTPException(status_code=404, detail="Document not found")
         
-        response = es.get(index="products", id=doc_id)
+        response = es.get(index="products_new", id=doc_id)
         
         return {
             "id": doc_id,
@@ -524,7 +524,7 @@ async def search_documents(
                 "from": from_param
             }
         
-        response = es.search(index="products", body=search_body)
+        response = es.search(index="products_new", body=search_body)
         
         results = []
         for hit in response["hits"]["hits"]:

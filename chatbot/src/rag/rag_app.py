@@ -250,7 +250,7 @@ def merge_product_configs(product_data, device_type):
 
 # Hàm tạo document từ dữ liệu JSON
 def create_document(data):
-    product_data = data.get('products_data', [])
+    product_data = data.get('products_new_data', [])
     group_data = data.get('group_data', {})
     device_type = group_data.get('type', 'phone')  
     
@@ -318,7 +318,7 @@ def add_to_elasticsearch():
             "type": product_type
         }
         
-        response = es.index(index="products", body=es_doc)
+        response = es.index(index="products_new", body=es_doc)
         
         return jsonify({
             "message": "Document added to Elasticsearch successfully",
@@ -334,11 +334,11 @@ def add_to_elasticsearch():
 def delete_from_elasticsearch(doc_id):
     try:
         # Kiểm tra document có tồn tại không
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
         # Xóa document
-        response = es.delete(index="products", id=doc_id)
+        response = es.delete(index="products_new", id=doc_id)
         
         return jsonify({
             "message": "Document deleted successfully",
@@ -363,7 +363,7 @@ def delete_by_group_id(group_id):
         }
         
         # Thực hiện delete by query
-        response = es.delete_by_query(index="products", body=search_query)
+        response = es.delete_by_query(index="products_new", body=search_query)
         
         if response["deleted"] == 0:
             return jsonify({"error": "No documents found with the given group_id"}), 404
@@ -386,7 +386,7 @@ def update_elasticsearch(doc_id):
             return jsonify({"error": "No JSON data provided"}), 400
         
         # Kiểm tra document có tồn tại không
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
         # Tạo document mới từ dữ liệu
@@ -400,7 +400,7 @@ def update_elasticsearch(doc_id):
         }
         
         # Cập nhật document
-        response = es.update(index="products", id=doc_id, body={"doc": es_doc})
+        response = es.update(index="products_new", id=doc_id, body={"doc": es_doc})
         
         return jsonify({
             "message": "Document updated successfully",
@@ -429,7 +429,7 @@ def update_by_group_id(group_id):
             }
         }
         
-        search_response = es.search(index="products", body=search_query)
+        search_response = es.search(index="products_new", body=search_query)
         
         if search_response["hits"]["total"]["value"] == 0:
             return jsonify({"error": "No documents found with the given group_id"}), 404
@@ -462,7 +462,7 @@ def update_by_group_id(group_id):
             }
         }
         
-        response = es.update_by_query(index="products", body=update_query)
+        response = es.update_by_query(index="products_new", body=update_query)
         
         return jsonify({
             "message": f"Updated {response['updated']} document(s) successfully",
@@ -478,10 +478,10 @@ def update_by_group_id(group_id):
 @app.route('/get-document/<doc_id>', methods=['GET'])
 def get_document(doc_id):
     try:
-        if not es.exists(index="products", id=doc_id):
+        if not es.exists(index="products_new", id=doc_id):
             return jsonify({"error": "Document not found"}), 404
         
-        response = es.get(index="products", id=doc_id)
+        response = es.get(index="products_new", id=doc_id)
         
         return jsonify({
             "id": doc_id,
@@ -519,7 +519,7 @@ def search_documents():
                 "from": from_param
             }
         
-        response = es.search(index="products", body=search_body)
+        response = es.search(index="products_new", body=search_body)
         
         results = []
         for hit in response["hits"]["hits"]:

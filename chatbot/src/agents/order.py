@@ -7,7 +7,7 @@ from tools.cart_tools import *
 from tools.product_tools import product_information_tool_for_cart
 from tools.order_tools import prepare_checkout_data, create_direct_order_summary, validate_order_data, select_items_from_cart, select_items_from_cart_by_ids, enforce_cart_requirement, redirect_to_checkout
 from models.cart import CheckoutRequest
-from agents.callbacks import *
+from callback.log_callback import *
 from callback.before_llm_callback_lang import before_llm_callback_lang
 from prompts import GLOBAL_INSTRUCTION
 GEMINI_2_FLASH = "gemini-2.0-flash"
@@ -23,9 +23,9 @@ SmartAddItemToOrder = LlmAgent(
     Mục tiêu: Đảm bảo sản phẩm có trong giỏ hàng mà KHÔNG HỎI USER group_id, productId.
     
     ** NGUYÊN TẮC HOẠT ĐỘNG:**
-    🤖 **TỰ ĐỘNG 100%** - Không bao giờ hỏi user về group_id, productId. Hỏi lại user nếu thiếu thông tin.
-    🔍 **TÌM KIẾM THÔNG MINH** - Sử dụng tools để tự động tìm thông tin sản phẩm  
-    ⚡ **XỬ LÝ NHANH** - Phân tích request → Tìm thông tin → Kiểm tra giỏ hàng → Xử lý
+    **TỰ ĐỘNG 100%** - Không bao giờ hỏi user về group_id, productId. Hỏi lại user nếu thiếu thông tin.
+    **TÌM KIẾM THÔNG MINH** - Sử dụng tools để tự động tìm thông tin sản phẩm  
+    **XỬ LÝ NHANH** - Phân tích request → Tìm thông tin → Kiểm tra giỏ hàng → Xử lý
     
     ** VAI TRÒ SUB-AGENT CỦA OrderFromCartAgent:**
     - Được gọi bởi OrderFromCartAgent khi cần đảm bảo sản phẩm có trong giỏ hàng
@@ -84,11 +84,11 @@ SmartAddItemToOrder = LlmAgent(
     6. **TỰ ĐỘNG KIỂM TRA KẾT QUẢ** và trả về cho OrderFromCartAgent
 
     ** QUY TẮC ĐẶC BIỆT CHO CONTEXT "CÓ TRONG GIỎ HÀNG":**
-    - ✅ **ƯU TIÊN GIỎ HÀNG**: Khi user nói "có trong giỏ hàng" → Kiểm tra giỏ hàng TRƯỚC
-    - ✅ **FUZZY MATCHING**: Tìm kiếm linh hoạt trong giỏ hàng (VD: "tai nghe sony" → match "Tai nghe Bluetooth Sony")
-    - ✅ **TRÍCH XUẤT THÔNG TIN**: Lấy productId, productName, color, price, quantity từ sản phẩm có sẵn
-    - ✅ **KHÔNG TÌM KIẾM THÊM**: Nếu đã tìm thấy trong giỏ hàng → Không cần gọi product_information_tool_for_cart
-    - ❌ **KHÔNG THÊM DUPLICATE**: Tuyệt đối không thêm sản phẩm đã có trong giỏ hàng
+    - **ƯU TIÊN GIỎ HÀNG**: Khi user nói "có trong giỏ hàng" → Kiểm tra giỏ hàng TRƯỚC
+    - **FUZZY MATCHING**: Tìm kiếm linh hoạt trong giỏ hàng
+    - **TRÍCH XUẤT THÔNG TIN**: Lấy productId, productName, color, price, quantity từ sản phẩm có sẵn
+    - **KHÔNG TÌM KIẾM THÊM**: Nếu đã tìm thấy trong giỏ hàng → Không cần gọi product_information_tool_for_cart
+    - **KHÔNG THÊM DUPLICATE**: Tuyệt đối không thêm sản phẩm đã có trong giỏ hàng
 
     ** Format kết quả trả về cho OrderFromCartAgent:**
     ```json
@@ -110,13 +110,13 @@ SmartAddItemToOrder = LlmAgent(
     ```
     
     ** CẢNH BÁO QUAN TRỌNG - PHẢI TRẢ VỀ DỮ LIỆU THỰC TẾ:**
-    - ❌ **KHÔNG BAO GIỜ** trả về placeholder như "<productId của sản phẩm user yêu cầu>" 
-    - ❌ **KHÔNG BAO GIỜ** trả về template text như "<Tên sản phẩm đúng user yêu cầu>"
-    - ✅ **PHẢI TRẢ VỀ** productId thực tế từ giỏ hàng như "PROD123", "LAPTOP001"
-    - ✅ **PHẢI TRẢ VỀ** tên sản phẩm thực tế từ giỏ hàng
-    - ✅ **PHẢI TRẢ VỀ** màu thực tế từ giỏ hàng như "Silver", "Đen", "Kem"
-    - ✅ **PHẢI TRẢ VỀ** giá thực tế từ giỏ hàng như 999, 15000000
-    - ✅ **PHẢI TRẢ VỀ** số lượng thực tế từ giỏ hàng như 1, 2, 3
+    - **KHÔNG BAO GIỜ** trả về placeholder như "<productId của sản phẩm user yêu cầu>" 
+    - **KHÔNG BAO GIỜ** trả về template text như "<Tên sản phẩm đúng user yêu cầu>"
+    - **PHẢI TRẢ VỀ** productId thực tế từ giỏ hàng như "PROD123", "LAPTOP001"
+    - **PHẢI TRẢ VỀ** tên sản phẩm thực tế từ giỏ hàng
+    - **PHẢI TRẢ VỀ** màu thực tế từ giỏ hàng như "Silver", "Đen", "Kem"
+    - **PHẢI TRẢ VỀ** giá thực tế từ giỏ hàng như 999, 15000000
+    - **PHẢI TRẢ VỀ** số lượng thực tế từ giỏ hàng như 1, 2, 3
 
     ** CÁC BƯỚC BẮT BUỘC ĐỂ LẤY DỮ LIỆU THỰC TẾ:**
     1. **GỌI access_cart_information** → lấy thông tin giỏ hàng thực tế
@@ -125,13 +125,13 @@ SmartAddItemToOrder = LlmAgent(
     4. **TRẢ VỀ JSON với dữ liệu thực tế** → KHÔNG phải placeholder text
 
     ** QUY TẮC QUAN TRỌNG:**
-    - ❌ **KHÔNG BAO GIỜ HỎI USER** về thông tin thiếu  
-    - ❌ **KHÔNG BAO GIỜ TỰ ĐỘNG THÊM** sản phẩm đã có trong giỏ hàng
-    - ❌ **KHÔNG BAO GIỜ TRẢ VỀ PLACEHOLDER** như "<productId của sản phẩm user yêu cầu>"
-    - ✅ **TỰ ĐỘNG SỬ DỤNG TOOLS** để tìm kiếm dữ liệu thực tế
-    - ✅ **TỰ ĐỘNG PHÂN TÍCH** request để extract thông tin
-    - ✅ **TỰ ĐỘNG XỬ LÝ** từ đầu đến cuối với dữ liệu thực tế
-    - ✅ **ƯU TIÊN CONTEXT**: Khi user nói "có trong giỏ hàng" → kiểm tra giỏ hàng trước
+    - **KHÔNG BAO GIỜ HỎI USER** về thông tin thiếu  
+    - **KHÔNG BAO GIỜ TỰ ĐỘNG THÊM** sản phẩm đã có trong giỏ hàng
+    - **KHÔNG BAO GIỜ TRẢ VỀ PLACEHOLDER** như "<productId của sản phẩm user yêu cầu>"
+    - **TỰ ĐỘNG SỬ DỤNG TOOLS** để tìm kiếm dữ liệu thực tế
+    - **TỰ ĐỘNG PHÂN TÍCH** request để extract thông tin
+    - **TỰ ĐỘNG XỬ LÝ** từ đầu đến cuối với dữ liệu thực tế
+    - **ƯU TIÊN CONTEXT**: Khi user nói "có trong giỏ hàng" → kiểm tra giỏ hàng trước
     
     ** KHÔNG BAO GIỜ LÀM:**
     - "Bạn có thể cung cấp group_id không?"
@@ -140,7 +140,7 @@ SmartAddItemToOrder = LlmAgent(
     - Hỏi user BẤT KỲ thông tin nào
     - Trả về placeholder text thay vì dữ liệu thực tế
     
-    ✅ **LUÔN TỰ ĐỘNG TÌM KIẾM VÀ TRẢ VỀ DỮ LIỆU THỰC TẾ!**
+    **LUÔN TỰ ĐỘNG TÌM KIẾM VÀ TRẢ VỀ DỮ LIỆU THỰC TẾ!**
     """,
     tools=[
         access_cart_information, 
@@ -274,7 +274,7 @@ order_agent = LlmAgent(
     # Sau khi có products_ready từ SmartAddItemToOrder:
     1. prepare_checkout_data(
          selected_products=json.dumps(products_ready),
-         quantities=""  # Optional, sẽ mặc định là 1 cho mỗi sản phẩm
+         quantities=""  # Optional, sẽ mặc định là 1 cho mỗi sản phẩm. Kiểm tra số lượng sản phẩm trong giỏ hàng
        )
     
     2. redirect_to_checkout(
@@ -307,13 +307,13 @@ order_agent = LlmAgent(
     ```
     
     ** QUY TẮC QUAN TRỌNG:**
-    - ❌ **KHÔNG BAO GIỜ HỎI USER** về thông tin thiếu  
-    - ❌ **KHÔNG BAO GIỜ TỰ ĐỘNG THÊM** sản phẩm đã có trong giỏ hàng
-    - ❌ **KHÔNG BAO GIỜ TRẢ VỀ PLACEHOLDER** như "<productId của sản phẩm user yêu cầu>"
-    - ✅ **TỰ ĐỘNG SỬ DỤNG TOOLS** để tìm kiếm dữ liệu thực tế
-    - ✅ **TỰ ĐỘNG PHÂN TÍCH** request để extract thông tin
-    - ✅ **TỰ ĐỘNG XỬ LÝ** từ đầu đến cuối với dữ liệu thực tế
-    - ✅ **ƯU TIÊN CONTEXT**: Khi user nói "có trong giỏ hàng" → kiểm tra giỏ hàng trước
+    - **KHÔNG BAO GIỜ HỎI USER** về thông tin thiếu  
+    - **KHÔNG BAO GIỜ TỰ ĐỘNG THÊM** sản phẩm đã có trong giỏ hàng
+    - **KHÔNG BAO GIỜ TRẢ VỀ PLACEHOLDER** như "<productId của sản phẩm user yêu cầu>"
+    - **TỰ ĐỘNG SỬ DỤNG TOOLS** để tìm kiếm dữ liệu thực tế
+    - **TỰ ĐỘNG PHÂN TÍCH** request để extract thông tin
+    - **TỰ ĐỘNG XỬ LÝ** từ đầu đến cuối với dữ liệu thực tế
+    - **ƯU TIÊN CONTEXT**: Khi user nói "có trong giỏ hàng" → kiểm tra giỏ hàng trước
     
     ** KHÔNG BAO GIỜ LÀM:**
     - "Bạn có thể cung cấp group_id không?"
@@ -321,8 +321,9 @@ order_agent = LlmAgent(
     - "Vui lòng cho biết thông tin sản phẩm"
     - Hỏi user BẤT KỲ thông tin nào
     - Trả về placeholder text thay vì dữ liệu thực tế
+    - "Vui lòng chờ một chút để tôi xử lý yêu cầu này"  
     
-    ✅ **LUÔN TỰ ĐỘNG TÌM KIẾM VÀ TRẢ VỀ DỮ LIỆU THỰC TẾ!**
+     **LUÔN TỰ ĐỘNG TÌM KIẾM VÀ TRẢ VỀ DỮ LIỆU THỰC TẾ!**
     """,
     tools=[
         prepare_checkout_data,

@@ -20,13 +20,7 @@ def before_llm_callback_lang(
     detected_language = callback_context.state.get("detected_language")
     print(f"[Language Callback] Detected language from state: '{detected_language}'")
     
-    # Get the last user message
-    last_user_message = ""
-    if llm_request.contents and llm_request.contents[-1].role == 'user':
-        if llm_request.contents[-1].parts:
-            last_user_message = llm_request.contents[-1].parts[0].text
-    
-    print(f"[Language Callback] User message: '{last_user_message}'")
+   
     
     # Get current system instruction for all agents
     original_instruction = llm_request.config.system_instruction or types.Content(
@@ -99,3 +93,5 @@ HƯỚNG DẪN NGÔN NGỮ MẶC ĐỊNH CHO TẤT CẢ AGENT:
     
     # Continue with normal LLM call
     return None
+
+

@@ -3,26 +3,36 @@ from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool, google_search, agent_tool
 from tools.product_tools import product_consultation_tool, product_information_tool
 from prompts import PRODUCT_INSTRUCTION, GLOBAL_INSTRUCTION
-from agents.callbacks import *
+from callback.log_callback import *
 from callback.before_llm_callback_lang import before_llm_callback_lang
+from callback.after_model_callback import after_model_modifier
 
 web_search_tool = LlmAgent(
     model="gemini-2.0-flash",
     name="SearchAgent",
     instruction="""
-    You are a specialist in Google Search, focused solely on retrieving product information (e.g., specifications, features, price, availability) for specifically named electronic products. Your role is to assist when local product information is insufficient.
-    INSTRUCTIONS:
-    - You ONLY handle search queries in the format "thông tin [product_name]" (e.g., "thông tin iPhone 14 Pro Max").
-    - Use the `google_search` tool to perform the search and retrieve relevant results.
-    - Summarize the product information (e.g., CPU, RAM, storage, display, camera, battery, price, key features) in Vietnamese, ensuring accuracy and clarity.
-    - If no relevant results are found, respond: "Không tìm thấy thông tin cho [product_name]."
-    - Do NOT perform general searches or handle queries unrelated to product information.
-    - Do NOT engage in casual chat or answer non-product-related questions.
+    You are a technology search specialist for an e-commerce platform. Use Google Search to provide accurate information about electronics and technology.
+
+    SUPPORTED QUERIES:
+    - Product info: "thông tin [product]" → specs, price, features
+    - Product/technology comparison: "so sánh [product1/tech1] vs [product2/tech2]" → comparison table
+    - Technology info: "công nghệ [tech]" → explanation, benefits
+    - Market trends: "xu hướng [category]" → latest trends, news
+    - Buying advice: "tư vấn [category] [budget]" → recommendations
+    - Troubleshooting: "lỗi [device/problem]" → solutions
+
+    RULES:
+    - Only handle technology/electronics queries
+    - Provide accurate, up-to-date information
+    - Include Vietnamese market context
+    - If no results: "Không tìm thấy thông tin cho [query]"
+    - If off-topic: "Tôi chỉ hỗ trợ thông tin công nghệ và sản phẩm điện tử"
     """,
     tools=[google_search]
 )
 
 product_agent = LlmAgent(
+    model="gemini-2.0-flash",
     name="Product",
     description="Handles product shopping, product consultation and product information.",
     global_instruction=GLOBAL_INSTRUCTION,
@@ -36,5 +46,6 @@ product_agent = LlmAgent(
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
     before_model_callback=before_llm_callback_lang,
-    after_model_callback=format_product_comparison_table
+    after_model_callback=after_model_modifier,
+    output_key="product_result"
 )
