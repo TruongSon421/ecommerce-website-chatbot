@@ -602,15 +602,7 @@ const ChatbotWidget: React.FC = () => {
                 });
               }
             }
-          } else {
-            // No group_ids but have filter_params, show view all option
-            messagesToAdd.push({
-              id: Date.now() + 1,
-              sender: 'bot',
-              text: 'Bạn có thể xem toàn bộ sản phẩm phù hợp với yêu cầu của bạn.',
-              viewAllUrl: url,
-            });
-          }
+          } 
       }
 
       setChatSession((prev) => ({

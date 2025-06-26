@@ -677,7 +677,8 @@ const ProductGroupForm: React.FC<ProductGroupFormProps> = ({ onSuccess }) => {
               >
                 <option value="phone">Điện thoại</option>
                 <option value="laptop">Laptop</option>
-                <option value="ACCESSORY">Phụ kiện</option>
+                <option value="audio">Tai nghe</option>
+                <option value="phukien">Phụ kiện</option>
               </select>
               {createdGroupId && (
                 <p className="text-xs text-gray-500 mt-1">

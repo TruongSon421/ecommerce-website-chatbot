@@ -20,26 +20,12 @@ def before_llm_callback_lang(
     detected_language = callback_context.state.get("detected_language")
     print(f"[Language Callback] Detected language from state: '{detected_language}'")
     
-   
+    # Determine if model is OpenAI (via LiteLLM)
+    model_name = llm_request.model.lower() if llm_request.model else ""
+    is_openai = any(m in model_name for m in ["gpt", "openai"])
     
-    # Get current system instruction for all agents
-    original_instruction = llm_request.config.system_instruction or types.Content(
-        role="system", parts=[]
-    )
-    
-    # Ensure system_instruction is Content and parts list exists
-    if not isinstance(original_instruction, types.Content):
-        original_instruction = types.Content(
-            role="system", 
-            parts=[types.Part(text=str(original_instruction))]
-        )
-    
-    if not original_instruction.parts:
-        original_instruction.parts.append(types.Part(text=""))
-    
-    # Add universal language-specific instructions based on detected language
+    # Create instruction content
     language_instructions = ""
-    
     if detected_language:
         if detected_language.lower() in ['vie', 'vietnamese', 'vi']:
             language_instructions = """
@@ -71,7 +57,6 @@ IMPORTANT LANGUAGE INSTRUCTIONS FOR ALL AGENTS:
 - Apply to all interactions: product search, cart operations, checkout, consultation, etc.
 """
     else:
-        # Default to Vietnamese if no language detected
         language_instructions = """
 
 HƯỚNG DẪN NGÔN NGỮ MẶC ĐỊNH CHO TẤT CẢ AGENT:
@@ -79,19 +64,36 @@ HƯỚNG DẪN NGÔN NGỮ MẶC ĐỊNH CHO TẤT CẢ AGENT:
 - Sử dụng từ ngữ tự nhiên và lịch sự
 - Áp dụng cho mọi tương tác trong hệ thống
 """
-    
-   
-    # Combine all instructions
-    original_text = original_instruction.parts[0].text or ""
-    modified_text = original_text + language_instructions
-    original_instruction.parts[0].text = modified_text
-    
-    llm_request.config.system_instruction = original_instruction
-    
-    # Log what was added
+
+    # Handle GPT-style system_instruction (as plain string or list)
+    if is_openai:
+        current_instruction = llm_request.config.system_instruction or ""
+        if isinstance(current_instruction, list):
+            # multi-modal (GPT-4o style), add new text block
+            current_instruction.append({
+                "type": "text",
+                "text": language_instructions.strip()
+            })
+            llm_request.config.system_instruction = current_instruction
+        else:
+            # plain text mode
+            new_instruction = (current_instruction or "") + "\n" + language_instructions.strip()
+            llm_request.config.system_instruction = new_instruction
+
+    # Handle Gemini-style instruction (Content object)
+    else:
+        original_instruction = llm_request.config.system_instruction or types.Content(
+            role="system", parts=[]
+        )
+        if not isinstance(original_instruction, types.Content):
+            original_instruction = types.Content(
+                role="system", parts=[types.Part(text=str(original_instruction))]
+            )
+        if not original_instruction.parts:
+            original_instruction.parts.append(types.Part(text=""))
+        original_text = original_instruction.parts[0].text or ""
+        original_instruction.parts[0].text = original_text + "\n" + language_instructions.strip()
+        llm_request.config.system_instruction = original_instruction
+
     print(f"[Language Callback] Added universal language instructions for: '{detected_language or 'default'}'")
-    
-    # Continue with normal LLM call
     return None
-
-

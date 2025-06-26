@@ -540,15 +540,31 @@ function getColorCode(colorName: string | null | undefined): string {
     'đen': '#000000',
     'trắng': '#FFFFFF',
     'đỏ': '#FF0000',
-    blue: '#0000FF',
+    'xanh dương': '#0000FF',
     'xanh': '#008000',
-    yellow: '#FFFF00',
+    'vàng': '#FFFF00',
     'tím': '#800080',
     'cam': '#FFA500',
     'hồng': '#FFC0CB',
     'xám': '#808080',
     'bạc': '#C0C0C0',
-    'vàng': '#FFD700',
+    
+    // Thêm màu mới
+    'xanh lá': '#00FF00',
+    
+    'nâu': '#8B4513',
+    'be': '#F5F5DC',
+    'vàng chanh': '#FFFF99',
+    'xanh mint': '#98FB98',
+    'tim nhạt': '#DDA0DD',
+    'cam nhạt': '#FFE4B5',
+    'hồng nhạt': '#FFB6C1',
+    'xám nhạt': '#D3D3D3',
+    'đồng': '#B87333',
+    'vàng kim': '#FFD700',
+    'xanh navy': '#000080',
+    'đỏ đô': '#8B0000',
+    'xanh lục': '#006400',
   };
 
   return colorMap[colorName.toLowerCase()] || '#808080';

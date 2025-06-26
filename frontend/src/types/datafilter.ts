@@ -319,7 +319,7 @@ export const wirelessEarphoneFilterData: FilterData = {
         { label: 'Dưới 4 tiếng', value: 'earHeadphone_battery_under4' },
         { label: 'Từ 4 đến 6 tiếng', value: 'earHeadphone_battery_4to6' },
         { label: 'Từ 6 đến 8 tiếng', value: 'earHeadphone_battery_6to8' },
-        { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_above8' }
+        { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_over8' }
       ]
     }
   ],
@@ -382,6 +382,17 @@ export const headphoneFilterData: FilterData = {
       options: [
         { label: 'Mic đàm thoại', value: 'earHeadphone_benefit_mic' },
         { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' },
+      ]
+    }
+  ],
+
+  earphoneBattery: [
+    {
+      key: 'tags',
+      label: 'Thời lượng pin',
+      multiSelect: true,
+      options: [
+        { label: '8 tiếng trở lên', value: 'earHeadphone_battery_over8' },
       ]
     }
   ]

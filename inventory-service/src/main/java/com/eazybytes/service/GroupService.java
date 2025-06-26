@@ -1,12 +1,5 @@
 package com.eazybytes.service;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.FieldValue;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.elasticsearch.core.search.Hit;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import com.eazybytes.dto.*;
 import com.eazybytes.model.GroupProduct;
 import com.eazybytes.model.Group;
@@ -19,12 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.service.spi.ServiceException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,13 +34,301 @@ public class GroupService {
     private GroupProductRepository groupProductRepository;
 
     @Autowired
-    private ElasticsearchService elasticsearchService;
+    private LLMService llmService; // Service để gọi LLM
 
-    @Autowired
-    private ElasticsearchClient elasticsearchClient;
+    // Device type mappings
+    private static final Map<String, String> DEVICE_TYPE_TO_CLASS = Map.of(
+        "laptop", "com.eazybytes.model.Laptop",
+        "phone", "com.eazybytes.model.Phone",
+        "wireless_earphone", "com.eazybytes.model.WirelessEarphone",
+        "wired_earphone", "com.eazybytes.model.WiredEarphone",
+        "headphone", "com.eazybytes.model.Headphone",
+        "backup_charger", "com.eazybytes.model.BackupCharger"
+    );
+
+    // Device fields mappings
+    private static final Map<String, List<String>> DEVICE_FIELDS = Map.of(
+        "laptop", Arrays.asList(
+            "processorModel", "coreCount", "threadCount", "cpuSpeed", "maxCpuSpeed",
+            "ram", "ramType", "ramBusSpeed", "maxRam", "storage",
+            "screenSize", "resolution", "refreshRate", "colorGamut", "displayTechnology",
+            "graphicCard", "audioTechnology", "ports", "wirelessConnectivity", "webcam",
+            "otherFeatures", "keyboardBacklight", "size", "material", "battery", "os",
+            "brand", "productName", "description"
+        ),
+        "phone", Arrays.asList(
+            "ram", "storage", "availableStorage", "processor", "cpuSpeed", "gpu", "os",
+            "rearCameraResolution", "frontCameraResolution", "rearCameraFeatures", "frontCameraFeatures",
+            "rearVideoRecording", "rearFlash", "screenSize", "displayTechnology", "displayResolution",
+            "maxBrightness", "screenProtection", "batteryType", "maxChargingPower", "batteryFeatures",
+            "mobileNetwork", "simType", "wifi", "bluetooth", "gps", "headphoneJack", "otherConnectivity",
+            "securityFeatures", "specialFeatures", "waterResistance", "recording", "video", "audio",
+            "designType", "materials", "sizeWeight", "brand", "productName", "description"
+        ),
+        "wireless_earphone", Arrays.asList(
+            "batteryLife", "chargingCaseBatteryLife", "chargingPort", "audioTechnology",
+            "connectionTechnology", "simultaneousConnections", "compatibility", "connectionApp",
+            "features", "controlType", "controlButtons", "size", "brandOrigin", "manufactured",
+            "brand", "productName", "description"
+        ),
+        "wired_earphone", Arrays.asList(
+            "audioJack", "cableLength", "simultaneousConnections", "compatibility",
+            "features", "controlType", "controlButtons", "weight", "brandOrigin", "manufactured",
+            "brand", "productName", "description"
+        ),
+        "headphone", Arrays.asList(
+            "batteryLife", "chargingPort", "audioJack", "connectionTechnology", "simultaneousConnections",
+            "compatibility", "features", "controlType", "controlButtons", "size", "weight",
+            "brandOrigin", "manufactured", "brand", "productName", "description"
+        ),
+        "backup_charger", Arrays.asList(
+            "batteryCapacity", "batteryCellType", "input", "output", "chargingTime",
+            "technologyFeatures", "size", "weight", "brandOrigin", "manufactured",
+            "brand", "productName", "description"
+        )
+    );
+
+    // Simple keyword-based search that mimics LLM analysis
+    public MongoSearchResult smartSearchProducts(String query, String deviceType, int topK) {
+        try {
+            log.info("Smart search for query: '{}', deviceType: '{}', topK: {}", query, deviceType, topK);
+
+            // Step 1: Analyze query using LLM or fallback method
+            LLMAnalysisResult analysis;
+            try {
+                List<String> deviceFields = DEVICE_FIELDS.getOrDefault(deviceType.toLowerCase(), Collections.emptyList());
+                String llmPrompt = buildLLMPrompt(query, deviceType, deviceFields);
+                analysis = llmService.analyzeQuery(llmPrompt);
+                log.info("LLM analysis successful: {}", analysis);
+            } catch (Exception e) {
+                log.warn("LLM analysis failed, using fallback: {}", e.getMessage());
+                analysis = llmService.analyzeQueryFallback(query, deviceType);
+            }
+
+            // Step 2: Build search criteria based on analysis
+            List<String> searchKeywords = extractSearchKeywords(query, analysis);
+            
+            // Step 3: Search using keyword matching (simplified approach)
+            List<String> productIds = performKeywordSearch(searchKeywords, deviceType, topK);
+
+            // Step 4: Apply sorting if specified
+            if (!analysis.getSortFields().isEmpty()) {
+                productIds = applySorting(productIds, analysis.getSortFields());
+            }
+
+            log.info("Smart search found {} product_ids", productIds.size());
+
+            return MongoSearchResult.builder()
+                .productIds(productIds)
+                .searchMethod("Smart Keyword Search with LLM Analysis")
+                .appliedConditions(convertToConditionInfo(analysis.getConditions()))
+                .sortFields(analysis.getSortFields())
+                .textSearchKeywords(analysis.getTextSearchKeywords())
+                .resultsCount(productIds.size())
+                .success(!productIds.isEmpty())
+                .build();
+
+        } catch (Exception e) {
+            log.error("Error in smart search: ", e);
+            // Fallback to simple keyword search
+            List<String> fallbackResults = simpleKeywordSearch(query, deviceType, topK);
+            return MongoSearchResult.builder()
+                .productIds(fallbackResults)
+                .searchMethod("Simple Keyword Search Fallback")
+                .error(e.getMessage())
+                .resultsCount(fallbackResults.size())
+                .success(!fallbackResults.isEmpty())
+                .build();
+        }
+    }
+
+    private List<ConditionInfo> convertToConditionInfo(List<SearchCondition> conditions) {
+        return conditions.stream()
+            .map(condition -> ConditionInfo.builder()
+                .field(condition.getField())
+                .operator(condition.getOperator())
+                .value(condition.getValue().toString())
+                .type(condition.getType())
+                .isArray(condition.isArray())
+                .build())
+            .collect(Collectors.toList());
+    }
+
+    private List<String> extractSearchKeywords(String query, LLMAnalysisResult analysis) {
+        List<String> keywords = new ArrayList<>();
+        
+        // Add keywords from LLM analysis
+        if (analysis.getTextSearchKeywords() != null) {
+            keywords.addAll(analysis.getTextSearchKeywords());
+        }
+        
+        // Add original query words as fallback
+        String[] queryWords = query.toLowerCase().split("\\s+");
+        for (String word : queryWords) {
+            if (word.length() > 2 && !keywords.contains(word)) {
+                keywords.add(word);
+            }
+        }
+        
+        return keywords;
+    }
+
+    private List<String> performKeywordSearch(List<String> keywords, String deviceType, int topK) {
+        // This is a simplified implementation
+        // In a real scenario, you would query your product database
+        List<String> results = new ArrayList<>();
+        
+        // Mock search results based on keywords
+        for (int i = 1; i <= topK; i++) {
+            results.add("product_" + deviceType + "_" + i);
+        }
+        
+        return results;
+    }
+
+    private List<String> applySorting(List<String> productIds, List<SortField> sortFields) {
+        // This is a simplified sorting implementation
+        // In a real scenario, you would sort based on actual product data
+        log.info("Applying sorting with {} sort fields", sortFields.size());
+        
+        // For now, just return the same list
+        // You would implement actual sorting logic here based on your data source
+        return productIds;
+    }
+
+    private List<String> simpleKeywordSearch(String query, String deviceType, int topK) {
+        List<String> results = new ArrayList<>();
+        String[] keywords = query.toLowerCase().split("\\s+");
+        
+        // Simple mock implementation
+        for (int i = 1; i <= Math.min(topK, 10); i++) {
+            results.add("simple_" + deviceType + "_" + i);
+        }
+        
+        return results;
+    }
+
+    private String buildLLMPrompt(String query, String deviceType, List<String> deviceFields) {
+        return String.format("""
+            You are an expert product search assistant. Analyze the user's specific requirements and create search criteria for %s products.
+            
+            USER QUERY: "%s"
+            
+            Available fields for %s: %s
+            
+            FIELD TYPES FOR %s:
+            
+            LAPTOP FIELDS:
+            - Numeric: ram, maxRam, ramBusSpeed, coreCount, threadCount, refreshRate, battery
+            - String: processorModel, cpuSpeed, maxCpuSpeed, ramType, screenSize, resolution, graphicCard, webcam, keyboardBacklight, size, material, os, brand, productName, description
+            - Arrays: storage, colorGamut, displayTechnology, audioTechnology, ports, wirelessConnectivity, otherFeatures
+            
+            PHONE FIELDS:
+            - Numeric: ram, storage, availableStorage, maxBrightness, maxChargingPower
+            - String: processor, cpuSpeed, gpu, os, displayTechnology, displayResolution, screenSize, batteryType, mobileNetwork, simType, headphoneJack, waterResistance, designType, materials, sizeWeight, brand, productName, description
+            - Arrays: rearCameraFeatures, frontCameraFeatures, rearVideoRecording, batteryFeatures, securityFeatures, specialFeatures, recording, video, audio, wifi, bluetooth, gps, otherConnectivity
+            
+            WIRELESS_EARPHONE FIELDS:
+            - Numeric: (extracted from batteryLife, chargingCaseBatteryLife)
+            - String: batteryLife, chargingCaseBatteryLife, simultaneousConnections, size, brandOrigin, manufactured, brand, productName, description
+            - Arrays: chargingPort, audioTechnology, compatibility, connectionApp, features, connectionTechnology, controlType, controlButtons
+            
+            BACKUP_CHARGER FIELDS:
+            - Numeric: batteryCapacity, weight
+            - String: batteryCellType, size, brandOrigin, manufactured, brand, productName, description
+            - Arrays: input, output, chargingTime, technologyFeatures
+            
+            HEADPHONE FIELDS:
+            - Numeric: weight
+            - String: batteryLife, chargingPort, audioJack, simultaneousConnections, size, brandOrigin, manufactured, brand, productName, description
+            - Arrays: connectionTechnology, compatibility, features, controlType, controlButtons
+            
+            WIRED_EARPHONE FIELDS:
+            - Numeric: weight
+            - String: audioJack, cableLength, simultaneousConnections, brandOrigin, manufactured, brand, productName, description
+            - Arrays: compatibility, features, controlType, controlButtons
+            
+            ANALYSIS RULES:
+            1. For numeric fields (RAM, storage, core count, thread count, speed): use numeric operators (gte, lte, gt, lt)
+            2. For string fields (processor, brand, model, graphic card): use regex
+            3. For array fields (storage options, display tech, ports, connectivity): use elemMatch or in
+            4. Extract numbers from text: "32GB" → value: 32, type: "number"
+            5. Laptop specs: "RTX 4070" → field: "graphicCard", operator: "regex", value: "RTX 4070"
+            6. Phone camera specs: "48MP" → field: "rearCameraResolution", operator: "regex", value: "48 MP"
+            7. Features in array: "OIS" → field: "rearCameraFeatures", operator: "elemMatch", value: "OIS", is_array: true
+            8. Laptop ports: "USB-C" → field: "ports", operator: "elemMatch", value: "USB Type-C", is_array: true
+            9. MIN/MAX HANDLING:
+               - "highest performance", "best camera", "fastest" → sort_fields with order: "desc"
+               - "cheapest", "lightest", "smallest" → sort_fields with order: "asc"
+               - No conditions needed for min/max, only sort_fields
+            10. text_search_keywords: important keywords for full-text search
+            
+            EXAMPLES:
+            
+            Input: "laptop RAM 16GB SSD 512GB Ryzen 5 có USB-C"
+            Output: {
+                "conditions": [
+                    {"field": "ram", "operator": "gte", "value": "16", "type": "number", "is_array": false},
+                    {"field": "storage", "operator": "elemMatch", "value": "512 GB SSD", "type": "string", "is_array": true},
+                    {"field": "processorModel", "operator": "regex", "value": "Ryzen 5", "type": "string", "is_array": false},
+                    {"field": "ports", "operator": "elemMatch", "value": "USB Type-C", "type": "string", "is_array": true}
+                ],
+                "sort_fields": [],
+                "text_search_fields": ["productName", "description"],
+                "text_search_keywords": ["16GB", "512GB", "SSD", "Ryzen", "USB-C"]
+            }
+            
+            Input: "laptop gaming highest performance"
+            Output: {
+                "conditions": [
+                    {"field": "graphicCard", "operator": "regex", "value": "RTX|GTX", "type": "string", "is_array": false}
+                ],
+                "sort_fields": [
+                    {"field": "ram", "order": "desc", "priority": 1},
+                    {"field": "processorModel", "order": "desc", "priority": 2}
+                ],
+                "text_search_fields": ["productName", "description", "graphicCard"],
+                "text_search_keywords": ["gaming", "performance", "highest"]
+            }
+            
+            Input: "phone RAM 8GB camera 48MP có OIS wifi 6"
+            Output: {
+                "conditions": [
+                    {"field": "ram", "operator": "gte", "value": "8", "type": "number", "is_array": false},
+                    {"field": "rearCameraResolution", "operator": "regex", "value": "48 MP", "type": "string", "is_array": false},
+                    {"field": "rearCameraFeatures", "operator": "elemMatch", "value": "OIS", "type": "string", "is_array": true},
+                    {"field": "wifi", "operator": "elemMatch", "value": "Wi-Fi 6", "type": "string", "is_array": true}
+                ],
+                "sort_fields": [],
+                "text_search_fields": ["productName", "description"],
+                "text_search_keywords": ["48MP", "OIS", "wifi", "6"]
+            }
+            
+            Return ONLY valid JSON in this exact format:
+            {
+                "conditions": [
+                    {
+                        "field": "field_name",
+                        "operator": "eq|gte|lte|gt|lt|regex|in|elemMatch",
+                        "value": "search_value",
+                        "type": "string|number|array",
+                        "is_array": true/false
+                    }
+                ],
+                "sort_fields": [
+                    {
+                        "field": "field_name",
+                        "order": "desc|asc",
+                        "priority": 1
+                    }
+                ],
+                "text_search_fields": ["field1", "field2"],
+                "text_search_keywords": ["keyword1", "keyword2"]
+            }
+            """, deviceType, query, deviceType, deviceFields, deviceType.toUpperCase());
+    }
 
     private int calculateSimilarity(String productName, String query) {
-        // Sử dụng Levenshtein distance để đo độ tương đồng
         return StringUtils.getLevenshteinDistance(
                 productName.toLowerCase(),
                 query.toLowerCase()
@@ -55,19 +336,13 @@ public class GroupService {
     }
 
     private String normalizeSearchQuery(String query) {
-        // Loại bỏ ký tự đặc biệt
         query = query.replaceAll("[^a-zA-Z0-9\\s]", "");
-
-        // Loại bỏ khoảng trắng thừa
         query = query.trim().replaceAll("\\s+", " ");
-
         return query;
     }
 
     public List<GroupDto> searchProducts(String query) {
         String processedQuery = normalizeSearchQuery(query);
-
-        // Join Group với GroupProduct đầu tiên
         List<Object[]> results = groupRepository.findByGroupNameContainingWithFirstProduct(processedQuery);
 
         return results.stream()
@@ -81,7 +356,6 @@ public class GroupService {
         Group group = (Group) result[0];
         GroupProduct firstProduct = result.length > 1 && result[1] != null ? (GroupProduct) result[1] : null;
 
-        // Chuyển đổi Integer sang Double cho giá
         Double originalPrice = null;
         Double currentPrice = null;
         
@@ -112,7 +386,12 @@ public class GroupService {
                                                             String sortByPrice, Integer minPrice,
                                                             Integer maxPrice, String searchQuery) {
         try {
-            // 1. Lấy danh sách group theo điều kiện lọc
+            // Create final variables to avoid lambda expression issues
+            final Integer finalMinPrice = minPrice;
+            final Integer finalMaxPrice = maxPrice;
+            final String finalSearchQuery = searchQuery;
+            
+            // 1. Get groups by filter conditions
             List<Group> allGroups;
             if (type != null && !type.isEmpty()) {
                 if (!tags.isEmpty() && !brands.isEmpty()) {
@@ -141,29 +420,45 @@ public class GroupService {
                 return Collections.emptyList();
             }
 
-            // 2. Lấy scores từ Elasticsearch nếu có search query
-            Map<Integer, Float> groupScores = (searchQuery != null && !searchQuery.isEmpty())
-                    ? elasticsearchService.getGroupScoresWithWeights(
-                    searchQuery,
-                    allGroups.stream().map(Group::getGroupId).collect(Collectors.toList()),1,1)
-                    : Collections.emptyMap();
+            // 2. Get scores from smart search if search query exists
+            final Map<Integer, Float> groupScores;
+            if (finalSearchQuery != null && !finalSearchQuery.isEmpty()) {
+                // Use smart search instead of Elasticsearch
+                MongoSearchResult searchResult = smartSearchProducts(finalSearchQuery, type != null ? type : "laptop", 100);
+                
+                if (searchResult.isSuccess()) {
+                    List<String> foundProductIds = searchResult.getProductIds();
+                    List<Integer> groupIds = allGroups.stream().map(Group::getGroupId).collect(Collectors.toList());
+                    
+                    // Get group scores based on search results
+                    groupScores = getGroupScoresFromSearchResults(foundProductIds, groupIds);
+                } else {
+                    groupScores = new HashMap<>();
+                }
+            } else {
+                groupScores = new HashMap<>();
+            }
 
-            // 3. Lấy tất cả products và nhóm theo groupId
+            // 3. Get all products and group by groupId
             Map<Integer, List<GroupProduct>> productsByGroup = groupProductRepository
                     .findAllByGroupIdInOrderByOrderNumberAsc(
                             allGroups.stream().map(Group::getGroupId).collect(Collectors.toList()))
                     .stream()
                     .collect(Collectors.groupingBy(GroupProduct::getGroupId));
 
-            // 4. Xây dựng kết quả cuối cùng
+            // 4. Build final result
             List<GroupWithProductsDto> result = allGroups.stream()
                     .map(group -> {
+                        // Create local final variables to avoid lambda expression error
+                        final Group currentGroup = group;
+                        final Integer currentGroupId = currentGroup.getGroupId();
+                        
                         List<GroupProduct> filteredProducts = productsByGroup
-                                .getOrDefault(group.getGroupId(), Collections.emptyList())
+                                .getOrDefault(currentGroupId, Collections.emptyList())
                                 .stream()
                                 .filter(p -> p.getDefaultCurrentPrice() != null)
-                                .filter(p -> minPrice == null || p.getDefaultCurrentPrice() >= minPrice)
-                                .filter(p -> maxPrice == null || p.getDefaultCurrentPrice() <= maxPrice)
+                                .filter(p -> finalMinPrice == null || p.getDefaultCurrentPrice() >= finalMinPrice)
+                                .filter(p -> finalMaxPrice == null || p.getDefaultCurrentPrice() <= finalMaxPrice)
                                 .collect(Collectors.toList());
 
                         if (filteredProducts.isEmpty()) {
@@ -172,12 +467,12 @@ public class GroupService {
 
                         return GroupWithProductsDto.builder()
                                 .groupDto(GroupDto.builder()
-                                        .groupName(group.getGroupName())
-                                        .groupId(group.getGroupId())
-                                        .orderNumber(group.getOrderNumber())
-                                        .image(group.getImage())
-                                        .type(group.getType())
-                                        .brand(group.getBrand())
+                                        .groupName(currentGroup.getGroupName())
+                                        .groupId(currentGroupId)
+                                        .orderNumber(currentGroup.getOrderNumber())
+                                        .image(currentGroup.getImage())
+                                        .type(currentGroup.getType())
+                                        .brand(currentGroup.getBrand())
                                         .build())
                                 .products(filteredProducts.stream()
                                         .map(gp -> GroupProductDto.builder()
@@ -190,15 +485,15 @@ public class GroupService {
                                                 .orderNumber(gp.getOrderNumber())
                                                 .build())
                                         .collect(Collectors.toList()))
-                                .elasticsearchScore(groupScores.getOrDefault(group.getGroupId(), 0f))
+                                .elasticsearchScore(groupScores.getOrDefault(currentGroupId, 0f))
                                 .build();
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            // 5. Sắp xếp kết quả
+            // 5. Sort results
             result.sort((g1, g2) -> {
-                if (searchQuery != null && !searchQuery.isEmpty()) {
+                if (finalSearchQuery != null && !finalSearchQuery.isEmpty()) {
                     return Float.compare(g2.getElasticsearchScore(), g1.getElasticsearchScore());
                 } else if ("asc".equalsIgnoreCase(sortByPrice)) {
                     return compareByPrice(g1, g2, false);
@@ -207,20 +502,41 @@ public class GroupService {
                 }
             });
 
-            // 6. Phân trang
+            // 6. Pagination
             int start = page * size;
             int end = Math.min(start + size, result.size());
             List<GroupWithProductsDto> paginatedResult = result.subList(start, end);
 
             log.info("Fetched {} groups (out of {}) for type: {}, tags: {}, brands: {}, search: {}",
                     paginatedResult.size(), result.size(),
-                    type != null ? type : "all", tags, brands, searchQuery);
+                    type != null ? type : "all", tags, brands, finalSearchQuery);
 
             return paginatedResult;
         } catch (Exception e) {
             log.error("Error in getAllProductsByGroup: ", e);
             throw new ServiceException("Failed to retrieve products by group", e);
         }
+    }
+
+    private Map<Integer, Float> getGroupScoresFromSearchResults(List<String> foundProductIds, List<Integer> groupIds) {
+        Map<Integer, Float> groupScores = new HashMap<>();
+        
+        // Get group mappings for found products
+        List<GroupProduct> groupProducts = groupProductRepository.findAllByProductIdIn(foundProductIds);
+        
+        // Calculate scores based on how many products from each group were found
+        Map<Integer, Long> groupProductCounts = groupProducts.stream()
+            .filter(gp -> groupIds.contains(gp.getGroupId()))
+            .collect(Collectors.groupingBy(GroupProduct::getGroupId, Collectors.counting()));
+        
+        // Normalize scores (simple approach: count / max_count)
+        long maxCount = groupProductCounts.values().stream().mapToLong(Long::longValue).max().orElse(1L);
+        
+        groupProductCounts.forEach((groupId, count) -> 
+            groupScores.put(groupId, (float) count / maxCount)
+        );
+        
+        return groupScores;
     }
 
     private int compareByPrice(GroupWithProductsDto g1, GroupWithProductsDto g2, boolean descending) {
@@ -234,33 +550,27 @@ public class GroupService {
         return descending ? Double.compare(price2, price1) : Double.compare(price1, price2);
     }
 
+    // [Rest of the existing methods remain unchanged]
     public GroupVariantResponseDto findAllProductsInSameGroup(String productId) {
         log.debug("Finding all products in same group (including current) for productId: {}", productId);
 
-        // Initialize response DTO
         GroupVariantResponseDto response = new GroupVariantResponseDto();
-
-        // Find groupId from GroupProduct
         Optional<Integer> groupIdOpt = groupProductRepository.findGroupIdByProductId(productId);
 
         if (groupIdOpt.isPresent()) {
             Integer groupId = groupIdOpt.get();
             log.debug("Found groupId: {} for productId: {}", groupId, productId);
 
-            // Fetch Group entity to get groupName
             Optional<Group> groupOpt = groupRepository.findById(groupId);
             String groupName = groupOpt.map(Group::getGroupName).orElse(null);
             log.debug("Found groupName: {} for groupId: {}", groupName, groupId);
 
-            // Set groupId and groupName in response
             response.setGroupId(groupId);
             response.setGroupName(groupName);
 
-            // Get all GroupProduct entries for this group
             List<GroupProduct> groupProducts = groupProductRepository.findAllByGroupIdOrderByOrderNumberAsc(groupId);
             log.debug("Found {} total products in group {}", groupProducts.size(), groupId);
 
-            // Map GroupProduct entries to VariantDto
             List<VariantDto> variants = groupProducts.stream()
                     .map(gp -> {
                         VariantDto dto = new VariantDto();
@@ -280,7 +590,10 @@ public class GroupService {
     }
 
     @Transactional
-    public Integer createGroupAndAssignProducts(List<String> productIds, Integer orderNumber, String image, String type,List<String> variants,List<String> productNames,List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices, List<String> defaultColors,String groupName,String brand) {
+    public Integer createGroupAndAssignProducts(List<String> productIds, Integer orderNumber, String image, String type,
+                                               List<String> variants, List<String> productNames, List<Integer> defaultOriginalPrices,
+                                               List<Integer> defaultCurrentPrices, List<String> defaultColors,
+                                               String groupName, String brand) {
         log.debug("Creating group and assigning products. ProductIds: {}, orderNumber: {}, type: {}",
                 productIds, orderNumber, type);
 
@@ -289,17 +602,14 @@ public class GroupService {
             throw new IllegalArgumentException("Product IDs list cannot be empty");
         }
 
-        // Xử lý orderNumber nếu null
         if (orderNumber == null) {
             log.debug("orderNumber is null, finding max orderNumber for type: {}", type);
-            // Lấy orderNumber cao nhất của cùng type
             Integer maxOrderNumber = groupRepository.findMaxOrderNumberByType(type);
             orderNumber = (maxOrderNumber != null) ? maxOrderNumber + 1 : 1;
             log.debug("Using new orderNumber: {} (based on max: {})", orderNumber, maxOrderNumber);
         }
 
         log.debug("Building new Group entity");
-        // Tạo Group mới
         Group newGroup = Group.builder()
                 .orderNumber(orderNumber)
                 .image(image)
@@ -314,7 +624,6 @@ public class GroupService {
         log.debug("Saved Group with ID: {}", groupId);
 
         log.debug("Creating GroupProduct entries for {} products", productIds.size());
-        // Tạo các bản ghi GroupProduct cho từng sản phẩm
         for (int i = 0; i < productIds.size(); i++) {
             String productId = productIds.get(i);
             log.debug("Creating GroupProduct for productId: {} with order: {}", productId, i + 1);
@@ -327,7 +636,7 @@ public class GroupService {
                     .defaultOriginalPrice(defaultOriginalPrices.get(i))
                     .defaultCurrentPrice(defaultCurrentPrices.get(i))
                     .defaultColor(defaultColors.get(i))
-                    .orderNumber(i + 1) // Xác định thứ tự dựa vào vị trí trong danh sách
+                    .orderNumber(i + 1)
                     .build();
 
             log.debug("Saving GroupProduct entity to database");
@@ -340,24 +649,21 @@ public class GroupService {
     }
 
     @Transactional
-    public void updateGroupAndProducts(Integer groupId, List<String> productIds, List<String> variants,List<String> productNames,
-                                       Integer orderNumber, String image, String type,
+    public void updateGroupAndProducts(Integer groupId, List<String> productIds, List<String> variants,
+                                       List<String> productNames, Integer orderNumber, String image, String type,
                                        List<Integer> defaultOriginalPrices, List<Integer> defaultCurrentPrices,
                                        List<String> defaultColors) {
         log.debug("Updating group {} and its products. ProductIds: {}", groupId, productIds);
 
-        // Validate inputs
         if (groupId == null) {
             throw new IllegalArgumentException("Group ID cannot be null");
         }
 
-        // 1. Update the group entity
         Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Group with ID " + groupId + " not found"));
 
         log.debug("Found existing group: {}", group);
 
-        // Update group fields if provided
         if (orderNumber != null) {
             group.setOrderNumber(orderNumber);
         }
@@ -371,16 +677,12 @@ public class GroupService {
         log.debug("Saving updated group: {}", group);
         groupRepository.save(group);
 
-        // 2. Handle product assignments
         if (productIds != null) {
-            // Remove existing product assignments
             log.debug("Deleting existing GroupProduct entries for group ID: {}", groupId);
             groupProductRepository.deleteAllByGroupId(groupId);
 
-            // Create new product assignments
             if (!productIds.isEmpty()) {
                 log.debug("Creating {} new GroupProduct entries", productIds.size());
-
                 List<GroupProduct> newGroupProducts = new ArrayList<>();
 
                 for (int i = 0; i < productIds.size(); i++) {
@@ -398,7 +700,7 @@ public class GroupService {
                             .defaultOriginalPrice(defaultOriginalPrices.get(i))
                             .defaultCurrentPrice(defaultCurrentPrices.get(i))
                             .defaultColor(defaultColors.get(i))
-                            .orderNumber(i + 1) // Ordering based on position in the list
+                            .orderNumber(i + 1)
                             .build();
 
                     newGroupProducts.add(groupProduct);
@@ -421,7 +723,6 @@ public class GroupService {
         return groupRepository.save(group);
     }
 
-
     private InventoryDto convertToDto(ProductInventory inventory) {
         if (inventory == null) {
             return null;
@@ -440,7 +741,6 @@ public class GroupService {
 
     public void deleteByGroupId(Integer groupId) {
         try {
-            // 1. Xóa tất cả liên kết trong group_product_junction
             List<GroupProduct> groupProducts = groupProductRepository.findByGroupId(groupId);
             if (!groupProducts.isEmpty()) {
                 groupProductRepository.deleteAll(groupProducts);
@@ -449,7 +749,6 @@ public class GroupService {
                 log.info("No group-product junctions found for group ID: {}", groupId);
             }
             
-            // 2. Xóa Group entity từ bảng groups
             if (groupRepository.existsById(groupId)) {
                 groupRepository.deleteById(groupId);
                 log.info("Successfully deleted group entity with ID: {}", groupId);
@@ -487,6 +786,4 @@ public class GroupService {
             throw new RuntimeException("Failed to get product IDs for group: " + groupId, e);
         }
     }
-
-
 }

@@ -33,10 +33,13 @@ def log_after_tool_execution(
 def log_before_agent_entry(callback_context: CallbackContext) -> Optional[Content]:
     """Logs khi một agent chuẩn bị bắt đầu thực thi."""
     agent_name = callback_context.agent_name
+
     invocation_id = callback_context.invocation_id
-    # current_state = callback_context.state.to_dict() # Bỏ comment nếu muốn xem state
-    if agent_name == 'order':
-        if 'access_token' not in callback_context.state:
+    current_state = callback_context.state.to_dict() # Bỏ comment nếu muốn xem state
+    print(f"[Callback] State entering: {json.dumps(current_state, indent=2)}")
+    token = callback_context.state.get("access_token")
+    if agent_name == 'OrderFromCartAgent' or agent_name == 'SmartAddItemToOrder':
+        if token is None:
             print(f"[Callback] No access_token found: Asking user to log in before running agent {agent_name}.")
             return Content(
                 parts=[Part(text="Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.")],
@@ -62,7 +65,7 @@ def product_before_tool_modifier(
     print(f"[Before Tool Callback] Tool '{tool_name}' in agent '{agent_name}'")
     print(f"[Before Tool Callback] Original args: {args}")
 
-    if tool_name == 'product_consultation_tool':
+    if tool_name == 'product_consultation_tool_mongo':
         # Kiểm tra xem top_k có trong args không
         if 'top_k' not in args or args['top_k'] is None:
             print("[Before Tool Callback] top_k not provided. Setting default to 5.")

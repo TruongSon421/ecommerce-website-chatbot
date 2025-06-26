@@ -633,6 +633,7 @@ def rag_health():
             "error": str(e)
         }), 503
 
+
 # Vòng lặp tương tác (cho mục đích kiểm tra)
 async def main_loop():
     print("Nhập thông tin request (gõ 'exit' hoặc 'quit' để thoát):")

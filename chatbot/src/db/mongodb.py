@@ -6,7 +6,7 @@ load_dotenv()
 
 class MongoDB:
     def __init__(self):
-        self.host = os.getenv('MONGODB_HOST', 'localhost')
+        self.host = os.getenv('MONGODB_HOST', 'mongodb')
         self.port = int(os.getenv('MONGODB_PORT', 27017))
         self.username = os.getenv('MONGODB_USERNAME', 'admin')
         self.password = os.getenv('MONGODB_PASSWORD', 'password')

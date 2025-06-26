@@ -3,7 +3,7 @@ FROM ecommerce-website-chatbot-chatbot:latest
 
 WORKDIR /app
 
-# RUN pip install pymongo
+# RUN pip install --upgrade llama-index
 
 
 EXPOSE 5500

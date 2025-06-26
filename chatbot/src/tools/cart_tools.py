@@ -539,6 +539,72 @@ def find_product_id_by_group_and_color(group_id: int, color: Optional[str] = Non
                 cursor.close()
             conn.close()
 
+def find_group_id_by_product_id(product_id: str) -> dict:
+    """
+    Tìm group_id từ product_id trong MySQL database
+    
+    Args:
+        product_id (str): ID của sản phẩm cần tìm group
+        
+    Returns:
+        dict: Dictionary chứa thông tin group_id và các thông tin liên quan
+        
+    Example:
+        >>> find_group_id_by_product_id("prod-123")
+        {
+            "status": "success", 
+            "product_id": "prod-123",
+            "group_id": 456,
+            "variant": "Size M",
+            "product_name": "Áo thun cotton"
+        }
+    """
+    try:
+        # Kết nối database
+        conn = mysql.connector.connect(
+            host='mysql',
+            port=3306,
+            user='tiendoan',
+            password='tiendoan',
+            database='ecommerce_inventory'
+        )
+        cursor = conn.cursor(dictionary=True)
+
+        # Query để tìm group_id từ product_id
+        query = """
+            SELECT group_id, variant, product_name, order_number
+            FROM group_product_junction
+            WHERE product_id = %s
+        """
+        cursor.execute(query, (product_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            return {
+                "status": "success",
+                "product_id": product_id,
+                "group_id": result['group_id'],
+                "variant": result['variant'],
+                "product_name": result['product_name'],
+                "order_number": result['order_number']
+            }
+        else:
+            return {
+                "status": "not_found",
+                "message": f"Không tìm thấy group_id cho product_id: {product_id}"
+            }
+            
+    except Exception as e:
+        logger.error("Database error in find_group_id_by_product_id: %s", str(e))
+        return {
+            "status": "error",
+            "message": f"Lỗi kết nối database: {str(e)}"
+        }
+    finally:
+        if 'conn' in locals() and conn:
+            if 'cursor' in locals() and cursor:
+                cursor.close()
+            conn.close()
 
 def execute_query(query: str, params: tuple = None) -> list:
     """

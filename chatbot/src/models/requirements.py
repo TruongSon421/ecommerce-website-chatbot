@@ -44,7 +44,7 @@ class LaptopRequirements(BaseModel):
     brand_preference: Optional[str]
     specific_requirements: Optional[str]
 
-class EarHeadphoneRequirements(BaseModel):
+class WirelessEarphoneRequirements(BaseModel):
     earHeadphone_tech_boneConduction: bool
     earHeadphone_tech_airConduction: bool
     earHeadphone_battery_under4: bool
@@ -55,6 +55,24 @@ class EarHeadphoneRequirements(BaseModel):
     earHeadphone_benefit_waterProof: bool
     earHeadphone_benefit_mic: bool
     earHeadphone_benefit_anc: bool
+    earHeadphone_benefit_enc: bool
+
+    min_budget: Optional[int]
+    max_budget: Optional[int]
+    brand_preference: Optional[str]
+    specific_requirements: Optional[str]
+
+class WiredEarphoneRequirements(BaseModel):
+    earHeadphone_benefit_mic: bool
+
+    min_budget: Optional[int]
+    max_budget: Optional[int]
+    brand_preference: Optional[str]
+    specific_requirements: Optional[str]
+
+class HeadphoneRequirements(BaseModel):
+    earHeadphone_battery_above8: bool
+    earHeadphone_benefit_mic: bool
     earHeadphone_benefit_enc: bool
 
     min_budget: Optional[int]

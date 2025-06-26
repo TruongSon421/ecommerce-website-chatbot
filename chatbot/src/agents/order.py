@@ -196,7 +196,6 @@ order_agent = LlmAgent(
       - Trả về: selectedItems, totalAmount, checkout_url
     - `redirect_to_checkout`: Thực hiện redirect đến trang checkout
       - Tham số: selected_items (JSON string), total_amount (int)
-      - Trả về: redirect_html và JavaScript để thực hiện redirect
 
     ** Luồng xử lý đặt hàng hoàn chỉnh:**
     1. **NHẬN YÊU CẦU** từ người dùng về sản phẩm muốn đặt hàng
@@ -216,7 +215,7 @@ order_agent = LlmAgent(
        - Output: selectedItems và totalAmount
     6. **THỰC HIỆN REDIRECT** bằng `redirect_to_checkout`:
        - Input: selected_items từ prepare_checkout_data, total_amount từ prepare_checkout_data
-       - Output: redirect_html (trả về trực tiếp cho user để thực hiện redirect)
+       - Output: action = "checkout_redirect" và selected_item_keys
 
     ** Quy tắc bắt buộc:**
     - **Luôn gọi SmartAddItemToOrder** trước khi đặt hàng, thanh toán
@@ -266,7 +265,7 @@ order_agent = LlmAgent(
     2. **GỌI prepare_checkout_data(selected_products=JSON_string)**
     3. **Nhận kết quả**: selectedItems và totalAmount
     4. **GỌI redirect_to_checkout(selected_items=selectedItems_JSON, total_amount=totalAmount)**
-    5. **Trả về redirect_html** từ redirect_to_checkout cho user (chứa JavaScript redirect)
+    5. **Trả về action = "checkout_redirect" và selected_item_keys**
     6. **Frontend sẽ tự động redirect** đến /checkout sau 2 giây
 
     ** Cách sử dụng tools chính xác:**
@@ -282,7 +281,7 @@ order_agent = LlmAgent(
          total_amount=prepare_result.totalAmount
        )
     
-    3. Trả về redirect_result.redirect_html cho user
+    3. User thấy action = "checkout_redirect" và selected_item_keys và tự động redirect sau 2 giây
     ```
 
     ** Ví dụ xử lý cụ thể - LUỒNG CHÍNH XÁC:**
@@ -298,7 +297,7 @@ order_agent = LlmAgent(
        IF smart_add_item_result.status == "success" AND smart_add_item_result.can_proceed_to_order == true:
          → GỌI prepare_checkout_data(selected_products=json.dumps(products_ready))
          → GỌI redirect_to_checkout(selected_items=json.dumps(selectedItems), total_amount=totalAmount)
-         → TRẢ VỀ redirect_html cho user
+         
          
        ELSE:
          → Thông báo lỗi và dừng

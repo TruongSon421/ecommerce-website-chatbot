@@ -37,6 +37,7 @@ web_search_tool = LlmAgent(
 
 chatchit_agent = LlmAgent(
     name="ChatChit",
+    model="gemini-2.0-flash",
     description="Handles casual greetings, general electronics technical questions, unrelated or sensitive topics.",
     global_instruction=GLOBAL_INSTRUCTION,
     instruction=f"""

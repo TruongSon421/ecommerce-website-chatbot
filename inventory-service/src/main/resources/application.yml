@@ -100,6 +100,7 @@ logging:
   level:
     com.eazybytes: DEBUG
     org.springframework.kafka: INFO
+    com.eazybytes.service.LLMService: DEBUG
 
 springdoc:
   api-docs:
@@ -115,4 +116,14 @@ inventory:
     enable-email-alert: false
   metrics:
     enable: true
+
+openai:
+  api:
+    key: '${OPENAI_API_KEY}'
+    url: https://api.openai.com/v1/chat/completions
+  model: gpt-4o-mini
+
+# LLM Configuration
+llm:
+  enabled: true  # Set to true to enable OpenAI integration
 
