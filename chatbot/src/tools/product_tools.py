@@ -1033,7 +1033,7 @@ def mongodb_search_specific_requirements_get_product_ids(query: str, device_type
                     # Màn hình
                     "screenSize", "displayTechnology", "displayResolution", "maxBrightness", "screenProtection",
                     # Pin và sạc
-                    "batteryType", "maxChargingPower", "batteryFeatures",
+                    "batteryType", "maxChargingPower", "batteryFeatures","batteryCapacity"
                     # Kết nối
                     "mobileNetwork", "simType", "wifi", "bluetooth", "gps", "headphoneJack", "otherConnectivity",
                     # Bảo mật và tính năng
@@ -1120,34 +1120,34 @@ Các fields có sẵn cho {device_type}: {device_fields}
 FIELD TYPES FOR {device_type.upper()}:
 
 LAPTOP FIELDS:
-- Numeric: ram, maxRam, ramBusSpeed, coreCount, threadCount, refreshRate, battery
-- String: processorModel, cpuSpeed, maxCpuSpeed, ramType, screenSize, resolution, graphicCard, webcam, keyboardBacklight, size, material, os, brand, productName, description
-- Arrays: storage, colorGamut, displayTechnology, audioTechnology, ports, wirelessConnectivity, otherFeatures
+- Numeric: ram, maxRam, ramBusSpeed, coreCount, threadCount, refreshRate, battery, cpuSpeed, maxCpuSpeed
+- String: processorModel, ramType, screenSize, resolution, graphicCard, webcam, keyboardBacklight, size, material, os, brand, productName, description
+- Arrays: storage, colorGamut, displayTechnology, audioTechnology, ports, wirelessConnectivity, otherFeatures, touchScreen
 
 PHONE FIELDS:
-- Numeric: ram, storage, availableStorage, maxBrightness, maxChargingPower
-- String: processor, cpuSpeed, gpu, os, displayTechnology, displayResolution, screenSize, batteryType, mobileNetwork, simType, headphoneJack, waterResistance, designType, materials, sizeWeight, brand, productName, description
+- Numeric: ram, storage, availableStorage, maxBrightness, maxChargingPower, batteryCapacity
+- String: processor, cpuSpeed, gpu, os, displayTechnology, displayResolution, screenSize, batteryType, mobileNetwork, simType, headphoneJack, waterResistance, designType, materials, sizeWeight, rearCameraResolution, frontCameraResolution, rearFlash, contactLimit, screenProtection, chargingPort, brand, productName, description
 - Arrays: rearCameraFeatures, frontCameraFeatures, rearVideoRecording, batteryFeatures, securityFeatures, specialFeatures, recording, video, audio, wifi, bluetooth, gps, otherConnectivity
 
 WIRELESS_EARPHONE FIELDS:
-- Numeric: (extracted from batteryLife, chargingCaseBatteryLife)
-- String: batteryLife, chargingCaseBatteryLife, simultaneousConnections, size, brandOrigin, manufactured, brand, productName, description
+- Numeric: batteryLife, chargingCaseBatteryLife, weight (extracted from text values)
+- String: simultaneousConnections, size, brandOrigin, manufactured, brand, productName, description
 - Arrays: chargingPort, audioTechnology, compatibility, connectionApp, features, connectionTechnology, controlType, controlButtons
 
 BACKUP_CHARGER FIELDS:
 - Numeric: batteryCapacity, weight (extracted from capacity and weight values)
-- String: batteryCellType, size, brandOrigin, manufactured, brand, productName, description
+- String: chargingEfficiency, batteryCellType, size, brandOrigin, manufactured, brand, productName, description
 - Arrays: input, output, chargingTime, technologyFeatures
 
 HEADPHONE FIELDS:
-- Numeric: weight (extracted from batteryLife)
-- String: batteryLife, chargingPort, audioJack, simultaneousConnections, size, brandOrigin, manufactured, brand, productName, description
-- Arrays: connectionTechnology, compatibility, features, controlType, controlButtons
+- Numeric: weight (extracted from text values)
+- String: batteryLife, chargingPort, audioJack, cableLength, simultaneousConnections, size, brandOrigin, manufactured, connectionApp, brand, productName, description
+- Arrays: connectionTechnology, compatibility, features, controlType, controlButtons, audioTechnology
 
 WIRED_EARPHONE FIELDS:
 - Numeric: weight
 - String: audioJack, cableLength, simultaneousConnections, brandOrigin, manufactured, brand, productName, description
-- Arrays: compatibility, features, controlType, controlButtons
+- Arrays: audioTechnology, compatibility, features, controlType, controlButtons
 
 Trả về JSON:
 {{
@@ -1172,138 +1172,149 @@ Trả về JSON:
 }}
 
 Rules:
-1. Với numeric fields (RAM, storage, core count, thread count, speed): dùng numeric operators (gte, lte, gt, lt)
-2. Với string fields (processor, brand, model, graphic card): dùng regex
-3. Với array fields (storage options, display tech, ports, connectivity): dùng elemMatch hoặc in
-4. Trích xuất số từ text: "32GB" → value: 32, type: "number"
-5. Laptop specs: "RTX 4070" → field: "graphicCard", operator: "regex", value: "RTX 4070"
-6. Phone camera specs: "48MP" → field: "rearCameraResolution", operator: "regex", value: "48 MP"
-7. Features trong array: "OIS" → field: "rearCameraFeatures", operator: "elemMatch", value: "OIS", is_array: true
-8. Laptop ports: "USB-C" → field: "ports", operator: "elemMatch", value: "USB Type-C", is_array: true
-9. **XỬ LÝ MIN/MAX:**
-   - "pin cao nhất", "camera tốt nhất", "hiệu năng cao nhất" → sort_fields với order: "desc"
-   - "giá rẻ nhất", "nhẹ nhất", "nhỏ nhất" → sort_fields với order: "asc"
+1. **NUMERIC FIELDS** (dùng numeric operators: gte, lte, gt, lt):
+   - RAM: "8GB", "16GB" → value: 8, 16
+   - Storage/Dung lượng: "512GB", "1TB" → value: 512, 1024
+   - CPU Speed: "2.4GHz", "3.2GHz" → value: 2.4, 3.2
+   - Battery/Pin: "4000mAh", "5000mAh" → value: 4000, 5000
+   - Camera: "48MP", "108MP" → value: 48, 108
+   - Screen size: "6.1 inch", "15.6 inch" → value: 6.1, 15.6
+
+2. **STRING FIELDS** (dùng regex):
+   - Processor/Chip: "Snapdragon 8 Gen 2", "Intel i7", "Ryzen 5"
+   - GPU/Card đồ họa: "RTX 4070", "GTX 1650", "Adreno 740"
+   - OS: "Windows 11", "Android 13", "iOS 16"
+   - Brand: "Apple", "Samsung", "Dell"
+
+3. **ARRAY FIELDS** (dùng elemMatch hoặc in):
+   - Features/Tính năng: "OIS", "5G", "Face ID", "Wireless charging"
+   - Connectivity: "Wi-Fi 6", "Bluetooth 5.3", "USB-C", "Lightning"
+   - Display tech: "OLED", "IPS", "AMOLED", "Retina"
+   - Audio tech: "Dolby Atmos", "DTS:X", "Hi-Res Audio"
+
+4. **PHÂN BIỆT TOÁN TỬ SO SÁNH CHÍNH XÁC:**
+   - "lớn hơn X", "trên X", "hơn X", "cao hơn X" → operator: "gt" (strictly greater than)
+   - "từ X trở lên", "ít nhất X", "X trở lên", "tối thiểu X" → operator: "gte" (greater than or equal)
+   - "nhỏ hơn X", "dưới X", "thấp hơn X", "ít hơn X" → operator: "lt" (strictly less than)  
+   - "tối đa X", "không quá X", "X trở xuống", "nhiều nhất X" → operator: "lte" (less than or equal)
+   - "bằng X", "đúng X", "chính xác X" → operator: "eq" (equal)
+
+5. **XỬ LÝ MIN/MAX**:
+   - "cao nhất", "tốt nhất", "mạnh nhất" → sort order: "desc"
+   - "thấp nhất", "rẻ nhất", "nhẹ nhất" → sort order: "asc"
    - Không cần conditions cho min/max, chỉ cần sort_fields
-10. text_search_keywords: các từ khóa quan trọng để tìm kiếm full-text
+
+6. **KEYWORDS QUAN TRỌNG**:
+   - text_search_keywords: các từ khóa quan trọng để tìm kiếm full-text
+   - text_search_fields: thường là ["productName", "description"] + related fields
 
 Ví dụ laptop:
-Input: "laptop RAM 16GB SSD 512GB Ryzen 5 có USB-C"
+Input: "laptop gaming RAM 16GB RTX 4070 SSD 1TB"
 Output: {{
     "conditions": [
         {{"field": "ram", "operator": "gte", "value": "16", "type": "number", "is_array": false}},
-        {{"field": "storage", "operator": "elemMatch", "value": "512 GB SSD", "type": "string", "is_array": true}},
-        {{"field": "processorModel", "operator": "regex", "value": "Ryzen 5", "type": "string", "is_array": false}},
-        {{"field": "ports", "operator": "elemMatch", "value": "USB Type-C", "type": "string", "is_array": true}}
+        {{"field": "graphicCard", "operator": "regex", "value": "RTX 4070", "type": "string", "is_array": false}},
+        {{"field": "storage", "operator": "elemMatch", "value": "1TB SSD", "type": "string", "is_array": true}}
     ],
     "sort_fields": [],
-    "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["16GB", "512GB", "SSD", "Ryzen", "USB-C"]
-}}
-
-Ví dụ MIN/MAX laptop:
-Input: "laptop gaming hiệu năng cao nhất"
-Output: {{
-    "conditions": [
-        {{"field": "graphicCard", "operator": "regex", "value": "RTX|GTX", "type": "string", "is_array": false}}
-    ],
-    "sort_fields": [
-        {{"field": "ram", "order": "desc", "priority": 1}},
-        {{"field": "processorModel", "order": "desc", "priority": 2}}
-    ],
     "text_search_fields": ["productName", "description", "graphicCard"],
-    "text_search_keywords": ["gaming", "hiệu năng", "cao nhất"]
+    "text_search_keywords": ["gaming", "16GB", "RTX", "4070", "1TB", "SSD"]
 }}
 
-Ví dụ phone:
-Input: "RAM 8GB camera 48MP có OIS wifi 6"
-Output: {{
-    "conditions": [
-        {{"field": "ram", "operator": "gte", "value": "8", "type": "number", "is_array": false}},
-        {{"field": "rearCameraResolution", "operator": "regex", "value": "48 MP", "type": "string", "is_array": false}},
-        {{"field": "rearCameraFeatures", "operator": "elemMatch", "value": "OIS", "type": "string", "is_array": true}},
-        {{"field": "wifi", "operator": "elemMatch", "value": "Wi-Fi 6", "type": "string", "is_array": true}}
-    ],
-    "sort_fields": [],
-    "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["48MP", "OIS", "wifi", "6"]
-}}
-
-Ví dụ MIN/MAX phone:
-Input: "điện thoại pin cao nhất"
+Input: "laptop pin cao nhất"
 Output: {{
     "conditions": [],
     "sort_fields": [
-        {{"field": "batteryCapacity", "order": "desc", "priority": 1}}
+        {{"field": "battery", "order": "desc", "priority": 1}}
     ],
-    "text_search_fields": ["productName", "batteryCapacity"],
+    "text_search_fields": ["productName", "description"],
     "text_search_keywords": ["pin", "cao nhất", "battery"]
 }}
 
-Input: "điện thoại camera tốt nhất"
+Ví dụ phone:
+Input: "điện thoại camera 108MP chip Snapdragon pin 5000mAh"
+Output: {{
+    "conditions": [
+        {{"field": "rearCameraResolution", "operator": "gte", "value": "108", "type": "number", "is_array": false}},
+        {{"field": "processor", "operator": "regex", "value": "Snapdragon", "type": "string", "is_array": false}},
+        {{"field": "batteryCapacity", "operator": "gte", "value": "5000", "type": "number", "is_array": false}}
+    ],
+    "sort_fields": [],
+    "text_search_fields": ["productName", "description", "processor"],
+    "text_search_keywords": ["108MP", "Snapdragon", "5000mAh", "camera", "chip", "pin"]
+}}
+
+Input: "điện thoại pin lớn hơn 6000 mAh"
+Output: {{
+    "conditions": [
+        {{"field": "batteryCapacity", "operator": "gt", "value": "6000", "type": "number", "is_array": false}}
+    ],
+    "sort_fields": [],
+    "text_search_fields": ["productName", "description"],
+    "text_search_keywords": ["pin", "lớn hơn", "6000", "mAh"]
+}}
+
+Input: "điện thoại màn hình lớn nhất"
 Output: {{
     "conditions": [],
     "sort_fields": [
-        {{"field": "rearCameraResolution", "order": "desc", "priority": 1}},
-        {{"field": "frontCameraResolution", "order": "desc", "priority": 2}}
+        {{"field": "screenSize", "order": "desc", "priority": 1}}
     ],
-    "text_search_fields": ["productName", "rearCameraResolution", "frontCameraResolution"],
-    "text_search_keywords": ["camera", "tốt nhất"]
+    "text_search_fields": ["productName", "screenSize"],
+    "text_search_keywords": ["màn hình", "lớn nhất", "screen"]
 }}
 
 Ví dụ wireless_earphone:
-Input: "tai nghe true wireless pin 30 giờ Bluetooth 5.4 chống nước có mic"
+Input: "tai nghe không dây pin 8 giờ chống nước Bluetooth 5.3"
 Output: {{
     "conditions": [
-        {{"field": "chargingCaseBatteryLife", "operator": "regex", "value": "30 giờ", "type": "string", "is_array": false}},
-        {{"field": "connectionTechnology", "operator": "elemMatch", "value": "Bluetooth 5.4", "type": "string", "is_array": true}},
+        {{"field": "batteryLife", "operator": "gte", "value": "8", "type": "number", "is_array": false}},
         {{"field": "features", "operator": "elemMatch", "value": "chống nước", "type": "string", "is_array": true}},
-        {{"field": "features", "operator": "elemMatch", "value": "mic", "type": "string", "is_array": true}}
+        {{"field": "connectionTechnology", "operator": "elemMatch", "value": "Bluetooth 5.3", "type": "string", "is_array": true}}
     ],
     "sort_fields": [],
     "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["wireless", "30", "giờ", "Bluetooth", "chống nước", "mic"]
+    "text_search_keywords": ["không dây", "8 giờ", "chống nước", "Bluetooth", "5.3"]
 }}
 
 Ví dụ backup_charger:
-Input: "pin sạc dự phòng 24000mAh PD 140W Type-C sạc nhanh"
+Input: "sạc dự phòng 20000mAh sạc nhanh PD USB-C"
 Output: {{
     "conditions": [
-        {{"field": "batteryCapacity", "operator": "gte", "value": "24000", "type": "number", "is_array": false}},
-        {{"field": "output", "operator": "elemMatch", "value": "140W", "type": "string", "is_array": true}},
-        {{"field": "output", "operator": "elemMatch", "value": "Type-C", "type": "string", "is_array": true}},
-        {{"field": "input", "operator": "elemMatch", "value": "Type-C", "type": "string", "is_array": true}}
+        {{"field": "batteryCapacity", "operator": "gte", "value": "20000", "type": "number", "is_array": false}},
+        {{"field": "technologyFeatures", "operator": "elemMatch", "value": "sạc nhanh", "type": "string", "is_array": true}},
+        {{"field": "technologyFeatures", "operator": "elemMatch", "value": "PD", "type": "string", "is_array": true}},
+        {{"field": "output", "operator": "elemMatch", "value": "USB-C", "type": "string", "is_array": true}}
     ],
     "sort_fields": [],
     "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["24000mAh", "PD", "140W", "Type-C", "sạc nhanh"]
+    "text_search_keywords": ["20000mAh", "sạc nhanh", "PD", "USB-C"]
 }}
 
 Ví dụ headphone:
-Input: "tai nghe chụp tai pin 70 giờ Bluetooth 5.3 có mic phím nhấn"
+Input: "tai nghe chụp tai pin 50 giờ có mic noise cancelling"
 Output: {{
     "conditions": [
-        {{"field": "batteryLife", "operator": "regex", "value": "70 giờ", "type": "string", "is_array": false}},
-        {{"field": "connectionTechnology", "operator": "elemMatch", "value": "Bluetooth 5.3", "type": "string", "is_array": true}},
+        {{"field": "batteryLife", "operator": "regex", "value": "50", "type": "string", "is_array": false}},
         {{"field": "features", "operator": "elemMatch", "value": "mic", "type": "string", "is_array": true}},
-        {{"field": "controlType", "operator": "elemMatch", "value": "Phím nhấn", "type": "string", "is_array": true}}
+        {{"field": "features", "operator": "elemMatch", "value": "noise cancelling", "type": "string", "is_array": true}}
     ],
     "sort_fields": [],
     "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["chụp tai", "70", "giờ", "Bluetooth", "mic", "phím nhấn"]
+    "text_search_keywords": ["chụp tai", "50 giờ", "mic", "noise cancelling"]
 }}
 
 Ví dụ wired_earphone:
-Input: "tai nghe có dây 3.5mm có mic tương thích iPhone Android"
+Input: "tai nghe có dây jack 3.5mm có mic tương thích điện thoại"
 Output: {{
     "conditions": [
-        {{"field": "audioJack", "operator": "regex", "value": "3.5 mm", "type": "string", "is_array": false}},
+        {{"field": "audioJack", "operator": "regex", "value": "3.5mm", "type": "string", "is_array": false}},
         {{"field": "features", "operator": "elemMatch", "value": "mic", "type": "string", "is_array": true}},
-        {{"field": "compatibility", "operator": "elemMatch", "value": "iPhone", "type": "string", "is_array": true}},
-        {{"field": "compatibility", "operator": "elemMatch", "value": "Android", "type": "string", "is_array": true}}
+        {{"field": "compatibility", "operator": "elemMatch", "value": "điện thoại", "type": "string", "is_array": true}}
     ],
     "sort_fields": [],
     "text_search_fields": ["productName", "description"],
-    "text_search_keywords": ["3.5mm", "mic", "iPhone", "Android"]
+    "text_search_keywords": ["có dây", "3.5mm", "mic", "tương thích"]
 }}
 
 CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH.
@@ -1311,7 +1322,7 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH.
 
         print(f"LLM analyzing specific requirements: {query}")
         llm_response = llm.complete(llm_prompt)
-        print(llm_response)
+        print("LLM response:",llm_response)
         # Parse LLM response
         import json
         import re
@@ -2026,10 +2037,10 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         device_name = device_name_map.get(device_type, device_type)
         
         response = []
-        response.append(f"🏆 **Top {device_name} có {field_vn} lớn nhất**")
-        response.append(f"📝 Yêu cầu: '{query}'")
-        response.append(f"🎯 Tiêu chí: {field_vn} cao nhất")
-        response.append(f"📊 Kết quả: {len(max_group_ids)} sản phẩm")
+        response.append(f"**Top {device_name} có {field_vn} lớn nhất**")
+        response.append(f"Yêu cầu: '{query}'")
+        response.append(f"Tiêu chí: {field_vn} cao nhất")
+        response.append(f"Kết quả: {len(max_group_ids)} sản phẩm")
         response.append("")
         
         # Create mapping for easy lookup
@@ -2044,11 +2055,11 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
             numeric_value = mongo_info.get('numeric_value', 0)
             
             product_info = f"**{i}. {group_name}** - {brand}"
-            product_info += f"\n   🆔 Group ID: {group_id}"
-            product_info += f"\n   🏆 {field_vn}: {field_value}"
+            product_info += f"\n Group ID: {group_id}"
+            product_info += f"\n {field_vn}: {field_value}"
             if numeric_value > 0:
                 product_info += f" (giá trị: {numeric_value})"
-            product_info += f"\n   💰 Giá từ: {int(min_price):,} đồng" if min_price else "\n   💰 Giá: Đang cập nhật"
+            product_info += f"\n  Giá từ: {int(min_price):,} đồng" if min_price else "\n   💰 Giá: Đang cập nhật"
             
             response.append(product_info)
             
@@ -2282,7 +2293,7 @@ def detailed_specs_search_hybrid(query: str, device_type: str, top_k: int = 5) -
         
         # Hiển thị MongoDB search conditions nếu có
         if mongodb_search_info and mongodb_search_info.get("applied_conditions"):
-            response.append("🔧 **Điều kiện kỹ thuật đã áp dụng:**")
+            response.append("**Điều kiện kỹ thuật đã áp dụng:**")
             for condition in mongodb_search_info["applied_conditions"]:
                 field = condition["field"]
                 operator = condition["operator"]
