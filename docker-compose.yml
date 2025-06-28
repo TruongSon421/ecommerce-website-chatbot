@@ -320,7 +320,7 @@ services:
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/products  # Thêm MongoDB URI
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - OPENAI_API_KEY = # Thêm openai api key
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Đọc từ environment variable
     networks:
       - ecommerce_network
     healthcheck:

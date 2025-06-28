@@ -130,7 +130,7 @@ inventory:
 
 openai:
   api:
-    key: ''
+    key: ${OPENAI_API_KEY:}  # Đọc từ environment variable
     url: https://api.openai.com/v1/chat/completions
   model: gpt-4o-mini
 
