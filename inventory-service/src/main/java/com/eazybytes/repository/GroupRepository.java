@@ -55,4 +55,6 @@ public interface GroupRepository extends JpaRepository<Group, Integer> {
 
     @Query("SELECT g FROM Group g JOIN g.groupTags gt WHERE g.brand IN :brand AND gt.tag.tagName IN :tags GROUP BY g HAVING COUNT(DISTINCT gt.tag) = :tagCount")
     List<Group> findByAllTagsAndBrands(@Param("tags") List<String> tags, @Param("tagCount") Long tagCount, @Param("brand") List<String> brand);
+
+    
 }

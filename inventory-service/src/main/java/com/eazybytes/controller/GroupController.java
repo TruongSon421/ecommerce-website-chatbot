@@ -183,6 +183,19 @@ public class GroupController {
         }
     }
 
+    @GetMapping("/api/test-query")
+    public ResponseEntity<String> testQuery(
+            @RequestParam String query, 
+            @RequestParam String deviceType) {
+        
+        try {
+            groupService.testQuery(query, deviceType);
+            return ResponseEntity.ok("Test completed. Check server logs for results.");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Test failed: " + e.getMessage());
+        }
+    }
+
     @PostMapping
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
     public ResponseEntity<Map<String, Integer>> createGroup(@RequestBody Map<String, Object> request) {

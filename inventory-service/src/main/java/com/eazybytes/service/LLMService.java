@@ -40,24 +40,7 @@ public class LLMService {
     @Value("${llm.enabled:false}")
     private boolean llmEnabled;
 
-    @PostConstruct
-    public void debugConfig() {
-        log.info("=== OpenAI Configuration Debug ===");
-        log.info("LLM Enabled: {}", llmEnabled);
-        log.info("OpenAI API URL: {}", openaiApiUrl);
-        log.info("OpenAI Model: {}", openaiModel);
-        
-        if (openaiApiKey != null && !openaiApiKey.trim().isEmpty()) {
-            log.info("OpenAI API Key configured: Yes");
-            log.info("API Key length: {}", openaiApiKey.length());
-            log.info("API Key prefix: {}", openaiApiKey.substring(0, Math.min(15, openaiApiKey.length())));
-            log.info("API Key format valid: {}", openaiApiKey.startsWith("sk-"));
-        } else {
-            log.warn("OpenAI API Key: NOT CONFIGURED");
-        }
-        log.info("=====================================");
-    }
-
+    
     @PostConstruct
     public void debugConfig() {
         log.info("=== OpenAI Configuration Debug ===");
