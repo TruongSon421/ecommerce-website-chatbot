@@ -687,7 +687,7 @@ def product_consultation_tool_mongo(device: str, query: str, top_k: int = 5) -> 
         # **SPECIFIC REQUIREMENTS SEARCH với MongoDB + Elasticsearch**
         if hasattr(reqs, 'specific_requirements') and reqs.specific_requirements and reqs.specific_requirements != '':
             print(f"Processing specific_requirements: {reqs.specific_requirements}")
-            
+            filter_params["search"] = reqs.specific_requirements
             has_price_requirement = bool(min_budget or max_budget)
             
             # **BƯỚC 1: Thử MongoDB search trước**
@@ -717,7 +717,7 @@ def product_consultation_tool_mongo(device: str, query: str, top_k: int = 5) -> 
             
             # **BƯỚC 2: Nếu MongoDB không có kết quả đủ, dùng Elasticsearch**
             search_group_ids = []
-            if len(mongo_group_ids) < 3:  # Threshold để quyết định có dùng ES hay không
+            if len(mongo_group_ids) ==0:  # Threshold để quyết định có dùng ES hay không
                 print("MongoDB results insufficient, trying Elasticsearch...")
                 
                 try:
@@ -1839,7 +1839,7 @@ def debug_mongodb_field_data(device_type: str = "phone", field_name: str = "fron
 
 def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> str:
     """
-    Xử lý các query tìm kiếm "lớn nhất", "cao nhất", "tối đa".
+    Xử lý các query tìm kiếm "lớn nhất", "cao nhất", "tối đa" với unit validation.
     
     Args:
         query: Query chứa từ khóa superlative
@@ -1862,49 +1862,35 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         }
     
     try:
-        # **BƯỚC 1: Phân tích field cần tìm max**
-        field_mapping = {
-            # Common fields
-            "ram": ["ram lớn nhất", "ram cao nhất", "ram max", "ram tối đa"],
-            "storage": ["dung lượng lớn nhất", "bộ nhớ lớn nhất", "storage lớn nhất"],
-            "batteryCapacity": ["pin lớn nhất", "pin cao nhất", "battery lớn nhất", "dung lượng pin cao nhất"],
-            
-            # Laptop specific
-            "processorModel": ["cpu mạnh nhất", "processor mạnh nhất", "vi xử lý mạnh nhất"],
-            "graphicCard": ["gpu mạnh nhất", "card đồ họa mạnh nhất", "vga mạnh nhất"],
-            "refreshRate": ["refresh rate cao nhất", "tần số quét cao nhất"],
-            
-            # Phone specific  
-            "rearCameraResolution": ["camera sau cao nhất", "camera chính cao nhất"],
-            "frontCameraResolution": ["camera trước cao nhất", "camera selfie cao nhất"],
-            "maxBrightness": ["độ sáng cao nhất", "brightness cao nhất"],
-            
-            # Audio devices
-            "batteryLife": ["thời lượng pin cao nhất", "pin lâu nhất"],
-            "chargingCaseBatteryLife": ["pin hộp sạc cao nhất", "thời lượng sạc cao nhất"]
-        }
+        # Import config functions
+        from tools.superlative_fields_config import (
+            find_superlative_field_by_keywords,
+            get_default_superlative_field,
+            validate_field_value_has_unit,
+            get_superlative_field_config
+        )
         
-        # Tìm field phù hợp với query
-        target_field = None
-        for field, keywords in field_mapping.items():
-            if any(keyword in query.lower() for keyword in keywords):
-                target_field = field
-                break
+        # **BƯỚC 1: Tìm field cần tìm max dựa trên config**
+        target_field, field_config = find_superlative_field_by_keywords(device_type, query)
         
-        # Nếu không tìm được field cụ thể, dùng field mặc định theo device
-        if not target_field:
-            default_fields = {
-                "laptop": "ram",
-                "phone": "ram", 
-                "wireless_earphone": "batteryLife",
-                "headphone": "batteryLife",
-                "backup_charger": "batteryCapacity"
-            }
-            target_field = default_fields.get(device_type, "ram")
+        # Nếu không tìm được field cụ thể, dùng field mặc định
+        if not target_field or not field_config:
+            target_field, field_config = get_default_superlative_field(device_type)
+            print(f"Using default field: {target_field}")
         
-        print(f"Superlative search: {device_type} with max {target_field}")
+        if not target_field or not field_config:
+            return f"Không thể xác định trường tìm kiếm 'lớn nhất' cho {device_type}."
         
-        # **BƯỚC 2: MongoDB aggregation để tìm max values**
+        field_name_vn = field_config.get("name_vn", target_field)
+        required_units = field_config.get("required_units", [])
+        unit_regex = field_config.get("unit_regex", "")
+        sort_order = field_config.get("sort_order", "desc")
+        
+        print(f"Superlative search: {device_type} with max {target_field} ({field_name_vn})")
+        print(f"Required units: {required_units}")
+        print(f"Unit regex: {unit_regex}")
+        
+        # **BƯỚC 2: MongoDB aggregation để tìm max values với unit validation**
         db = mongodb.connect()
         if db is None:
             return "Không thể kết nối MongoDB để tìm giá trị lớn nhất."
@@ -1918,11 +1904,25 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         if device_type in device_type_to_class:
             base_filter["_class"] = device_type_to_class[device_type]
         
-        # Aggregation pipeline để tìm max values
+        # **BƯỚC 3: Aggregation pipeline với unit validation**
         pipeline = [
             {"$match": base_filter},
             {
                 "$addFields": {
+                    "field_value": f"${target_field}",
+                    "has_valid_unit": {
+                        "$cond": [
+                            {"$ne": [f"${target_field}", None]},
+                            {
+                                "$cond": [
+                                    {"$regexMatch": {"input": f"${target_field}", "regex": unit_regex, "options": "i"}},
+                                    True,
+                                    False
+                                ]
+                            },
+                            False
+                        ]
+                    } if unit_regex else True,
                     "numeric_value": {
                         "$convert": {
                             "input": {
@@ -1943,19 +1943,41 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
                     }
                 }
             },
-            {"$match": {"numeric_value": {"$gt": 0}}},  # Filter out invalid values
-            {"$sort": {"numeric_value": -1}},  # Sort descending (largest first)
-            {"$limit": top_k * 2},  # Get more to ensure enough results after MySQL mapping
-            {"$project": {"_id": 1, "productName": 1, "brand": 1, target_field: 1, "numeric_value": 1}}
+            {
+                "$match": {
+                    "has_valid_unit": True,
+                    "numeric_value": {"$gt": 0}
+                }
+            },
+            {"$sort": {"numeric_value": -1 if sort_order == "desc" else 1}},
+            {"$limit": top_k * 3},  # Lấy nhiều hơn để đảm bảo có đủ sau khi convert
+            {
+                "$project": {
+                    "_id": 1, 
+                    "productName": 1, 
+                    "brand": 1, 
+                    target_field: 1, 
+                    "field_value": 1,
+                    "numeric_value": 1,
+                    "has_valid_unit": 1
+                }
+            }
         ]
         
         print(f"MongoDB aggregation pipeline: {pipeline}")
         results = list(collection.aggregate(pipeline))
         
         if not results:
-            return f"Không tìm thấy {device_type} nào có {target_field} hợp lệ."
+            return f"Không tìm thấy {device_type} nào có {field_name_vn} hợp lệ với đơn vị {required_units}."
         
-        # **BƯỚC 3: Convert product_ids to group_ids**
+        print(f"MongoDB found {len(results)} products with valid units")
+        
+        # **BƯỚC 4: Log một vài kết quả để debug**
+        print("Sample results:")
+        for i, result in enumerate(results[:3]):
+            print(f"  {i+1}. {result.get('productName', 'N/A')}: {result.get('field_value', 'N/A')} (numeric: {result.get('numeric_value', 0)}, valid_unit: {result.get('has_valid_unit', False)})")
+        
+        # **BƯỚC 5: Convert product_ids to group_ids**
         max_group_ids = []
         max_info = []
         
@@ -1974,14 +1996,15 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
                         "group_id": group_id,
                         "product_name": result.get('productName', 'N/A'),
                         "brand": result.get('brand', 'N/A'),
-                        "field_value": result.get(target_field, 'N/A'),
-                        "numeric_value": result.get('numeric_value', 0)
+                        "field_value": result.get('field_value', 'N/A'),
+                        "numeric_value": result.get('numeric_value', 0),
+                        "has_valid_unit": result.get('has_valid_unit', False)
                     })
         
         if not max_group_ids:
-            return f"Không tìm thấy mapping MySQL cho {device_type} có {target_field} lớn nhất."
+            return f"Không tìm thấy mapping MySQL cho {device_type} có {field_name_vn} lớn nhất."
         
-        # **BƯỚC 4: Get detailed info from MySQL**
+        # **BƯỚC 6: Get detailed info from MySQL**
         conn = mysql.connect()
         cursor = conn.cursor()
         
@@ -2007,7 +2030,7 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         cursor.execute(detail_sql, params)
         mysql_results = cursor.fetchall()
         
-        # **BƯỚC 5: Build response**
+        # **BƯỚC 7: Build response**
         current_group_ids.clear()
         current_group_ids.extend(max_group_ids)
         
@@ -2015,19 +2038,10 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         filter_params.update({
             "search": query,
             "type": device_type,
-            "method": "superlative_mongodb_max",
-            "target_field": target_field
+            "method": "superlative_mongodb_max_with_units",
+            "target_field": target_field,
+            "required_units": ",".join(required_units)
         })
-        
-        # Field name translation
-        field_translations = {
-            "ram": "RAM", "storage": "Bộ nhớ", "batteryCapacity": "Dung lượng pin",
-            "processorModel": "Processor", "graphicCard": "Card đồ họa", 
-            "refreshRate": "Tần số quét", "rearCameraResolution": "Camera sau",
-            "frontCameraResolution": "Camera trước", "batteryLife": "Thời lượng pin",
-            "chargingCaseBatteryLife": "Pin hộp sạc", "maxBrightness": "Độ sáng màn hình"
-        }
-        field_vn = field_translations.get(target_field, target_field)
         
         device_name_map = {
             "laptop": "laptop", "phone": "điện thoại", 
@@ -2037,10 +2051,10 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         device_name = device_name_map.get(device_type, device_type)
         
         response = []
-        response.append(f"**Top {device_name} có {field_vn} lớn nhất**")
+        response.append(f"**Top {device_name} có {field_name_vn} lớn nhất**")
         response.append(f"Yêu cầu: '{query}'")
-        response.append(f"Tiêu chí: {field_vn} cao nhất")
-        response.append(f"Kết quả: {len(max_group_ids)} sản phẩm")
+        response.append(f"Tiêu chí: {field_name_vn} cao nhất (đơn vị: {', '.join(required_units)})")
+        response.append(f"Kết quả: {len(max_group_ids)} sản phẩm hợp lệ")
         response.append("")
         
         # Create mapping for easy lookup
@@ -2053,38 +2067,40 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
             mongo_info = info_map.get(group_id, {})
             field_value = mongo_info.get('field_value', 'N/A')
             numeric_value = mongo_info.get('numeric_value', 0)
+            has_valid_unit = mongo_info.get('has_valid_unit', False)
             
             product_info = f"**{i}. {group_name}** - {brand}"
-            product_info += f"\n Group ID: {group_id}"
-            product_info += f"\n {field_vn}: {field_value}"
+            product_info += f"\n   Group ID: {group_id}"
+            product_info += f"\n   {field_name_vn}: {field_value}"
             if numeric_value > 0:
-                product_info += f" (giá trị: {numeric_value})"
-            product_info += f"\n  Giá từ: {int(min_price):,} đồng" if min_price else "\n   💰 Giá: Đang cập nhật"
+                product_info += f" (giá trị số: {numeric_value})"
+            if has_valid_unit:
+                product_info += " ✓"
+            else:
+                product_info += " (đơn vị không chuẩn)"
+            product_info += f"\n   Giá từ: {int(min_price):,} đồng" if min_price else "\n   💰 Giá: Đang cập nhật"
             
             response.append(product_info)
             
-            # Hiển thị tags
-            if tags:
-                tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
-                if tag_list:
-                    response.append(f"   🏷️  Tính năng: {', '.join(tag_list[:5])}")
-                    if len(tag_list) > 5:
-                        response.append(f"      và {len(tag_list) - 5} tính năng khác...")
             
-            response.append("")
         
         # Thêm thống kê
         if max_info:
             max_value = max_info[0]['numeric_value']
             min_value = max_info[-1]['numeric_value']
-            response.append(f"📈 **Thống kê {field_vn}:**")
+            valid_units_count = sum(1 for info in max_info if info.get('has_valid_unit', False))
+            
+            response.append(f"📈 **Thống kê {field_name_vn}:**")
             response.append(f"   • Giá trị cao nhất: {max_value}")
             response.append(f"   • Giá trị thấp nhất trong top: {min_value}")
+            response.append(f"   • Sản phẩm có đơn vị hợp lệ: {valid_units_count}/{len(max_info)}")
+            response.append(f"   • Đơn vị được chấp nhận: {', '.join(required_units)}")
             response.append("")
         
         response.append("💡 **Ghi chú:**")
-        response.append(f"   • Kết quả được sắp xếp theo {field_vn} từ cao đến thấp")
-        response.append("   • Sử dụng Group ID để xem chi tiết hoặc so sánh")
+        response.append(f"   • Kết quả được sắp xếp theo {field_name_vn} từ cao đến thấp")
+        response.append(f"   • Chỉ tính các sản phẩm có đơn vị hợp lệ: {', '.join(required_units)}")
+        response.append("   • ✓ = Có đơn vị hợp lệ, ⚠️ = Đơn vị không chuẩn")
         
         cursor.close()
         conn.close()
@@ -2094,7 +2110,116 @@ def handle_superlative_query(query: str, device_type: str, top_k: int = 5) -> st
         print(f"Error in handle_superlative_query: {str(e)}")
         import traceback
         traceback.print_exc()
-        return f"Lỗi tìm kiếm {device_type} {target_field} lớn nhất: {str(e)}"
+        
+        # Fallback to simple approach if config fails
+        try:
+            return handle_superlative_query_fallback(query, device_type, top_k)
+        except:
+            return f"Lỗi tìm kiếm {device_type} với tiêu chí 'lớn nhất': {str(e)}"
+    finally:
+        mongodb.disconnect()
+
+def handle_superlative_query_fallback(query: str, device_type: str, top_k: int = 5) -> str:
+    """
+    Fallback method khi config system fails.
+    """
+    try:
+        from all_fields_by_class import device_type_to_class
+    except ImportError:
+        device_type_to_class = {
+            "laptop": "com.eazybytes.model.Laptop",
+            "phone": "com.eazybytes.model.Phone", 
+            "wireless_earphone": "com.eazybytes.model.WirelessEarphone",
+            "wired_earphone": "com.eazybytes.model.WiredEarphone",
+            "headphone": "com.eazybytes.model.Headphone",
+            "backup_charger": "com.eazybytes.model.BackupCharger"
+        }
+    
+    # Simple field mapping as fallback
+    fallback_mapping = {
+        "laptop": ("ram", "RAM"),
+        "phone": ("batteryCapacity", "Dung lượng pin"),
+        "wireless_earphone": ("batteryLife", "Thời lượng pin"),
+        "headphone": ("batteryLife", "Thời lượng pin"),
+        "backup_charger": ("batteryCapacity", "Dung lượng pin"),
+        "wired_earphone": ("cableLength", "Độ dài dây")
+    }
+    
+    target_field, field_name_vn = fallback_mapping.get(device_type, ("ram", "RAM"))
+    
+    try:
+        db = mongodb.connect()
+        if db is None:
+            return "Không thể kết nối MongoDB."
+        
+        collection = mongodb.get_collection("baseProduct")
+        if collection is None:
+            return "Không tìm thấy collection baseProduct."
+        
+        # Simple aggregation without unit validation
+        base_filter = {}
+        if device_type in device_type_to_class:
+            base_filter["_class"] = device_type_to_class[device_type]
+        
+        pipeline = [
+            {"$match": base_filter},
+            {
+                "$addFields": {
+                    "numeric_value": {
+                        "$convert": {
+                            "input": {
+                                "$arrayElemAt": [
+                                    {
+                                        "$map": {
+                                            "input": {"$regexFindAll": {"input": f"${target_field}", "regex": r"(\d+(?:\.\d+)?)"}},
+                                            "as": "match",
+                                            "in": "$match.match"
+                                        }
+                                    },
+                                    0
+                                ]
+                            },
+                            "to": "double",
+                            "onError": 0
+                        }
+                    }
+                }
+            },
+            {"$match": {"numeric_value": {"$gt": 0}}},
+            {"$sort": {"numeric_value": -1}},
+            {"$limit": top_k * 2},
+            {"$project": {"_id": 1, "productName": 1, "brand": 1, target_field: 1, "numeric_value": 1}}
+        ]
+        
+        results = list(collection.aggregate(pipeline))
+        
+        if not results:
+            return f"Không tìm thấy {device_type} nào có {field_name_vn} hợp lệ."
+        
+        # Convert to group_ids
+        max_group_ids = []
+        for result in results:
+            if len(max_group_ids) >= top_k:
+                break
+                
+            product_id = str(result['_id'])
+            mysql_result = find_group_id_by_product_id(product_id)
+            
+            if mysql_result.get("status") == "success":
+                group_id = mysql_result.get("group_id")
+                if group_id and group_id not in max_group_ids:
+                    max_group_ids.append(group_id)
+        
+        if not max_group_ids:
+            return f"Không tìm thấy mapping cho {device_type}."
+        
+        current_group_ids.clear()
+        current_group_ids.extend(max_group_ids)
+        
+        return f"Tìm thấy {len(max_group_ids)} {device_type} có {field_name_vn} cao nhất (fallback mode)."
+        
+    except Exception as e:
+        return f"Lỗi fallback: {str(e)}"
     finally:
         mongodb.disconnect()
 
@@ -2186,7 +2311,7 @@ def detailed_specs_search_hybrid(query: str, device_type: str, top_k: int = 5) -
         print(f"Step 3: Elasticsearch search for text descriptions...")
         try:
             # Nếu có MongoDB group_ids, có thể filter hoặc không filter tùy strategy
-            es_filter_ids = None
+            es_filter_ids = mongodb_group_ids
             # Không filter để có thêm kết quả từ Elasticsearch
             
             es_results = search_elasticsearch(

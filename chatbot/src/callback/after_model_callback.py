@@ -16,7 +16,7 @@ def after_model_modifier(
     # --- Kiểm tra nội dung phản hồi ---
     if not llm_response.content or not llm_response.content.parts:
         print("[Callback] No content to modify.")
-        return None
+        return "Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể nói lại không?"
 
     part = llm_response.content.parts[0]
     if part.function_call:
