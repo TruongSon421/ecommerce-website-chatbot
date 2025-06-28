@@ -132,6 +132,13 @@ const ProductFilter: React.FC<ProductFilterProps> = ({
       return audioFilter;
     }
     
+    // If type is backup_charger, use its specific filter data
+    if (type === 'backup_charger') {
+      const backupChargerFilter = filterData['backup_charger'] || {};
+      console.log('🔋 Using backup_charger-specific filter for:', type, 'Filter sections:', Object.keys(backupChargerFilter));
+      return backupChargerFilter;
+    }
+    
     // Otherwise use the type directly from filterData
     const regularFilter = filterData[type] || {};
     console.log('📱 Using regular filter for:', type, 'Filter sections:', Object.keys(regularFilter));

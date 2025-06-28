@@ -1,5 +1,5 @@
 # Use an official Node.js runtime as the base image
-FROM node:20-alpine
+FROM ecommerce-website-chatbot-frontend:latest 
 
 # Set working directory
 WORKDIR /app
@@ -8,11 +8,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install --quiet && \
+RUN npm ci --quiet && \
     npm cache clean --force
 
-# Create app directory with proper permissions
-RUN mkdir -p /app && chown -R node:node /app
 
 # Switch to non-root user
 USER node

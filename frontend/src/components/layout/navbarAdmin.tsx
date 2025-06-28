@@ -173,6 +173,16 @@ const AdminNavbar: React.FC = () => {
                       </Link>
 
                       <Link
+                        to="/admin/product/bulk-import"
+                        className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
+                          isActive('/admin/product/bulk-import') ? 'bg-blue-600' : ''
+                        }`}
+                        onClick={() => setIsProductDropdownOpen(false)}
+                      >
+                        📤 Thêm hàng loạt (Bulk Import)
+                      </Link>
+
+                      <Link
                         to="/admin/tag"
                         className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
                           isActive('/admin/tag') ? 'bg-blue-600' : ''
