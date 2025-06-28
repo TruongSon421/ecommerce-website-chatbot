@@ -57,6 +57,13 @@ public class ProductController {
         return productService.createProduct(request);
     }
 
+    @PostMapping("/create-bulk-group")
+    @PreAuthorize("@roleChecker.hasRole('ADMIN')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BulkGroupCreateResponse createBulkProductGroup(@RequestBody @Valid BulkGroupCreateRequest request) {
+        return productService.createBulkProductGroup(request);
+    }
+
     @PutMapping("/update/{id}")
     @PreAuthorize("@roleChecker.hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)

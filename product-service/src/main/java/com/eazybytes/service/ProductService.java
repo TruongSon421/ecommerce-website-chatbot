@@ -23,12 +23,15 @@ import com.eazybytes.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -243,8 +246,18 @@ public class ProductService {
 
     public void deleteProduct(String id) {
         try {
+            // Step 1: Xóa inventory trước
+            try {
+                inventoryClient.deleteInventoriesByProductId(id);
+                log.info("Successfully deleted inventories for product: {}", id);
+            } catch (Exception e) {
+                log.warn("Failed to delete inventories for product {}: {}", id, e.getMessage());
+                // Continue với product deletion dù inventory deletion failed
+            }
+            
+            // Step 2: Xóa product từ MongoDB
             productRepository.deleteById(id);
-            log.info("Successfully deleted product from database: {}", id);
+            log.info("Successfully deleted product from MongoDB: {}", id);
         } catch (Exception e) {
             log.error("Error deleting product ID {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to delete product: " + id, e);
@@ -725,5 +738,157 @@ public class ProductService {
         headphone.setSize(request.getSize());
         headphone.setBrandOrigin(request.getBrandOrigin());
         headphone.setManufactured(request.getManufactured());
+    }
+
+    @Transactional(timeout = 300)
+    public BulkGroupCreateResponse createBulkProductGroup(BulkGroupCreateRequest request) {
+        log.info("=== Starting bulk product group creation for: {} ===", request.getGroupName());
+        log.info("Group details - Brand: {}, Type: {}, Products count: {}", 
+                request.getBrand(), request.getType(), request.getProducts().size());
+        
+        List<String> createdProductIds = new ArrayList<>();
+        List<String> failedProducts = new ArrayList<>();
+        List<String> variants = new ArrayList<>();
+        List<String> productNames = new ArrayList<>();
+        List<Integer> defaultOriginalPrices = new ArrayList<>();
+        List<Integer> defaultCurrentPrices = new ArrayList<>();
+        List<String> defaultColors = new ArrayList<>();
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // Step 1: Tạo từng sản phẩm
+            for (ProductWithInventoryRequest productRequest : request.getProducts()) {
+                try {
+                    ProductResponse productResponse = createProduct(productRequest);
+                    createdProductIds.add(productResponse.getProductId());
+                    
+                    // Tạo variant từ productName hoặc description
+                    String variant = productResponse.getProductName();
+                    if (variant == null || variant.isEmpty()) {
+                        variant = productResponse.getDescription();
+                    }
+                    variants.add(variant);
+                    productNames.add(productResponse.getProductName());
+                    
+                    // Lấy giá từ inventory đầu tiên
+                    if (!productResponse.getOriginal_prices().isEmpty()) {
+                        defaultOriginalPrices.add(productResponse.getOriginal_prices().get(0).intValue());
+                        defaultCurrentPrices.add(productResponse.getCurrent_prices().get(0).intValue());
+                        defaultColors.add(productResponse.getColors().get(0));
+                    } else {
+                        defaultOriginalPrices.add(0);
+                        defaultCurrentPrices.add(0);
+                        defaultColors.add(null);
+                    }
+                    
+                    log.info("Successfully created product: {}", productResponse.getProductId());
+                } catch (Exception e) {
+                    failedProducts.add(productRequest.getProductRequest().getProductName());
+                    log.error("Failed to create product {}: {}", 
+                            productRequest.getProductRequest().getProductName(), e.getMessage());
+                }
+            }
+            
+            // Nếu không có sản phẩm nào được tạo thành công
+            if (createdProductIds.isEmpty()) {
+                return BulkGroupCreateResponse.builder()
+                        .success(false)
+                        .productIds(createdProductIds)
+                        .failedProducts(failedProducts)
+                        .message("Failed to create any products")
+                        .build();
+            }
+            
+            // Step 2: Tạo group variant
+            try {
+                Map<String, Object> groupRequest = new HashMap<>();
+                groupRequest.put("productIds", createdProductIds);
+                groupRequest.put("variants", variants);
+                groupRequest.put("productNames", productNames);
+                groupRequest.put("defaultOriginalPrices", defaultOriginalPrices);
+                groupRequest.put("defaultCurrentPrices", defaultCurrentPrices);
+                groupRequest.put("defaultColors", defaultColors);
+                groupRequest.put("groupName", request.getGroupName());
+                groupRequest.put("brand", request.getBrand());
+                groupRequest.put("type", request.getType());
+                groupRequest.put("image", request.getImage());
+                
+                // Gọi inventory-service để tạo group
+                ResponseEntity<Map<String, Integer>> response = inventoryClient.createGroupVariant(groupRequest);
+                Integer groupId = response.getBody().get("groupId");
+                
+                long endTime = System.currentTimeMillis();
+                log.info("Successfully created group {} with {} products in {}ms", 
+                        groupId, createdProductIds.size(), (endTime - startTime));
+                
+                return BulkGroupCreateResponse.builder()
+                        .success(true)
+                        .groupId(groupId)
+                        .productIds(createdProductIds)
+                        .failedProducts(failedProducts.isEmpty() ? null : failedProducts)
+                        .message(String.format("Successfully created group '%s' with %d products%s in %dms", 
+                                request.getGroupName(), 
+                                createdProductIds.size(),
+                                failedProducts.isEmpty() ? "" : " (" + failedProducts.size() + " failed)",
+                                (endTime - startTime)))
+                        .build();
+                        
+            } catch (Exception e) {
+                log.error("Failed to create group, rolling back products: {}", e.getMessage());
+                // Rollback: xóa các sản phẩm đã tạo
+                rollbackProducts(createdProductIds);
+                
+                return BulkGroupCreateResponse.builder()
+                        .success(false)
+                        .productIds(new ArrayList<>())
+                        .failedProducts(failedProducts)
+                        .message("Failed to create group: " + e.getMessage())
+                        .build();
+            }
+            
+        } catch (Exception e) {
+            long endTime = System.currentTimeMillis();
+            log.error("=== Unexpected error during bulk creation for group {} after {}ms: {} ===", 
+                    request.getGroupName(), (endTime - startTime), e.getMessage(), e);
+            
+            // Rollback any created products
+            if (!createdProductIds.isEmpty()) {
+                log.warn("Rolling back {} products due to unexpected error", createdProductIds.size());
+                rollbackProducts(createdProductIds);
+            }
+            
+            return BulkGroupCreateResponse.builder()
+                    .success(false)
+                    .productIds(new ArrayList<>())
+                    .failedProducts(failedProducts)
+                    .message("Unexpected error: " + e.getMessage())
+                    .build();
+        }
+    }
+    
+    private void rollbackProducts(List<String> productIds) {
+        log.info("Starting rollback for {} products", productIds.size());
+        
+        // Step 1: Xóa tất cả inventories trước (bulk operation)
+        try {
+            inventoryClient.deleteInventoriesByProductIds(productIds);
+            log.info("Successfully deleted inventories for {} products during rollback", productIds.size());
+        } catch (Exception e) {
+            log.error("Failed to delete inventories during rollback: {}", e.getMessage());
+            // Continue với product deletion dù inventory deletion failed
+        }
+        
+        // Step 2: Xóa từng product từ MongoDB
+        for (String productId : productIds) {
+            try {
+                productRepository.deleteById(productId);
+                log.info("Successfully rolled back product from MongoDB: {}", productId);
+            } catch (Exception e) {
+                log.error("Failed to rollback product {} from MongoDB: {}", productId, e.getMessage());
+            }
+        }
+        
+        log.info("Completed rollback process for {} products", productIds.size());
     }
 }
