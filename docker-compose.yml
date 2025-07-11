@@ -1,0 +1,542 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: tiendoan
+      MYSQL_PASSWORD: tiendoan
+    ports:
+      - "3307:3306"
+    volumes:
+      - spring_ecommerce_mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql-config.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=tiendoan
+      - POSTGRES_PASSWORD=tiendoan
+      - POSTGRES_DB=sessions
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce_network
+
+  mongodb:
+    image: mongo:4.4.6
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_INITDB_DATABASE=products
+    volumes:
+      - spring_ecommerce_mongodb_data:/data/db
+      - ./init-mongo-reviews.js:/docker-entrypoint-initdb.d/init-mongo-reviews.js:ro
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')", "--quiet", "--host", "localhost", "--authenticationDatabase", "admin", "-u", "admin", "-p", "password"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    ports:
+      - "8800:8081"  # Changed to standard mongo-express port
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_URL: mongodb://admin:password@mongodb:27017/
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ecommerce_network
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - spring_ecommerce_redis_data:/data
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - "cluster.routing.allocation.disk.watermark.low=85%"
+      - "cluster.routing.allocation.disk.watermark.high=95%"
+      - "cluster.routing.allocation.disk.watermark.flood_stage=97%"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - rag_elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - ecommerce_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"  # REST API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+
+  # logstash:
+  #   image: docker.elastic.co/logstash/logstash:8.12.0
+  #   container_name: logstash
+  #   volumes:
+  #     - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+  #     - /path/to/your/spring-boot.log:/logs/spring-boot.log:ro
+  #   ports:
+  #     - 5000:5000
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - elk-network
+      
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.12.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    networks:
+      - ecommerce_network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    
+    networks:
+      - ecommerce_network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ecommerce_network
+
+
+  config-service:
+    image: tiendn274/kltn-config-service:latest
+    container_name: config-service
+    ports:
+      - "8888:8888"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  discovery-service:
+    image: tiendn274/kltn-discovery-service:latest
+    container_name: discovery-service
+    ports:
+      - "8761:8761"
+    depends_on:
+      config-service:
+        condition: service_healthy
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  user-service:
+    image: tiendn274/kltn-user-service:latest
+    container_name: user-service
+    ports:
+      - "8090:8090"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_users?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  product-service:
+    image: tiendn274/kltn-product-service:latest
+    container_name: product-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://admin:password@mongodb:27017/products?authSource=admin
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s  # Increased for stability
+
+  inventory-service:
+    image: tiendn274/kltn-inventory-service:latest
+    container_name: inventory-service
+    ports:
+      - "8100:8100"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_inventory?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/actuator/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 120s  # Increased for stability
+
+  cart-service:
+    image: tiendn274/kltn-cart-service:latest
+    container_name: cart-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_cart?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s  # Increased for stability
+
+  order-service:
+    image: tiendn274/kltn-order-service:latest
+    container_name: order-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_order?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 90s  # Increased for stability
+
+  payment-service:
+    image: tiendn274/kltn-payment-service:latest
+    container_name: payment-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_payment?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=tiendoan
+      - SPRING_DATASOURCE_PASSWORD=tiendoan
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+      - NGROK_BASE_URL=https://api.truongson.shop
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      
+  api-gateway:
+    image: tiendn274/kltn-api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - "8070:8070"
+    depends_on:
+      config-service:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  chatbot:
+    build:
+      context: ./chatbot
+      dockerfile: Dockerfile.dev
+    container_name: chatbot
+    ports:
+      - "5500:5500"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+    volumes:
+      - ./chatbot/src:/app
+      - /home/kltn2025/models--facebook--fasttext-language-identification:/root/.cache/models--facebook--fasttext-language-identification
+    environment:
+      - LANGUAGE_MODEL_PATH=/root/.cache/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
+    command: python main.py  # Thay đổi từ app.py thành main.py
+    networks:
+      - ecommerce_network
+
+  # rag-service:
+  #   build:
+  #     context: ./chatbot/src/rag
+  #     dockerfile: Dockerfile
+  #   container_name: rag-service
+  #   ports:
+  #     - "5000:5000"
+  #   environment:
+  #     - FLASK_ENV=production
+  #     - ELASTICSEARCH_HOST=elasticsearch
+  #     - ELASTICSEARCH_PORT=9200
+  #   depends_on:
+  #     elasticsearch:
+  #       condition: service_healthy
+  #   networks:
+  #     - product_network
+  #   volumes:
+  #     - ./app.py:/app/app.py
+  #     - ./requirements.txt:/app/requirements.txt
+  #   restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    volumes:
+      # Mount source code cho hot reload
+      - ./frontend/src:/app/src:z
+      - ./frontend/public:/app/public:z
+      - ./frontend/index.html:/app/index.html:z
+      - ./frontend/vite.config.ts:/app/vite.config.ts:z
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:z
+      - ./frontend/postcss.config.js:/app/postcss.config.js:z
+      - ./frontend/package.json:/app/package.json:z
+      # Exclude node_modules để tránh xung đột
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    networks:
+      - ecommerce_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+volumes:
+  spring_ecommerce_mysql_data:
+    external: true
+  spring_ecommerce_mongodb_data:
+    external: true
+  spring_ecommerce_redis_data:
+    external: true
+  rag_elasticsearch-data:
+    external: true  
+  postgres_data:
+  qdrant_storage:
+  
+networks:
+  ecommerce_network:
+    driver: bridge

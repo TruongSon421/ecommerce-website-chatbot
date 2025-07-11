@@ -1,0 +1,18 @@
+2025-04-13 11:32:10,263 - INFO - Starting SQL connection test
+2025-04-13 11:32:10,263 - DEBUG - Creating SQLAlchemy engine
+2025-04-13 11:32:10,805 - INFO - SQLAlchemy engine created
+2025-04-13 11:32:11,237 - DEBUG - Executing test query: SELECT 1
+2025-04-13 11:32:11,240 - INFO - Test query result: 1
+2025-04-13 11:32:11,241 - DEBUG - Listing tables in database
+2025-04-13 11:32:11,295 - INFO - Tables found: ['group_product', 'group_product_junction', 'group_tags', 'product_inventory', 'tags']
+2025-04-13 11:32:11,299 - DEBUG - SQLAlchemy engine disposed
+2025-04-13 11:32:11,299 - INFO - Connection test completed
+2025-04-13 11:55:07,869 - INFO - Starting SQL connection test
+2025-04-13 11:55:07,870 - DEBUG - Creating SQLAlchemy engine
+2025-04-13 11:55:08,370 - INFO - SQLAlchemy engine created
+2025-04-13 11:55:08,734 - DEBUG - Executing test query: SELECT 1
+2025-04-13 11:55:08,737 - INFO - Test query result: 1
+2025-04-13 11:55:08,738 - DEBUG - Listing tables in database
+2025-04-13 11:55:08,760 - INFO - Tables found: ['group_product', 'group_product_junction', 'group_tags', 'product_inventory', 'tags']
+2025-04-13 11:55:08,763 - DEBUG - SQLAlchemy engine disposed
+2025-04-13 11:55:08,764 - INFO - Connection test completed
