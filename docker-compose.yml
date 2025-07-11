@@ -471,7 +471,7 @@ services:
       - /home/kltn2025/models--facebook--fasttext-language-identification:/root/.cache/models--facebook--fasttext-language-identification
     environment:
       - LANGUAGE_MODEL_PATH=/root/.cache/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
-      - GOOGLE_API_KEY = "AIzaSyBnaQDEIf6U_e7f6piTUAEdvT2YtFtCCyM"
+      - GOOGLE_API_KEY = "AIzaSyBQEBvYfuORn7kad-C1Uafrbg6U_8dCnUM"
 
     command: python main.py  # Thay đổi từ app.py thành main.py
     networks:
