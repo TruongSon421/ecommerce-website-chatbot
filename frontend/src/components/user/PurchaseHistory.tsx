@@ -115,6 +115,21 @@ const PurchaseHistory: React.FC = () => {
     return statusTexts[status as keyof typeof statusTexts] || status;
   };
 
+  const getPaymentMethodText = (method: string) => {
+    const paymentMethods = {
+      'TRANSFER_BANKING': 'Chuyển khoản ngân hàng',
+      'CASH_ON_DELIVERY': 'Thanh toán khi nhận hàng',
+      'CREDIT_CARD': 'Thẻ tín dụng',
+      'DEBIT_CARD': 'Thẻ ghi nợ',
+      'E_WALLET': 'Ví điện tử',
+      'MOMO': 'MoMo',
+      'ZALOPAY': 'ZaloPay',
+      'VNPAY': 'VNPay',
+    };
+    
+    return paymentMethods[method as keyof typeof paymentMethods] || method;
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -150,8 +165,11 @@ const PurchaseHistory: React.FC = () => {
       orderDate: string;
       orderStatus: string;
       transactionId: string;
+      shippingAddress: string;
+      paymentMethod: string;
       item: any;
       totalPrice: number;
+      originalOrder: UserPurchaseHistoryResponse;
     }> = [];
 
     purchaseHistory.orders.forEach(order => {
@@ -161,8 +179,11 @@ const PurchaseHistory: React.FC = () => {
           orderDate: order.createdAt,
           orderStatus: order.status,
           transactionId: order.transactionId,
+          shippingAddress: order.shippingAddress,
+          paymentMethod: order.paymentMethod,
           item: item,
-          totalPrice: item.price * item.quantity
+          totalPrice: item.price * item.quantity,
+          originalOrder: order
         });
       });
     });
@@ -199,7 +220,7 @@ const PurchaseHistory: React.FC = () => {
                     {getStatusText(selectedOrder.status)}
                   </span>
                 </div>
-                <div><span className="font-medium">Phương thức thanh toán:</span> {selectedOrder.paymentMethod}</div>
+                <div><span className="font-medium">Phương thức thanh toán:</span> {getPaymentMethodText(selectedOrder.paymentMethod)}</div>
               </div>
             </div>
             
@@ -379,6 +400,8 @@ const PurchaseHistory: React.FC = () => {
                           <div>Số lượng: <span className="font-medium">{purchasedItem.item.quantity}</span></div>
                           <div>Đơn giá: <span className="font-medium">{formatCurrency(purchasedItem.item.price)}</span></div>
                           <div>Tổng tiền: <span className="font-medium text-green-600">{formatCurrency(purchasedItem.totalPrice)}</span></div>
+                          <div>Địa chỉ giao hàng: <span className="font-medium">{purchasedItem.shippingAddress}</span></div>
+                          <div>Phương thức thanh toán: <span className="font-medium">{getPaymentMethodText(purchasedItem.paymentMethod)}</span></div>
                         </div>
                         
                         <div className="mt-3 flex items-center gap-4">
@@ -447,17 +470,7 @@ const PurchaseHistory: React.FC = () => {
                       {canReview && (
                         <button
                           onClick={() => {
-                            const mockOrder = {
-                              id: purchasedItem.orderId,
-                              transactionId: purchasedItem.transactionId,
-                              createdAt: purchasedItem.orderDate,
-                              status: purchasedItem.orderStatus,
-                              totalAmount: purchasedItem.totalPrice,
-                              shippingAddress: 'Địa chỉ giao hàng',
-                              paymentMethod: 'Thanh toán online',
-                              items: [purchasedItem.item]
-                            };
-                            handleViewDetails(mockOrder);
+                            handleViewDetails(purchasedItem.originalOrder);
                           }}
                           className={`px-3 py-1.5 text-sm rounded-lg transition-colors flex items-center gap-1 ${
                             hasReviewed

@@ -62,62 +62,10 @@ const UserManagement: React.FC = () => {
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Welcome Section */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 mb-8 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold mb-2">
-                  Chào mừng đến với trang quản lý người dùng! 🎉
-                </h2>
-                <p className="text-blue-100">
-                  Tại đây bạn có thể quản lý tất cả người dùng, tạo tài khoản mới, chỉnh sửa thông tin và thực hiện các thao tác hàng loạt.
-                </p>
-              </div>
-              <div className="hidden lg:block">
-                <div className="w-24 h-24 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                  <span className="text-4xl">👥</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          
 
           {/* Feature Highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">➕</span>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Tạo người dùng</h3>
-                  <p className="text-sm text-gray-600">Thêm tài khoản mới với đầy đủ thông tin</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🔍</span>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Tìm kiếm & Lọc</h3>
-                  <p className="text-sm text-gray-600">Tìm kiếm nhanh theo nhiều tiêu chí</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">⚡</span>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Thao tác hàng loạt</h3>
-                  <p className="text-sm text-gray-600">Xử lý nhiều người dùng cùng lúc</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          
 
           {/* Admin User Management Component */}
           <div className="bg-white rounded-lg shadow-sm">
