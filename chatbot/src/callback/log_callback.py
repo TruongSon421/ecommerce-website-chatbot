@@ -36,7 +36,7 @@ def log_before_agent_entry(callback_context: CallbackContext) -> Optional[Conten
 
     invocation_id = callback_context.invocation_id
     current_state = callback_context.state.to_dict() # Bỏ comment nếu muốn xem state
-    print(f"[Callback] State entering: {json.dumps(current_state, indent=2)}")
+    print(f"[Callback] State entering: {json.dumps(current_state, indent=2)}, {invocation_id}")
     token = callback_context.state.get("access_token")
     if agent_name == 'OrderFromCartAgent' or agent_name == 'SmartAddItemToOrder':
         if token is None:

@@ -1,0 +1,1062 @@
+{
+  "description": "Test cases for MongoDB specifications and technical configuration search evaluation",
+  "focus": "Technical specifications, numeric comparisons, aggregation pipelines, unit validation",
+  "device_types": ["laptop", "phone", "wireless_earphone", "wired_earphone", "headphone", "backup_charger"],
+  "test_cases": [
+    {
+      "id": 1,
+      "question": "laptop RAM 16GB",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "ram",
+          "operator": "gte",
+          "value": "16",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "ram_specs",
+      "difficulty": "easy"
+    },
+    {
+      "id": 2,
+      "question": "điện thoại camera 108MP",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "rearCameraResolution",
+          "operator": "gte",
+          "value": "108",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "camera_specs",
+      "difficulty": "easy"
+    },
+    {
+      "id": 3,
+      "question": "laptop i7 RTX 4070",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "processorModel",
+          "operator": "regex",
+          "value": "i7",
+          "type": "string",
+          "is_array": false
+        },
+        {
+          "field": "graphicCard",
+          "operator": "regex",
+          "value": "RTX 4070",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "cpu_gpu_combo",
+      "difficulty": "medium"
+    },
+    {
+      "id": 4,
+      "question": "điện thoại pin lớn hơn 5000mAh",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "batteryCapacity",
+          "operator": "gt",
+          "value": "5000",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "battery_comparison",
+      "difficulty": "medium"
+    },
+    {
+      "id": 5,
+      "question": "laptop SSD 1TB",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "storage",
+          "operator": "elemMatch",
+          "value": "1TB SSD",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "storage_array",
+      "difficulty": "medium"
+    },
+    {
+      "id": 6,
+      "question": "tai nghe không dây pin 8 giờ",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "batteryLife",
+          "operator": "gte",
+          "value": "8",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "earphone_battery",
+      "difficulty": "easy"
+    },
+    {
+      "id": 7,
+      "question": "laptop RAM tối thiểu 32GB",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "ram",
+          "operator": "gte",
+          "value": "32",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "ram_minimum",
+      "difficulty": "easy"
+    },
+    {
+      "id": 8,
+      "question": "điện thoại màn hình trên 6.5 inch",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "screenSize",
+          "operator": "gt",
+          "value": "6.5",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "screen_size",
+      "difficulty": "medium"
+    },
+    {
+      "id": 9,
+      "question": "laptop DDR5 RAM",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "ramType",
+          "operator": "regex",
+          "value": "DDR5",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "ram_type",
+      "difficulty": "medium"
+    },
+    {
+      "id": 10,
+      "question": "sạc dự phòng 20000mAh",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "batteryCapacity",
+          "operator": "gte",
+          "value": "20000",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "powerbank_capacity",
+      "difficulty": "easy"
+    },
+    {
+      "id": 11,
+      "question": "laptop CPU 8 core",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "coreCount",
+          "operator": "gte",
+          "value": "8",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "cpu_cores",
+      "difficulty": "medium"
+    },
+    {
+      "id": 12,
+      "question": "điện thoại camera trước 32MP",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "frontCameraResolution",
+          "operator": "gte",
+          "value": "32",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "front_camera",
+      "difficulty": "easy"
+    },
+    {
+      "id": 13,
+      "question": "laptop màn hình 144Hz",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "refreshRate",
+          "operator": "gte",
+          "value": "144",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "refresh_rate",
+      "difficulty": "medium"
+    },
+    {
+      "id": 14,
+      "question": "tai nghe chống nước IPX7",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "features",
+          "operator": "elemMatch",
+          "value": "IPX7",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "water_resistance",
+      "difficulty": "medium"
+    },
+    {
+      "id": 15,
+      "question": "laptop Ryzen 9",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "processorModel",
+          "operator": "regex",
+          "value": "Ryzen 9",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "amd_processor",
+      "difficulty": "easy"
+    },
+    {
+      "id": 16,
+      "question": "điện thoại Snapdragon 8 Gen 2",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "processor",
+          "operator": "regex",
+          "value": "Snapdragon 8 Gen 2",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "mobile_processor",
+      "difficulty": "medium"
+    },
+    {
+      "id": 17,
+      "question": "laptop OLED display",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "displayTechnology",
+          "operator": "elemMatch",
+          "value": "OLED",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "display_tech",
+      "difficulty": "medium"
+    },
+    {
+      "id": 18,
+      "question": "headphone pin 50 giờ",
+      "device_type": "headphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "batteryLife",
+          "operator": "regex",
+          "value": "50",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "headphone_battery",
+      "difficulty": "medium"
+    },
+    {
+      "id": 19,
+      "question": "điện thoại 5G",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "mobileNetwork",
+          "operator": "regex",
+          "value": "5G",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "network_tech",
+      "difficulty": "easy"
+    },
+    {
+      "id": 20,
+      "question": "laptop USB-C Thunderbolt",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "ports",
+          "operator": "elemMatch",
+          "value": "USB-C",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "ports",
+          "operator": "elemMatch",
+          "value": "Thunderbolt",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "connectivity_ports",
+      "difficulty": "hard"
+    },
+    {
+      "id": 21,
+      "question": "tai nghe Bluetooth 5.3",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "connectionTechnology",
+          "operator": "elemMatch",
+          "value": "Bluetooth 5.3",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "bluetooth_version",
+      "difficulty": "medium"
+    },
+    {
+      "id": 22,
+      "question": "sạc dự phòng PD 100W",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "technologyFeatures",
+          "operator": "elemMatch",
+          "value": "PD",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "output",
+          "operator": "elemMatch",
+          "value": "100W",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "fast_charging",
+      "difficulty": "hard"
+    },
+    {
+      "id": 23,
+      "question": "laptop gaming RTX 4080",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "graphicCard",
+          "operator": "regex",
+          "value": "RTX 4080",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "gaming_gpu",
+      "difficulty": "medium"
+    },
+    {
+      "id": 24,
+      "question": "điện thoại sạc nhanh 120W",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "maxChargingPower",
+          "operator": "gte",
+          "value": "120",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "charging_power",
+      "difficulty": "medium"
+    },
+    {
+      "id": 25,
+      "question": "laptop webcam 4K",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "webcam",
+          "operator": "regex",
+          "value": "4K",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "webcam_quality",
+      "difficulty": "medium"
+    },
+    {
+      "id": 26,
+      "question": "tai nghe noise cancelling",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "features",
+          "operator": "elemMatch",
+          "value": "noise cancelling",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "noise_cancelling",
+      "difficulty": "medium"
+    },
+    {
+      "id": 27,
+      "question": "laptop RAM cao nhất",
+      "device_type": "laptop",
+      "expected_mongodb_pipeline": [
+        {"$match": {"_class": "com.eazybytes.model.Laptop"}},
+        {"$addFields": {"numeric_value": {"$convert": {"input": {"$arrayElemAt": [{"$map": {"input": {"$regexFindAll": {"input": "$ram", "regex": "(\\d+(?:\\.\\d+)?)"}}, "as": "match", "in": "$$match.match"}}, 0]}, "to": "double", "onError": 0}}}},
+        {"$match": {"numeric_value": {"$gt": 0}}},
+        {"$sort": {"numeric_value": -1}},
+        {"$limit": 5}
+      ],
+      "category": "superlative_ram",
+      "difficulty": "hard"
+    },
+    {
+      "id": 28,
+      "question": "điện thoại pin lớn nhất",
+      "device_type": "phone",
+      "expected_mongodb_pipeline": [
+        {"$match": {"_class": "com.eazybytes.model.Phone"}},
+        {"$addFields": {"numeric_value": {"$convert": {"input": {"$arrayElemAt": [{"$map": {"input": {"$regexFindAll": {"input": "$batteryCapacity", "regex": "(\\d+(?:\\.\\d+)?)"}}, "as": "match", "in": "$$match.match"}}, 0]}, "to": "double", "onError": 0}}}},
+        {"$match": {"numeric_value": {"$gt": 0}}},
+        {"$sort": {"numeric_value": -1}},
+        {"$limit": 5}
+      ],
+      "category": "superlative_battery",
+      "difficulty": "hard"
+    },
+    {
+      "id": 29,
+      "question": "laptop Wi-Fi 6E",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "wirelessConnectivity",
+          "operator": "elemMatch",
+          "value": "Wi-Fi 6E",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "wifi_standard",
+      "difficulty": "medium"
+    },
+    {
+      "id": 30,
+      "question": "điện thoại AMOLED display",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "displayTechnology",
+          "operator": "regex",
+          "value": "AMOLED",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "phone_display",
+      "difficulty": "easy"
+    },
+    {
+      "id": 31,
+      "question": "laptop SSD NVMe 2TB",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "storage",
+          "operator": "elemMatch",
+          "value": "2TB",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "storage",
+          "operator": "elemMatch",
+          "value": "NVMe",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "nvme_storage",
+      "difficulty": "hard"
+    },
+    {
+      "id": 32,
+      "question": "tai nghe có dây jack 3.5mm",
+      "device_type": "wired_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "audioJack",
+          "operator": "regex",
+          "value": "3.5mm",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "audio_jack",
+      "difficulty": "easy"
+    },
+    {
+      "id": 33,
+      "question": "sạc dự phòng sạc không dây",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "technologyFeatures",
+          "operator": "elemMatch",
+          "value": "sạc không dây",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "wireless_charging",
+      "difficulty": "medium"
+    },
+    {
+      "id": 34,
+      "question": "laptop touchscreen",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "touchScreen",
+          "operator": "elemMatch",
+          "value": "có",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "touchscreen",
+      "difficulty": "medium"
+    },
+    {
+      "id": 35,
+      "question": "điện thoại camera OIS",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "rearCameraFeatures",
+          "operator": "elemMatch",
+          "value": "OIS",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "camera_features",
+      "difficulty": "medium"
+    },
+    {
+      "id": 36,
+      "question": "laptop Dolby Atmos",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "audioTechnology",
+          "operator": "elemMatch",
+          "value": "Dolby Atmos",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "audio_tech",
+      "difficulty": "medium"
+    },
+    {
+      "id": 37,
+      "question": "tai nghe không dây hộp sạc 24 giờ",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "chargingCaseBatteryLife",
+          "operator": "gte",
+          "value": "24",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "charging_case",
+      "difficulty": "medium"
+    },
+    {
+      "id": 38,
+      "question": "điện thoại bộ nhớ trong 512GB",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "storage",
+          "operator": "gte",
+          "value": "512",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "phone_storage",
+      "difficulty": "easy"
+    },
+    {
+      "id": 39,
+      "question": "laptop backlit keyboard",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "keyboardBacklight",
+          "operator": "regex",
+          "value": "có|yes|LED",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "keyboard_backlight",
+      "difficulty": "medium"
+    },
+    {
+      "id": 40,
+      "question": "headphone Bluetooth multipoint",
+      "device_type": "headphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "connectionTechnology",
+          "operator": "elemMatch",
+          "value": "multipoint",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "multipoint_connection",
+      "difficulty": "medium"
+    },
+    {
+      "id": 41,
+      "question": "laptop CPU boost 5GHz",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "maxCpuSpeed",
+          "operator": "gte",
+          "value": "5",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "cpu_boost_speed",
+      "difficulty": "hard"
+    },
+    {
+      "id": 42,
+      "question": "điện thoại Face ID",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "securityFeatures",
+          "operator": "elemMatch",
+          "value": "Face ID",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "biometric_security",
+      "difficulty": "medium"
+    },
+    {
+      "id": 43,
+      "question": "sạc dự phòng pin lithium polymer",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "batteryCellType",
+          "operator": "regex",
+          "value": "lithium polymer",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "battery_chemistry",
+      "difficulty": "medium"
+    },
+    {
+      "id": 44,
+      "question": "laptop RAM DDR5 5600MHz",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "ramType",
+          "operator": "regex",
+          "value": "DDR5",
+          "type": "string",
+          "is_array": false
+        },
+        {
+          "field": "ramBusSpeed",
+          "operator": "gte",
+          "value": "5600",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "ram_speed_combo",
+      "difficulty": "hard"
+    },
+    {
+      "id": 45,
+      "question": "tai nghe Hi-Res Audio",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "audioTechnology",
+          "operator": "elemMatch",
+          "value": "Hi-Res",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "audio_quality",
+      "difficulty": "medium"
+    },
+    {
+      "id": 46,
+      "question": "điện thoại video 8K",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "rearVideoRecording",
+          "operator": "elemMatch",
+          "value": "8K",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "video_recording",
+      "difficulty": "medium"
+    },
+    {
+      "id": 47,
+      "question": "laptop screen 17 inch 4K",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "screenSize",
+          "operator": "gte",
+          "value": "17",
+          "type": "number",
+          "is_array": false
+        },
+        {
+          "field": "resolution",
+          "operator": "regex",
+          "value": "4K|3840",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "large_screen_4k",
+      "difficulty": "hard"
+    },
+    {
+      "id": 48,
+      "question": "tai nghe có dây dài 2m",
+      "device_type": "wired_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "cableLength",
+          "operator": "gte",
+          "value": "2",
+          "type": "number",
+          "is_array": false
+        }
+      ],
+      "category": "cable_length",
+      "difficulty": "medium"
+    },
+    {
+      "id": 49,
+      "question": "sạc dự phòng LED indicator",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "technologyFeatures",
+          "operator": "elemMatch",
+          "value": "LED",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "indicator_features",
+      "difficulty": "easy"
+    },
+    {
+      "id": 50,
+      "question": "laptop Windows 11 Pro",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "os",
+          "operator": "regex",
+          "value": "Windows 11 Pro",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "operating_system",
+      "difficulty": "easy"
+    },
+    {
+      "id": 51,
+      "question": "điện thoại camera macro 5MP",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "rearCameraFeatures",
+          "operator": "elemMatch",
+          "value": "macro",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "rearCameraResolution",
+          "operator": "regex",
+          "value": "5MP",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "macro_camera",
+      "difficulty": "hard"
+    },
+    {
+      "id": 52,
+      "question": "headphone driver 50mm",
+      "device_type": "headphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "features",
+          "operator": "elemMatch",
+          "value": "50mm",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "driver_size",
+      "difficulty": "medium"
+    },
+    {
+      "id": 53,
+      "question": "laptop GPU VRAM 12GB",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "graphicCard",
+          "operator": "regex",
+          "value": "12GB",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "gpu_memory",
+      "difficulty": "hard"
+    },
+    {
+      "id": 54,
+      "question": "tai nghe không dây IPX4 sport",
+      "device_type": "wireless_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "features",
+          "operator": "elemMatch",
+          "value": "IPX4",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "features",
+          "operator": "elemMatch",
+          "value": "sport",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "sport_earphone",
+      "difficulty": "hard"
+    },
+    {
+      "id": 55,
+      "question": "điện thoại màn hình 120Hz LTPO",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "displayTechnology",
+          "operator": "regex",
+          "value": "120Hz",
+          "type": "string",
+          "is_array": false
+        },
+        {
+          "field": "displayTechnology",
+          "operator": "regex",
+          "value": "LTPO",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "advanced_display",
+      "difficulty": "hard"
+    },
+    {
+      "id": 56,
+      "question": "sạc dự phòng USB-C PD 3.0",
+      "device_type": "backup_charger",
+      "expected_mongodb_conditions": [
+        {
+          "field": "output",
+          "operator": "elemMatch",
+          "value": "USB-C",
+          "type": "string",
+          "is_array": true
+        },
+        {
+          "field": "technologyFeatures",
+          "operator": "elemMatch",
+          "value": "PD 3.0",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "usb_pd_tech",
+      "difficulty": "hard"
+    },
+    {
+      "id": 57,
+      "question": "laptop cooling hệ thống tản nhiệt",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "otherFeatures",
+          "operator": "elemMatch",
+          "value": "tản nhiệt",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "cooling_system",
+      "difficulty": "medium"
+    },
+    {
+      "id": 58,
+      "question": "tai nghe có dây tương thích iPhone",
+      "device_type": "wired_earphone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "compatibility",
+          "operator": "elemMatch",
+          "value": "iPhone",
+          "type": "string",
+          "is_array": true
+        }
+      ],
+      "category": "device_compatibility",
+      "difficulty": "medium"
+    },
+    {
+      "id": 59,
+      "question": "điện thoại chip 4nm process",
+      "device_type": "phone",
+      "expected_mongodb_conditions": [
+        {
+          "field": "processor",
+          "operator": "regex",
+          "value": "4nm",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "chip_process",
+      "difficulty": "hard"
+    },
+    {
+      "id": 60,
+      "question": "laptop material carbon fiber",
+      "device_type": "laptop",
+      "expected_mongodb_conditions": [
+        {
+          "field": "material",
+          "operator": "regex",
+          "value": "carbon fiber",
+          "type": "string",
+          "is_array": false
+        }
+      ],
+      "category": "build_material",
+      "difficulty": "medium"
+    }
+  ],
+  "metadata": {
+    "total_test_cases": 60,
+    "categories": [
+      "ram_specs", "camera_specs", "cpu_gpu_combo", "battery_comparison", "storage_array",
+      "earphone_battery", "ram_minimum", "screen_size", "ram_type", "powerbank_capacity",
+      "cpu_cores", "front_camera", "refresh_rate", "water_resistance", "amd_processor",
+      "mobile_processor", "display_tech", "headphone_battery", "network_tech", "connectivity_ports",
+      "bluetooth_version", "fast_charging", "gaming_gpu", "charging_power", "webcam_quality",
+      "noise_cancelling", "superlative_ram", "superlative_battery", "wifi_standard", "phone_display",
+      "nvme_storage", "audio_jack", "wireless_charging", "touchscreen", "camera_features",
+      "audio_tech", "charging_case", "phone_storage", "keyboard_backlight", "multipoint_connection",
+      "cpu_boost_speed", "biometric_security", "battery_chemistry", "ram_speed_combo", "audio_quality",
+      "video_recording", "large_screen_4k", "cable_length", "indicator_features", "operating_system",
+      "macro_camera", "driver_size", "gpu_memory", "sport_earphone", "advanced_display",
+      "usb_pd_tech", "cooling_system", "device_compatibility", "chip_process", "build_material"
+    ],
+    "difficulty_levels": ["easy", "medium", "hard"],
+    "mongodb_operators": ["gte", "gt", "lte", "lt", "eq", "regex", "elemMatch", "in"],
+    "data_types": ["string", "number", "array"],
+    "devices_coverage": {
+      "laptop": 25,
+      "phone": 20,
+      "wireless_earphone": 8,
+      "headphone": 3,
+      "backup_charger": 3,
+      "wired_earphone": 1
+    },
+    "description": "Test cases focused on MongoDB aggregation pipelines for technical specifications search, numeric comparisons, array field queries, and superlative queries (max/min values)"
+  }
+} 

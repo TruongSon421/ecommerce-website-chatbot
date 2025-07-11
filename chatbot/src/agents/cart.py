@@ -7,6 +7,7 @@ from tools.product_tools import product_information_tool_for_cart
 from models.cart import CheckoutRequest
 from callback.log_callback import *
 from callback.before_llm_callback_lang import before_llm_callback_lang
+from callback.after_model_callback import after_model_modifier
 from google.adk.models.lite_llm import LiteLlm
 from prompts import GLOBAL_INSTRUCTION
 GEMINI_2_FLASH = "gemini-2.0-flash"
@@ -180,5 +181,6 @@ cart_agent = LlmAgent(
     before_tool_callback=product_before_tool_modifier,
     before_agent_callback=log_before_agent_entry,
     before_model_callback=before_llm_callback_lang,
+    after_model_callback=after_model_modifier,
     output_key="cart_result"
 )

@@ -13,6 +13,7 @@ def before_llm_callback_lang(
     Ensures all responses are in the correct detected language from state.
     Also provides specific guidance for cart operations when needed.
     """
+
     agent_name = callback_context.agent_name
     print(f"[Language Callback] Before model call for agent: {agent_name}")
     

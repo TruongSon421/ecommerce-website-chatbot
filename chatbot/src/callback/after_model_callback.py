@@ -16,7 +16,13 @@ def after_model_modifier(
     # --- Kiểm tra nội dung phản hồi ---
     if not llm_response.content or not llm_response.content.parts:
         print("[Callback] No content to modify.")
-        return "Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể nói lại không?"
+        # Tạo response mới với thông báo lỗi
+        error_part = types.Part(text="Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể nói lại không?")
+        new_response = LlmResponse(
+            content=types.Content(role="model", parts=[error_part]),
+            grounding_metadata=llm_response.grounding_metadata if llm_response.grounding_metadata else None
+        )
+        return new_response
 
     part = llm_response.content.parts[0]
     if part.function_call:
@@ -36,6 +42,7 @@ def after_model_modifier(
     patterns_to_remove = [
         r'[\s,;:\(\[]*ID\s*[:=]?\s*\w+[\s,;:\)\]]*',
         r'[\s,;:\(\[]*group_id\s*[:=]?\s*\w+[\s,;:\)\]]*',
+        r'[\s,;:\(\[]*Group\s*id\s*[:=]?\s*\w+[\s,;:\)\]]*',
         r'[\s,;:\(\[]*product_id\s*[:=]?\s*\w+[\s,;:\)\]]*',
         r'[\s,;:\(\[]*mã\s*sản\s*phẩm\s*[:=]?\s*\w+[\s,;:\)\]]*',
     ]

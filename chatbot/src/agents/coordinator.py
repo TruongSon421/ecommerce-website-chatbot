@@ -6,10 +6,12 @@ from agents.products import product_agent
 from agents.cart import cart_agent
 from agents.order import order_agent
 from prompts import GLOBAL_INSTRUCTION
+from callback.after_model_callback import after_model_modifier
+from callback.log_callback import *
 
 coordinator = LlmAgent(
     name="HelpDeskCoordinator",
-    model="gemini-2.0-flash",  # Điều chỉnh model nếu cần, ví dụ: "gemini-1.5-flash-latest"
+    model="gemini-2.0-flash",  
     global_instruction=GLOBAL_INSTRUCTION,
     instruction="""
     Định tuyến yêu cầu của người dùng đến agent phù hợp dựa trên ý định của họ:
@@ -23,5 +25,9 @@ coordinator = LlmAgent(
 
     """,
     description="Bộ định tuyến chính của help desk để chuyển hướng yêu cầu người dùng đến agent phù hợp.",
-    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent, order_agent]
+    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent, order_agent],
+    after_model_callback=after_model_modifier,
+    before_agent_callback=log_before_agent_entry,
+    after_tool_callback=log_after_tool_execution,
+
 )

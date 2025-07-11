@@ -30,7 +30,7 @@ def product_consultation_tool(device: str, query: str, top_k: int = 5) -> str:
     Công cụ tư vấn sản phẩm điện tử thông minh dựa trên nhu cầu của người dùng.
     
     Args:
-        device (str): Loại thiết bị cần tư vấn (ví dụ: "phone", "laptop", "tablet", "wired_earphone": , "smartwatch")
+        device (str): Loại thiết bị cần tư vấn (ví dụ: "phone", "laptop", "tablet", "wired_earphone", "wireless_earphone")
         query (str): Câu hỏi hoặc yêu cầu tư vấn gốc của người dùng (ví dụ: "tìm điện thoại chụp ảnh đẹp dưới 15 triệu", "laptop gaming trong tầm giá 20-30 triệu")
         top_k (int, optional): Top số lượng sản phẩm phù hợp nhất mà người dùng muốn hiển thị trong kết quả tư vấn. 
                                
@@ -473,10 +473,10 @@ def product_information_tool_for_cart(query: str) -> str:
 
 def product_consultation_tool_mongo(device: str, query: str, top_k: int = 5) -> str:
     """
-    Công cụ tư vấn sản phẩm sử dụng MongoDB search thay vì Elasticsearch cho specific_requirements.
+    Công cụ tìm sản phẩm điện tử theo yêu cầu của người dùng từ câu truy vấn.
     
     Args:
-        device (str): Loại thiết bị cần tư vấn (ví dụ: "phone", "laptop", "tablet", "wired_earphone", "smartwatch")
+        device (str): Loại thiết bị cần tư vấn (ví dụ: "phone", "laptop", "tablet", "wired_earphone", "wireless_earphone","headphone)
         query (str): Câu hỏi hoặc yêu cầu tư vấn gốc của người dùng
         top_k (int, optional): Top số lượng sản phẩm phù hợp nhất
                                
