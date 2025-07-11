@@ -8,7 +8,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install dependencies
+<<<<<<< HEAD
 RUN npm ci --quiet && \
+=======
+RUN npm install --quiet && \
+>>>>>>> server
     npm cache clean --force
 
 # Create app directory with proper permissions

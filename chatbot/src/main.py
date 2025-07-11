@@ -143,6 +143,7 @@ async def call_agent_async(user_id: str, session_id: str, access_token: str, que
     
     with app.app_context():  # Cần ngữ cảnh Flask cho flaskext.mysql
         async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+            print(event)
             function_responses = event.get_function_responses()
             if function_responses:
                 for func_resp in function_responses:

@@ -309,6 +309,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy  
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ecommerce_inventory?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - SPRING_DATASOURCE_USERNAME=tiendoan
@@ -316,7 +318,9 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8761/eureka/
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/products  # Thêm MongoDB URI
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  # Đọc từ environment variable
     networks:
       - ecommerce_network
     healthcheck:
@@ -467,30 +471,13 @@ services:
       - /home/kltn2025/models--facebook--fasttext-language-identification:/root/.cache/models--facebook--fasttext-language-identification
     environment:
       - LANGUAGE_MODEL_PATH=/root/.cache/models--facebook--fasttext-language-identification/snapshots/3af127d4124fc58b75666f3594bb5143b9757e78/model.bin
+      - GOOGLE_API_KEY = "AIzaSyBQEBvYfuORn7kad-C1Uafrbg6U_8dCnUM"
+
     command: python main.py  # Thay đổi từ app.py thành main.py
     networks:
       - ecommerce_network
 
-  # rag-service:
-  #   build:
-  #     context: ./chatbot/src/rag
-  #     dockerfile: Dockerfile
-  #   container_name: rag-service
-  #   ports:
-  #     - "5000:5000"
-  #   environment:
-  #     - FLASK_ENV=production
-  #     - ELASTICSEARCH_HOST=elasticsearch
-  #     - ELASTICSEARCH_PORT=9200
-  #   depends_on:
-  #     elasticsearch:
-  #       condition: service_healthy
-  #   networks:
-  #     - product_network
-  #   volumes:
-  #     - ./app.py:/app/app.py
-  #     - ./requirements.txt:/app/requirements.txt
-  #   restart: unless-stopped
+  
 
   frontend:
     build:

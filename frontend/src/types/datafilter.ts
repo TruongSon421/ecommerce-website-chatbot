@@ -319,7 +319,11 @@ export const wirelessEarphoneFilterData: FilterData = {
         { label: 'Dưới 4 tiếng', value: 'earHeadphone_battery_under4' },
         { label: 'Từ 4 đến 6 tiếng', value: 'earHeadphone_battery_4to6' },
         { label: 'Từ 6 đến 8 tiếng', value: 'earHeadphone_battery_6to8' },
+<<<<<<< HEAD
         { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_above8' }
+=======
+        { label: 'Trên 8 tiếng', value: 'earHeadphone_battery_over8' }
+>>>>>>> server
       ]
     }
   ],
@@ -384,14 +388,33 @@ export const headphoneFilterData: FilterData = {
         { label: 'Chống ồn ENC', value: 'earHeadphone_benefit_enc' },
       ]
     }
+<<<<<<< HEAD
+=======
+  ],
+
+  earphoneBattery: [
+    {
+      key: 'tags',
+      label: 'Thời lượng pin',
+      multiSelect: true,
+      options: [
+        { label: '8 tiếng trở lên', value: 'earHeadphone_battery_over8' },
+      ]
+    }
+>>>>>>> server
   ]
 };
 
 // Audio Filters - Backward compatibility (sẽ được deprecated)
 export const audioFilterData: FilterData = wirelessEarphoneFilterData;
 
+<<<<<<< HEAD
 // Phukien Filters - Updated structure  
 export const phukienFilterData: FilterData = {
+=======
+// Backup Charger Filters (Sạc dự phòng)
+export const backupChargerFilterData: FilterData = {
+>>>>>>> server
   brands: [
     {
       key: 'brand',
@@ -459,6 +482,43 @@ export const phukienFilterData: FilterData = {
   ]
 };
 
+<<<<<<< HEAD
+=======
+// Phukien Filters - Updated structure  
+export const phukienFilterData: FilterData = {
+  brands: [
+    {
+      key: 'brand',
+      label: 'Hãng',
+      isSearchable: true,
+      multiSelect: true,
+      options: [
+        { label: 'Anker', value: 'Anker' },
+        { label: 'AVA', value: 'AVA,AVA+' },
+        { label: 'Baseus', value: 'Baseus' },
+        { label: 'Hydrus', value: 'Hydrus' },
+        { label: 'Mazer', value: 'Mazer' },
+        { label: 'Samsung', value: 'Samsung' },
+        { label: 'Ugreen', value: 'Ugreen' },
+        { label: 'Xiaomi', value: 'Xiaomi' },
+        { label: 'Xmobile', value: 'Xmobile' }
+      ]
+    }
+  ],
+  priceRanges: [
+    {
+      key: 'price',
+      label: 'Giá',
+      multiSelect: false,
+      options: PRICE_RANGES.phukien.map(range => ({
+        label: range.label,
+        value: `${range.min}-${range.max || ''}`
+      }))
+    }
+  ]
+};
+
+>>>>>>> server
 // Helper functions
 export const getFilterLabel = (type: string, filterKey: string, value: string): string => {
   const filters = filterData[type]?.[filterKey] || [];
@@ -483,5 +543,9 @@ export const filterData: AllFilterData = {
   wiredEarphone: wiredEarphoneFilterData,
   wirelessEarphone: wirelessEarphoneFilterData,
   headphone: headphoneFilterData,
+<<<<<<< HEAD
+=======
+  backup_charger: backupChargerFilterData,
+>>>>>>> server
   phukien: phukienFilterData
 };

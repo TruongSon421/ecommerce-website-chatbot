@@ -173,6 +173,19 @@ const AdminNavbar: React.FC = () => {
                       </Link>
 
                       <Link
+<<<<<<< HEAD
+=======
+                        to="/admin/product/bulk-import"
+                        className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
+                          isActive('/admin/product/bulk-import') ? 'bg-blue-600' : ''
+                        }`}
+                        onClick={() => setIsProductDropdownOpen(false)}
+                      >
+                        📤 Thêm hàng loạt (Bulk Import)
+                      </Link>
+
+                      <Link
+>>>>>>> server
                         to="/admin/tag"
                         className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
                           isActive('/admin/tag') ? 'bg-blue-600' : ''
@@ -205,6 +218,7 @@ const AdminNavbar: React.FC = () => {
                         💻 Laptop
                       </Link>
                       <Link
+<<<<<<< HEAD
                         to="/admin/products/audio"
                         className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
                           isActive('/admin/products/audio') ? 'bg-blue-600' : ''
@@ -221,6 +235,24 @@ const AdminNavbar: React.FC = () => {
                         onClick={() => setIsProductDropdownOpen(false)}
                       >
                         ⌚ Smartwatch
+=======
+                        to="/admin/products/audio/wireless_earphone"
+                        className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
+                          isActive('/admin/products/audio/wireless_earphone') ? 'bg-blue-600' : ''
+                        }`}
+                        onClick={() => setIsProductDropdownOpen(false)}
+                      >
+                        🎧 Tai nghe
+                      </Link>
+                      <Link
+                        to="/admin/products/phukien/backup_charger"
+                        className={`block px-4 py-2 text-sm hover:bg-gray-700 transition-colors ${
+                          isActive('/admin/products/phukien/backup_charger') ? 'bg-blue-600' : ''
+                        }`}
+                        onClick={() => setIsProductDropdownOpen(false)}
+                      >
+                        🔋 Phụ kiện
+>>>>>>> server
                       </Link>
                       <div className="border-t border-gray-700 my-1"></div>
                       <Link

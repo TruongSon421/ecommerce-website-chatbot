@@ -6,10 +6,12 @@ from agents.products import product_agent
 from agents.cart import cart_agent
 from agents.order import order_agent
 from prompts import GLOBAL_INSTRUCTION
+from callback.after_model_callback import after_model_modifier
+from callback.log_callback import *
 
 coordinator = LlmAgent(
     name="HelpDeskCoordinator",
-    model="gemini-2.0-flash",  # Điều chỉnh model nếu cần, ví dụ: "gemini-1.5-flash-latest"
+    model="gemini-2.0-flash",  
     global_instruction=GLOBAL_INSTRUCTION,
     instruction="""
     Định tuyến yêu cầu của người dùng đến agent phù hợp dựa trên ý định của họ:
@@ -17,9 +19,15 @@ coordinator = LlmAgent(
     - **Agent Shop**: Cung cấp thông tin chung về cửa hàng, như địa chỉ cửa hàng, chính sách, giờ mở cửa, dịch vụ khách hàng hoặc phương thức thanh toán, nhưng không bao gồm thông tin chi tiết sản phẩm hoặc thao tác giỏ hàng.
     - **Agent Product**: Hỗ trợ các yêu cầu liên quan đến sản phẩm, bao gồm cung cấp thông tin sản phẩm, so sánh sản phẩm, và giúp khách hàng tìm sản phẩm phù hợp để mua dựa trên nhu cầu và ngân sách của họ.
     - **Agent Cart**: Quản lý tất cả các thao tác liên quan đến giỏ hàng, bao gồm lấy giỏ hàng của người dùng, thêm sản phẩm vào giỏ hàng, cập nhật mục trong giỏ hàng, xóa mục khỏi giỏ hàng.
-    - **Agent Order**: Quản lý quy trình đặt hàng, thanh toán sản phẩm. Có thể thêm sản phẩm vào giỏ hàng nếu chưa có.
-    Đảm bảo định tuyến chính xác bằng cách xác định ý định của người dùng. Ví dụ, các yêu cầu như "thêm sản phẩm vào giỏ hàng" nên chuyển đến Agent Cart, trong khi "gợi ý laptop gaming tốt" nên chuyển đến Agent Product.
+    - **Agent Order**: Quản lý quy trình đặt hàng, thanh toán sản phẩm. Có thể thêm sản phẩm vào giỏ hàng nếu chưa có. Nếu người dùng yêu cầu đặt, đặt hàng hay thanh toán.
+    Đảm bảo định tuyến chính xác bằng cách xác định ý định của người dùng. 
+    Ví dụ, các yêu cầu như "thêm sản phẩm vào giỏ hàng" nên chuyển đến Agent Cart, trong khi "gợi ý laptop gaming tốt" nên chuyển đến Agent Product.
+
     """,
     description="Bộ định tuyến chính của help desk để chuyển hướng yêu cầu người dùng đến agent phù hợp.",
-    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent, order_agent]
+    sub_agents=[chatchit_agent, shop_agent, product_agent, cart_agent, order_agent],
+    after_model_callback=after_model_modifier,
+    before_agent_callback=log_before_agent_entry,
+    after_tool_callback=log_after_tool_execution,
+
 )

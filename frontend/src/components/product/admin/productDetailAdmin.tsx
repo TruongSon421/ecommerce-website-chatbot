@@ -14,6 +14,13 @@ interface ProductReview {
   content: string;
 }
 
+<<<<<<< HEAD
+=======
+interface ProductReviewsSectionProps {
+  productReviews: ProductReview[];
+}
+
+>>>>>>> server
 // Interfaces for tags
 interface Tag {
   tagId: number;
@@ -165,7 +172,11 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
   const fetchAvailableTags = useCallback(async () => {
     try {
       const token = localStorage.getItem('accessToken');
+<<<<<<< HEAD
       const response = await fetch(`${ENV.API_URL}/tags`, {
+=======
+      const response = await fetch(`${ENV.API_URL}/tags/get`, {
+>>>>>>> server
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         signal: AbortSignal.timeout(10000),
       });
@@ -486,8 +497,13 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
     setSelectedVariantIndex(variantIndex);
     if (newProductId) {
       const type = product.type ? product.type.toLowerCase() : 'product';
+<<<<<<< HEAD
       console.log('Navigating to:', `/detail/${type}/${newProductId}`);
       navigate(`/detail/${type}/${newProductId}`, { replace: true });
+=======
+      console.log('Navigating to:', `/admin/detail/${type}/${newProductId}`);
+      navigate(`/admin/detail/${type}/${newProductId}`, { replace: true });
+>>>>>>> server
       fetchProduct(newProductId, true);
     }
   };
@@ -936,6 +952,7 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
                   />
                 )}
                 
+<<<<<<< HEAD
                 <div className="bg-gray-800 rounded-lg p-6">
                   <ActionButtons
                     product={{
@@ -949,6 +966,9 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
                     showNotification={showNotification}
                   />
                 </div>
+=======
+                
+>>>>>>> server
               </div>
             </div>
           )}
@@ -957,8 +977,20 @@ const ProductDetailAdmin: React.FC<{ product: Product }> = ({ product: initialPr
       {!isProductLoading && !productError && (
         <div className="bg-gray-800">
           <div className="container mx-auto px-4 py-8 max-w-7xl">
+<<<<<<< HEAD
             <ProductSpecifications specifications={product.specifications} />
           </div>
+=======
+            <ProductSpecifications 
+              specifications={
+                (product.specifications || []).map(spec => ({
+                  name: spec.name || '',
+                  value: spec.value
+                }))
+              }
+              productType={product.type}
+            />          </div>
+>>>>>>> server
         </div>
       )}
     </>
@@ -1371,6 +1403,7 @@ interface PromotionsProps {
 }
 
 const Promotions: React.FC<PromotionsProps> = ({ promotions }) => {
+<<<<<<< HEAD
   if (!promotions || promotions.length === 0) {
     return (
       <div>
@@ -1461,10 +1494,70 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({ product, showNotification
           Các nút này dành cho admin test chức năng mua hàng
         </p>
       </div>
+=======
+  // Mặc định đóng bằng cách khởi tạo state là `false`
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hasPromotions = promotions && promotions.length > 0;
+  
+  // Lấy tiêu đề từ phần tử đầu tiên của mảng, hoặc dùng tiêu đề mặc định
+  const title = hasPromotions ? promotions[0] : 'Khuyến mãi';
+  
+  // Các mục khuyến mãi là các phần tử còn lại
+  const items = hasPromotions ? promotions.slice(1) : [];
+
+  return (
+    <div>
+      {/* Header có thể click để ẩn/hiện */}
+      <div
+        className="flex justify-between items-center cursor-pointer bg-gray-800 p-3 rounded-lg"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h2 className="text-lg font-medium text-white flex items-center">
+          <span className="mr-3">🎁</span>
+          {title}
+        </h2>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-6 w-6 text-gray-400 transform transition-transform duration-300 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      {/* Nội dung chỉ hiển thị khi `isOpen` là true */}
+      {isOpen && (
+        <div className="bg-gray-800 p-4 rounded-b-lg border-t border-gray-700">
+          {!hasPromotions ? (
+            <p className="text-gray-400">Hiện tại không có khuyến mãi nào.</p>
+          ) : (
+            <div className="space-y-3">
+              {items.map((promo, index) => (
+                <div
+                  key={index}
+                  className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-lg p-4"
+                >
+                  <div
+                    className="text-gray-100"
+                    dangerouslySetInnerHTML={{ __html: promo }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+>>>>>>> server
     </div>
   );
 };
 
+<<<<<<< HEAD
 // Component hiển thị Product Reviews - bỏ isAdmin check
 interface ProductReviewsSectionProps {
   productReviews: { title: string; content: string }[];
@@ -1492,6 +1585,65 @@ const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({ productRe
               <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{review.content}</p>
             </div>
           ))}
+=======
+
+
+
+const ProductReviewsSection: React.FC<ProductReviewsSectionProps> = ({ productReviews }) => {
+  // 1. Sử dụng useState để quản lý trạng thái đóng/mở, mặc định là mở
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hasReviews = productReviews && productReviews.length > 0;
+
+  return (
+    <div>
+      {/* 2. Header này giờ đây có thể click để thay đổi state */}
+      <div
+        className="flex justify-between items-center cursor-pointer bg-gray-800 p-3 rounded-t-lg"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h2 className="text-lg font-medium text-white flex items-center">
+          <span className="mr-3">⭐</span>
+          Đánh giá sản phẩm
+          {hasReviews && <span className="text-gray-400 ml-2">({productReviews.length})</span>}
+        </h2>
+        {/* 3. Icon Chevron cho biết trạng thái và xoay khi thay đổi */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-6 w-6 text-gray-400 transform transition-transform duration-300 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+
+      {/* 4. Chỉ hiển thị nội dung bên dưới khi isOpen là true */}
+      {isOpen && (
+        <div className="bg-gray-800 p-4 rounded-b-lg">
+          {!hasReviews ? (
+            <div className="text-center py-8">
+              <div className="text-6xl text-gray-600 mb-4">📝</div>
+              <p className="text-gray-400">Chưa có đánh giá nào</p>
+            </div>
+          ) : (
+            // 5. Thêm một div bọc ngoài với max-height và overflow-y-auto để tạo thanh cuộn
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {productReviews.map((review, index) => (
+                <div key={index} className="bg-gray-700 rounded-lg p-4 border-l-4 border-blue-500">
+                  <h3 className="font-semibold text-blue-400 mb-3 flex items-center">
+                    <span className="text-yellow-400 mr-2">⭐</span>
+                    {review.title}
+                  </h3>
+                  <p className="text-gray-200 leading-relaxed whitespace-pre-wrap">{review.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+>>>>>>> server
         </div>
       )}
     </div>
@@ -1894,9 +2046,13 @@ const AdminDeleteSection: React.FC<AdminDeleteSectionProps> = ({ groupData, onDe
 
   return (
     <div className="bg-red-900/20 border border-red-600 rounded-lg p-6">
+<<<<<<< HEAD
       <h3 className="text-lg font-medium text-red-400 mb-4 flex items-center">
         🚨 Vùng nguy hiểm
       </h3>
+=======
+    
+>>>>>>> server
       <div className="space-y-4">
         <div className="bg-gray-800 p-4 rounded-lg">
           <p className="font-medium text-white mb-3">📋 Thông tin dòng sản phẩm:</p>
@@ -1917,10 +2073,14 @@ const AdminDeleteSection: React.FC<AdminDeleteSectionProps> = ({ groupData, onDe
         </div>
         
         <div className="bg-yellow-900/30 border border-yellow-600 p-4 rounded-lg">
+<<<<<<< HEAD
           <div className="flex items-center mb-3">
             <span className="text-2xl mr-2">⚠️</span>
             <p className="font-medium text-yellow-300">Cảnh báo nghiêm trọng</p>
           </div>
+=======
+          
+>>>>>>> server
           <p className="text-yellow-200 mb-3">Hành động này sẽ xóa TOÀN BỘ dòng sản phẩm bao gồm:</p>
           <ul className="text-yellow-200 space-y-1 text-sm">
             <li className="flex items-center"><span className="text-red-400 mr-2">●</span> Tất cả {groupData.variants.length} phiên bản sản phẩm</li>

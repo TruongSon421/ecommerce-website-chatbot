@@ -62,6 +62,7 @@ const UserManagement: React.FC = () => {
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Welcome Section */}
+<<<<<<< HEAD
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-6 mb-8 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -118,6 +119,12 @@ const UserManagement: React.FC = () => {
               </div>
             </div>
           </div>
+=======
+          
+
+          {/* Feature Highlights */}
+          
+>>>>>>> server
 
           {/* Admin User Management Component */}
           <div className="bg-white rounded-lg shadow-sm">

@@ -334,7 +334,11 @@ const FilterDropdown: React.FC<FilterDropdownProps> = ({
         </label>
         <input
           type="text"
+<<<<<<< HEAD
           placeholder="vd: ip68,... (Kết quả được sắp xếp lại theo độ tương đồng)"
+=======
+          placeholder="vd: ip68, ram tối thiểu 12gb,... "
+>>>>>>> server
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
           value={searchQuery}
           onChange={(e) => onSearchQueryChange(e.target.value)}

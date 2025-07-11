@@ -166,10 +166,12 @@ class Filter:
         
         # 2. Kiểm tra từ nhạy cảm (chứa trong câu)
         if cls.check_sensitive_words(query)[0]:
+
+            print('từ nhạy cảm:',cls.check_sensitive_words(query)[1])
             return 0
         
         # 3. Nếu query ngắn hơn 5 ký tự, pass với tiếng Việt
-        if len(query.strip()) < 5:
+        if len(query.strip()) <= 5:
             print(f"Short query detected (length: {len(query.strip())}), defaulting to Vietnamese")
             return 3, 'vie'
         

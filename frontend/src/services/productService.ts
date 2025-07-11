@@ -1,6 +1,10 @@
 // src/api/productApi.ts
 import api from '../config/axios';
+<<<<<<< HEAD
 import { ProductCreateRequest, GroupVariantRequest, GroupProductDto } from '../types/product';
+=======
+import { ProductCreateRequest, GroupVariantRequest, GroupProductDto, BulkGroupCreateRequest, BulkGroupCreateResponse } from '../types/product';
+>>>>>>> server
 
 
 
@@ -33,6 +37,14 @@ export const productApi = {
     return response.data;
   },
   
+<<<<<<< HEAD
+=======
+  createBulkProductGroup: async (data: BulkGroupCreateRequest): Promise<BulkGroupCreateResponse> => {
+    const response = await api.post('/products/create-bulk-group', data);
+    return response.data;
+  },
+  
+>>>>>>> server
   getAllProducts: async () => {
     const response = await api.get('/products');
     return response.data;

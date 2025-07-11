@@ -7,6 +7,7 @@ from callback.before_llm_callback_lang import before_llm_callback_lang
 
 shop_agent = LlmAgent(
     name="Shop",
+    model="gemini-2.0-flash",
     description="Necessary when users want to ask about general shop information like sales, addresses, hotline, promotions, policies, payment methods...",
     global_instruction=GLOBAL_INSTRUCTION,
     instruction=SHOP_INSTRUCTION,

@@ -602,6 +602,7 @@ const ChatbotWidget: React.FC = () => {
                 });
               }
             }
+<<<<<<< HEAD
           } else {
             // No group_ids but have filter_params, show view all option
             messagesToAdd.push({
@@ -611,6 +612,9 @@ const ChatbotWidget: React.FC = () => {
               viewAllUrl: url,
             });
           }
+=======
+          } 
+>>>>>>> server
       }
 
       setChatSession((prev) => ({

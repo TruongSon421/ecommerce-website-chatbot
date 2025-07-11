@@ -32,6 +32,10 @@ import UserManagement from "./pages/admin/UserManagement";
 import OrderManagement from "./pages/admin/OrderManagement";
 import ReviewManagement from "./pages/admin/ReviewManagement";
 import TagManagement from "./pages/admin/TagManagement";
+<<<<<<< HEAD
+=======
+import BulkImportPage from "./pages/admin/BulkImportPage";
+>>>>>>> server
 // Import private user components
 import PaymentPage from "./pages/PaymentPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
@@ -147,6 +151,10 @@ function AppContent() {
           <Route path="register" element={<AdminRegister />} />
           <Route path="dashboard" element={<AdminPrivateRoute><Dashboard /></AdminPrivateRoute>} />
           <Route path="product/add" element={<AdminPrivateRoute><AddProductPage /></AdminPrivateRoute>} />
+<<<<<<< HEAD
+=======
+          <Route path="product/bulk-import" element={<AdminPrivateRoute><BulkImportPage /></AdminPrivateRoute>} />
+>>>>>>> server
           <Route path="products" element={<AdminPrivateRoute><ProductManagement /></AdminPrivateRoute>} />
           <Route path="products/:type" element={<AdminPrivateRoute><PageCategoryAdmin /></AdminPrivateRoute>} />
           <Route path="tag" element={<AdminPrivateRoute><TagManagement /></AdminPrivateRoute>} />

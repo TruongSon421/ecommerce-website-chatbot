@@ -11,6 +11,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+<<<<<<< HEAD
+=======
+import java.util.Map;
+>>>>>>> server
 
 @FeignClient(name = "inventory-service",
         url = "${inventory-service.url}",
@@ -48,4 +52,7 @@ public interface InventoryClient {
 
     @DeleteMapping("/api/group-variants/group-product/group/{groupId}")
     void deleteGroupProductsByGroupId(@PathVariable Integer groupId);
+
+    @PostMapping("/api/group-variants")
+    ResponseEntity<Map<String, Integer>> createGroupVariant(@RequestBody Map<String, Object> request);
 }

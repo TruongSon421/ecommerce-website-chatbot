@@ -95,6 +95,7 @@ export interface LaptopConfig {
   os?: string;
 }
 
+<<<<<<< HEAD
 export interface AudioConfig {
   // Pin và sạc
   earbudsBatteryLife?: string; // thời lượng pin tai nghe
@@ -146,6 +147,91 @@ export interface AudioConfig {
   warranty?: string; // bảo hành
 }
 
+=======
+export interface WirelessEarphoneConfig {
+  batteryLife?: string;
+  chargingCaseBatteryLife?: string;
+  chargingPort?: string[];
+  audioTechnology?: string[];
+  compatibility?: string[];
+  connectionApp?: string[];
+  features?: string[];
+  simultaneousConnections?: string;
+  connectionTechnology?: string[];
+  controlType?: string[];
+  controlButtons?: string[];
+  size?: string;
+  weight?: string;
+  brandOrigin?: string;
+  manufactured?: string;
+}
+
+export interface WiredEarphoneConfig {
+  audioTechonology?: string[]; // Note: Typo maintained to match backend
+  compatibility?: string[];
+  audioJack?: string;
+  cableLength?: string;
+  features?: string[];
+  simultaneousConnections?: string;
+  controlType?: string[];
+  controlButtons?: string[];
+  weight?: string;
+  brandOrigin?: string;
+  manufactured?: string;
+}
+
+export interface HeadphoneConfig {
+  batteryLife?: string;
+  chargingPort?: string;
+  audioTechnology?: string[];
+  compatibility?: string[];
+  connectionApp?: string;
+  audioJack?: string;
+  cableLength?: string;
+  features?: string[];
+  simultaneousConnections?: string;
+  connectionTechnology?: string[];
+  controlType?: string[];
+  controlButtons?: string[];
+  size?: string;
+  weight?: string;
+  brandOrigin?: string;
+  manufactured?: string;
+}
+
+export interface BackupChargerConfig {
+  batteryCapacity?: string; // dung lượng pin
+  chargingEfficiency?: string; // hiệu suất sạc
+  batteryCellType?: string; // loại pin
+  technologyFeatures?: string[]; // công nghệ / tiện ích
+  chargingTime?: string[]; // thời gian sạc đầy pin
+  output?: string[]; // nguồn ra
+  input?: string[]; // nguồn vào
+  size?: string; // kích thước
+  weight?: string; // khối lượng
+  brandOrigin?: string; // thương hiệu của
+  manufactured?: string; // sản xuất tại
+}
+
+export interface CableChargerHubConfig {
+  model?: string;
+  features?: string[]; // thời gian sạc đầy pin
+  input?: string[]; // nguồn vào
+  output?: string[]; // nguồn ra
+  maximumCharging?: string; // dòng sạc tối đa
+  size?: string; // kích thước
+  technologyFeatures?: string[]; // công nghệ / tiện ích
+  manufactured?: string; // sản xuất tại
+  brandOrigin?: string; // thương hiệu của
+  connectionJack?: string[]; // jack kết nối
+  maximumPower?: string; // công suất tối đa
+  length?: string;
+}
+
+// Union type for all configs
+export type ProductConfig = PhoneConfig | LaptopConfig | WirelessEarphoneConfig | WiredEarphoneConfig | HeadphoneConfig | BackupChargerConfig | CableChargerHubConfig;
+
+>>>>>>> server
 export interface ProductReview {
     title: string;
     content: string;
@@ -159,9 +245,17 @@ export interface ProductRequest {
     colors: string[];           // Bắt buộc, ít nhất 1 màu
     variant: string;            // Bắt buộc
     type: string;               // Bắt buộc (lấy từ groupData.type)
+<<<<<<< HEAD
     config?: PhoneConfig | LaptopConfig | AudioConfig; // Không bắt buộc
     promotions?: string[];      // Không bắt buộc
     productReviews?: ProductReview[]; // Không bắt buộc
+=======
+    config?: ProductConfig;     // Không bắt buộc - updated to use union type
+    promotions?: string[];      // Không bắt buộc
+    productReviews?: ProductReview[]; // Không bắt buộc
+    warrantyPeriod?: string;    // Thời hạn bảo hành
+    release?: string;           // Ngày phát hành
+>>>>>>> server
 }
   
 export interface ProductCreateRequest {
@@ -208,6 +302,32 @@ export interface GroupVariantRequest {
     groupName: string;
     brand: string
 }
+<<<<<<< HEAD
+=======
+
+// Interface matching backend ProductWithInventoryRequest
+export interface ProductWithInventoryRequest {
+    productRequest: ProductRequest;
+    inventoryRequests: InventoryRequest[];
+}
+
+// New interface for bulk group creation
+export interface BulkGroupCreateRequest {
+    groupName: string;
+    brand: string;
+    type: string;
+    image: string | null;
+    products: ProductWithInventoryRequest[];  // Match backend ProductWithInventoryRequest
+}
+
+export interface BulkGroupCreateResponse {
+    success: boolean;
+    groupId?: number;
+    productIds: string[];
+    failedProducts?: string[];
+    message: string;
+}
+>>>>>>> server
   
 export interface GroupVariant {
     groupId: string;

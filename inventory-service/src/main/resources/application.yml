@@ -12,6 +12,7 @@ spring:
     password: tiendoan
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
+<<<<<<< HEAD
       connection-timeout: 20000
       maximum-pool-size: 15
       minimum-idle: 8
@@ -20,6 +21,26 @@ spring:
       auto-commit: true
       connection-test-query: SELECT 1
       transaction-isolation: TRANSACTION_READ_COMMITTED
+=======
+      connection-timeout: 30000
+      maximum-pool-size: 20
+      minimum-idle: 10
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      auto-commit: true
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
+      leak-detection-threshold: 60000
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  data:
+    mongodb:
+      database: products
+      authentication-database: admin
+      username: admin
+      password: password
+      host: mongodb
+      port: 27017
+>>>>>>> server
 
   jpa:
     hibernate:
@@ -100,6 +121,11 @@ logging:
   level:
     com.eazybytes: DEBUG
     org.springframework.kafka: INFO
+<<<<<<< HEAD
+=======
+    com.eazybytes.service.LLMService: DEBUG
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+>>>>>>> server
 
 springdoc:
   api-docs:
@@ -116,3 +142,22 @@ inventory:
   metrics:
     enable: true
 
+<<<<<<< HEAD
+=======
+openai:
+  api:
+    key: ${OPENAI_API_KEY:}  # Đọc từ environment variable
+    url: https://api.openai.com/v1/chat/completions
+  model: gpt-4o-mini
+
+mongodb:
+  database:
+    name: products
+  collection:
+    name: baseProduct
+
+# LLM Configuration
+llm:
+  enabled: true  # Set to true to enable OpenAI integration
+
+>>>>>>> server

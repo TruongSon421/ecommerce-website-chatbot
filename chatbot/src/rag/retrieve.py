@@ -105,7 +105,7 @@ def search_elasticsearch(query, ids=None, size=5):
         })
     return results
 
-def search_name(query, ids=None, size=5):
+def search_name(query, ids=None, size=4):
     body = {
         "query": {
             "bool": {
@@ -137,6 +137,8 @@ def search_name(query, ids=None, size=5):
         print("Elasticsearch error:", str(e))
         return []
     results = []
+    print("==========Đánh giá elasticsearch")
+    print('Kết quả search_name với query:',query)
     for hit in response["hits"]["hits"]:
         results.append({
             "id": hit["_id"],
@@ -146,5 +148,8 @@ def search_name(query, ids=None, size=5):
             "group_id": hit["_source"]["group_id"],
 
         })
+        print(hit["_id"],hit["_source"]["name"])
+    print("==========Đánh giá elasticsearch")
+
     return results
 

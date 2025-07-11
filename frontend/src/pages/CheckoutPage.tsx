@@ -37,6 +37,26 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { items, selectedItems } = useCartStore();
+<<<<<<< HEAD
+=======
+  
+  // ✅ Helper function để xử lý tên an toàn
+  const getFullNameFromProfile = (profile: UserProfile | null): string => {
+    if (!profile) return '';
+    
+    const firstName = profile.firstName?.trim() || '';
+    const lastName = profile.lastName?.trim() || '';
+    
+    // Chỉ ghép khi cả hai đều có giá trị và không phải null/undefined
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    }
+    
+    // Trả về firstName hoặc lastName nếu chỉ có một trong hai
+    return firstName || lastName || '';
+  };
+  
+>>>>>>> server
   const [checkoutItems, setCheckoutItems] = useState<CartItem[]>(() => {
     // Ưu tiên selectedItems từ CartPage (flow hiện tại)
     if (location.state?.selectedItems) {
@@ -54,11 +74,18 @@ const CheckoutPage = () => {
       }
     }
     
+<<<<<<< HEAD
 
     
     return [];
   });
   console.log(checkoutItems);
+=======
+    return [];
+  });
+  console.log(checkoutItems);
+  
+>>>>>>> server
   // Thêm state cho address management
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [addressMode, setAddressMode] = useState<'select' | 'new'>('select');
@@ -93,7 +120,11 @@ const CheckoutPage = () => {
       try {
         const response = await fetch(`${ENV.API_URL}/users/me`, {
           headers: {
+<<<<<<< HEAD
             'Authorization': `Bearer ${localStorage.getItem("accessToken")}`, // Adjust based on your auth implementation
+=======
+            'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
+>>>>>>> server
             'Content-Type': 'application/json',
           },
         });
@@ -125,8 +156,13 @@ const CheckoutPage = () => {
             setAddressMode('new');
             setForm(prev => ({
               ...prev,
+<<<<<<< HEAD
               fullName: `${profile.firstName} ${profile.lastName}`,
               phone: profile.phoneNumber,
+=======
+              fullName: getFullNameFromProfile(profile),
+              phone: profile.phoneNumber || '',
+>>>>>>> server
             }));
           }
         }
@@ -174,8 +210,11 @@ const CheckoutPage = () => {
     }
   }, [form.district]);
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> server
   // Reset payment redirect state when returning to checkout
   useEffect(() => {
     setHasRedirectedToPayment(false);
@@ -236,7 +275,11 @@ const CheckoutPage = () => {
       setSelectedAddressId(null);
       setForm(prev => ({
         ...prev,
+<<<<<<< HEAD
         fullName: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : '',
+=======
+        fullName: getFullNameFromProfile(userProfile),
+>>>>>>> server
         phone: userProfile?.phoneNumber || '',
         street: '',
         province: '',
@@ -419,7 +462,11 @@ const CheckoutPage = () => {
       // Đánh dấu đã redirect để tránh bấm nhiều lần
       setHasRedirectedToPayment(true);
       
+<<<<<<< HEAD
                     // Hiển thị xác nhận trước khi mở trang thanh toán
+=======
+      // Hiển thị xác nhận trước khi mở trang thanh toán
+>>>>>>> server
       const confirmed = window.confirm(
         '🔄 Tiếp tục thanh toán\n\n' +
         'Bạn sẽ được chuyển đến trang thanh toán VNPay.\n' +

@@ -16,6 +16,13 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
     
     List<GroupProduct> findByGroupId(Integer groupId);
 
+<<<<<<< HEAD
+=======
+    @Query("SELECT gp FROM GroupProduct gp WHERE gp.productId IN :productIds")
+    List<GroupProduct> findByProductIdIn(@Param("productIds") List<String> productIds);
+    
+
+>>>>>>> server
     @Query("SELECT g.groupId FROM GroupProduct g WHERE g.productId = :productId")
     Optional<Integer> findGroupIdByProductId(@Param("productId") String productId);
 
@@ -56,4 +63,9 @@ public interface GroupProductRepository extends JpaRepository<GroupProduct, Inte
     void deleteByGroupId(@Param("groupId") Integer groupId);
 
 
+<<<<<<< HEAD
+=======
+    List<GroupProduct> findAllByProductIdIn(List<String> productIds);
+    
+>>>>>>> server
 }
